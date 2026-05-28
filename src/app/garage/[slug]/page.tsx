@@ -8,8 +8,9 @@ export function generateStaticParams() {
   return mockEquipments.map((equipment) => ({ slug: equipment.slug }));
 }
 
-export default function PublicEquipmentPage({ params }: { params: { slug: string } }) {
-  const equipment = getMockEquipmentBySlug(params.slug);
+export default async function PublicEquipmentPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const equipment = getMockEquipmentBySlug(slug);
   if (!equipment) notFound();
 
   return (
