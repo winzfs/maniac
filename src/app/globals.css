@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+body { @apply bg-background text-text-primary antialiased; }
+.container-shell { @apply mx-auto w-full max-w-content px-5 md:px-8; }
