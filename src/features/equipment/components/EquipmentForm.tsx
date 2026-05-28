@@ -22,8 +22,16 @@ const usageMetricOptions = [
 
 type SubmitState =
   | { status: "idle" }
-  | { status: "success"; message: string }
+  | { status: "submitting" }
+  | { status: "success"; message: string; nextPath?: string }
   | { status: "error"; message: string };
+
+type CreateEquipmentResponse = {
+  ok: boolean;
+  equipment?: { id: string; slug: string };
+  nextPath?: string;
+  error?: string;
+};
 
 function FieldLabel({ label, description }: { label: string; description?: string }) {
   return (
@@ -51,17 +59,35 @@ function getErrorMessage(error: unknown) {
   return "입력값을 다시 확인해주세요.";
 }
 
+async function createEquipmentRequest(input: unknown) {
+  const response = await fetch("/api/equipments", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const data = (await response.json()) as CreateEquipmentResponse;
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error ?? "장비 저장에 실패했습니다.");
+  }
+
+  return data;
+}
+
 export function EquipmentForm() {
   const [submitState, setSubmitState] = useState<SubmitState>({ status: "idle" });
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitState({ status: "submitting" });
 
     try {
       const input = formDataToCreateEquipmentInput(new FormData(event.currentTarget));
+      const result = await createEquipmentRequest(input);
       setSubmitState({
         status: "success",
-        message: `${input.nickname} 장비 입력값이 검증되었습니다. 다음 단계에서 실제 DB 저장 API에 연결합니다.`,
+        message: `${input.nickname} 장비가 저장되었습니다.`,
+        nextPath: result.nextPath,
       });
     } catch (error) {
       setSubmitState({ status: "error", message: getErrorMessage(error) });
@@ -142,31 +168,37 @@ export function EquipmentForm() {
       <aside className="space-y-4 lg:sticky lg:top-6">
         <Card variant="dark" className="space-y-4 p-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-lime-200">Next Step</p>
-            <h2 className="mt-2 text-xl font-bold">저장 연결 대기</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-300">현재는 브라우저에서 입력값 검증까지만 수행합니다. 다음 단계에서 Pages Functions 또는 Workers API에 연결합니다.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-lime-200">DB Create</p>
+            <h2 className="mt-2 text-xl font-bold">장비 저장</h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-300">현재는 임시 mock userId로 Pages Functions API에 저장합니다. 로그인 연결 후 실제 사용자 ID로 교체합니다.</p>
           </div>
-          <Button className="w-full" type="submit">입력값 검증하기</Button>
-          {submitState.status !== "idle" ? (
-            <p className={submitState.status === "success" ? "rounded-2xl bg-white/10 p-3 text-sm leading-6 text-lime-100" : "rounded-2xl bg-white/10 p-3 text-sm leading-6 text-red-100"}>
-              {submitState.message}
-            </p>
+          <Button className="w-full" type="submit" disabled={submitState.status === "submitting"}>
+            {submitState.status === "submitting" ? "저장 중..." : "장비 저장하기"}
+          </Button>
+          {submitState.status === "success" ? (
+            <div className="space-y-3 rounded-2xl bg-white/10 p-3 text-sm leading-6 text-lime-100">
+              <p>{submitState.message}</p>
+              {submitState.nextPath ? <a className="font-semibold underline underline-offset-4" href={submitState.nextPath}>공개 페이지 확인하기</a> : null}
+            </div>
+          ) : null}
+          {submitState.status === "error" ? (
+            <p className="rounded-2xl bg-white/10 p-3 text-sm leading-6 text-red-100">{submitState.message}</p>
           ) : null}
         </Card>
 
         <Card className="space-y-3 p-5">
-          <h3 className="font-bold">연결 예정 흐름</h3>
+          <h3 className="font-bold">현재 연결 흐름</h3>
           <ol className="space-y-2 text-sm leading-6 text-text-secondary">
-            <li>1. 로그인 사용자 확인</li>
-            <li>2. form 값을 Zod schema로 검증</li>
+            <li>1. form 값을 Zod schema로 검증</li>
+            <li>2. /api/equipments POST 호출</li>
             <li>3. createEquipment 실행</li>
-            <li>4. /garage/[slug]/ 공개 페이지로 이동</li>
+            <li>4. 생성된 slug 경로 반환</li>
           </ol>
         </Card>
 
         <Card className="space-y-3 p-5">
-          <h3 className="font-bold">이미지 업로드</h3>
-          <p className="text-sm leading-6 text-text-secondary">대표 사진과 갤러리는 장비 CRUD 연결 후 R2 업로드 플로우에서 추가합니다.</p>
+          <h3 className="font-bold">남은 연결</h3>
+          <p className="text-sm leading-6 text-text-secondary">실제 로그인 userId, DB migration 적용, R2 이미지 업로드, /garage/ 목록 DB 조회를 순서대로 연결합니다.</p>
         </Card>
       </aside>
     </form>
