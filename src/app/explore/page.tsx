@@ -1,14 +1,20 @@
 import { Badge } from "@/shared/components/ui/Badge";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
+import { Breadcrumbs } from "@/shared/components/navigation/Breadcrumbs";
+import { MenuButton } from "@/shared/components/navigation/MenuButton";
 import { equipmentCategories } from "@/shared/data/equipment-categories";
 import Link from "next/link";
 
 export default function ExplorePage() {
   return (
     <main className="container-shell space-y-10 py-5 sm:py-8 lg:space-y-14">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Breadcrumbs items={[{ label: "홈", href: "/" }, { label: "장비 둘러보기" }]} />
+        <MenuButton label="장비 메뉴" />
+      </div>
+
       <section className="space-y-4">
-        <Badge label="Explore" tone="orange" />
         <h1 className="text-4xl font-black tracking-tight sm:text-5xl">장비 카테고리 둘러보기</h1>
         <p className="max-w-2xl text-sm leading-6 text-text-secondary sm:text-base sm:leading-7">바이크, 커스텀 PC, 키보드, 카메라까지. 카테고리별 장비 포트폴리오와 게시판을 탐색하세요.</p>
       </section>
