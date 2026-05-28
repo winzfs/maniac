@@ -61,7 +61,7 @@ export function CategoryBoardPostFilter({
         {filteredPosts.map((post) => {
           const board = boards.find((item) => item.slug === post.boardSlug);
           return (
-            <Link key={post.id} href={`/explore/${categorySlug}/${post.boardSlug}/`}>
+            <Link key={post.id} href={`/explore/${categorySlug}/${post.boardSlug}/${post.id}/`}>
               <Card className="grid gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-sm sm:grid-cols-[8rem_1fr] sm:p-5">
                 <div className="aspect-[16/10] rounded-2xl bg-gradient-to-br from-zinc-200 to-zinc-400" />
                 <div className="space-y-2">
