@@ -13,7 +13,7 @@ export type StorageObjectResult = {
 export interface StorageProvider {
   put(input: StorageObjectInput): Promise<StorageObjectResult>;
   delete(key: string): Promise<void>;
-  getPublicUrl?(key: string): string;
+  getPublicUrl?(key: string): string | undefined;
 }
 
 export class NoopStorageProvider implements StorageProvider {
