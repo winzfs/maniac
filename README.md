@@ -28,6 +28,7 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - 카테고리별 게시판 상세 mock: `/explore/[category]/[board]/`
 - 카테고리별 게시글 상세 mock: `/explore/[category]/[board]/[post]/`
 - 카테고리별 글쓰기 mock + WYSIWYG 에디터: `/explore/[category]/[board]/write/`
+- 글쓰기 화면 모바일 확대/overflow 완화
 - 공통 PageHeader/Breadcrumbs/MenuButton 네비게이션
 - 공통 UI 컴포넌트 초안
 - 도메인 중심 폴더 구조
@@ -137,6 +138,7 @@ custom      기타 장비
 전체글 버튼: 전체글 표시
 게시판 버튼 클릭: 해당 게시판 글만 표시
 선택된 게시판 버튼 다시 클릭: 전체글로 해제
+필터 상태에 맞는 글쓰기 버튼 표시
 게시글 카드 클릭: 게시글 상세 페이지로 이동
 게시판 상세의 게시글 카드 클릭: 게시글 상세 페이지로 이동
 ```
@@ -173,6 +175,7 @@ src/shared/components/navigation/PageHeader.tsx
 
 ```txt
 src/features/editor/SimpleHtmlEditor.tsx
+src/app/explore/[category]/[board]/write/page.tsx
 ```
 
 현재 지원 기능:
@@ -196,6 +199,14 @@ H2 적용/해제
 - 현재 mock 단계에서는 data URL을 본문에 삽입합니다.
 - 실제 서비스 단계에서는 같은 리사이징 흐름 뒤 R2 업로드 URL을 삽입하는 구조로 바꿉니다.
 
+레이아웃/모바일 안정화:
+
+- 글쓰기 페이지는 다른 페이지와 동일하게 `container-shell` 기준을 사용합니다.
+- 모바일 입력 포커스 확대를 줄이기 위해 제목 input과 contentEditable 본문은 모바일에서 `text-base`를 사용합니다.
+- form grid는 `minmax(0, 1fr)`와 `min-w-0`을 사용해 에디터가 전체 페이지 폭을 밀지 않게 합니다.
+- 에디터 카드와 툴바는 `overflow-hidden`, `overflow-x-auto`, `max-w-full`로 내부 스크롤만 허용합니다.
+- 이미지와 에디터 본문은 `max-w-full`을 유지합니다.
+
 유지보수 원칙:
 
 - 현재는 무거운 에디터 라이브러리 없이 `contentEditable` 기반 자체 컴포넌트로 시작합니다.
@@ -214,6 +225,7 @@ H2 적용/해제
 - 데스크톱: Hero 2단 구성, 공개 장비 페이지는 타임라인 + 사이드바 구조
 - 전체 페이지는 `container-shell`을 통해 중앙 정렬과 최대 폭을 제한
 - 가로 스크롤 컴포넌트는 페이지 전체가 아니라 해당 영역 안에서만 스크롤되도록 containment를 유지합니다.
+- 글쓰기 페이지는 입력 포커스 확대와 에디터 overflow를 줄이기 위해 `text-base`, `min-w-0`, `overflow-x-hidden` 기준을 유지합니다.
 
 주요 확인 폭:
 
