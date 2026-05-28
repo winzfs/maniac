@@ -11,6 +11,22 @@ type Env = {
   DB: D1Database;
 };
 
+type EquipmentListRow = {
+  id: string;
+  category: string;
+  brand: string | null;
+  model: string | null;
+  nickname: string;
+  slug: string;
+  year: number | null;
+  description: string | null;
+  usage_metric_type: string;
+  usage_metric_value: number | null;
+  visibility: string;
+  moderation_status: string;
+  created_at: number;
+};
+
 const MOCK_USER_ID = "dev_user_maniac";
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
@@ -18,6 +34,7 @@ function jsonResponse(body: unknown, init?: ResponseInit) {
     ...init,
     headers: {
       "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
       ...init?.headers,
     },
   });
@@ -56,6 +73,20 @@ async function ensureDevUser(db: ManiacDatabase) {
   return { id: MOCK_USER_ID };
 }
 
+export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
+  if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
+
+  const rows = await env.DB.prepare(
+    `SELECT id, category, brand, model, nickname, slug, year, description, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at
+     FROM equipments
+     WHERE user_id = ? AND deleted_at IS NULL
+     ORDER BY created_at DESC
+     LIMIT 50`,
+  ).bind(MOCK_USER_ID).all<EquipmentListRow>();
+
+  return jsonResponse({ ok: true, equipments: rows.results ?? [] });
+};
+
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
 
@@ -84,7 +115,7 @@ export const onRequest: PagesFunction<Env> = async ({ request }) => {
     return new Response(null, {
       status: 204,
       headers: {
-        allow: "POST, OPTIONS",
+        allow: "GET, POST, OPTIONS",
       },
     });
   }
