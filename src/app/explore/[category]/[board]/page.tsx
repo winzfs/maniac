@@ -1,8 +1,7 @@
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
-import { Breadcrumbs } from "@/shared/components/navigation/Breadcrumbs";
-import { MenuButton } from "@/shared/components/navigation/MenuButton";
+import { PageHeader } from "@/shared/components/navigation/PageHeader";
 import { equipmentCategories, getEquipmentCategory } from "@/shared/data/equipment-categories";
 import { getMockPostsByBoardSlug } from "@/shared/data/mock-board-posts";
 import Link from "next/link";
@@ -22,24 +21,22 @@ export default async function BoardPage({ params }: { params: Promise<{ category
 
   return (
     <main className="container-shell space-y-8 py-5 sm:py-8 lg:space-y-12">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Breadcrumbs items={[{ label: "홈", href: "/" }, { label: "장비 둘러보기", href: "/explore/" }, { label: category.label, href: `/explore/${category.slug}/` }, { label: board.title }]} />
-        <MenuButton label={category.label} />
-      </div>
+      <PageHeader
+        breadcrumbs={[{ label: "홈", href: "/" }, { label: "장비 둘러보기", href: "/explore/" }, { label: category.label, href: `/explore/${category.slug}/` }, { label: board.title }]}
+        menuLabel={category.label}
+        title={board.title}
+        description={board.description}
+      />
 
-      <section className="grid gap-5 lg:grid-cols-[1fr_18rem] lg:items-end">
-        <div className="space-y-4">
-          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">{board.title}</h1>
-          <p className="max-w-2xl text-sm leading-6 text-text-secondary sm:text-base sm:leading-7">{board.description}</p>
-        </div>
-        <Card variant="dark" className="p-5">
+      <Card variant="dark" className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+        <div>
           <p className="text-sm text-zinc-300">게시판 상태</p>
           <h2 className="mt-1 text-2xl font-bold">{posts.length} posts</h2>
-          <Link href={`/explore/${category.slug}/${board.slug}/write/`}>
-            <Button className="mt-4 w-full">글쓰기</Button>
-          </Link>
-        </Card>
-      </section>
+        </div>
+        <Link href={`/explore/${category.slug}/${board.slug}/write/`}>
+          <Button className="w-full sm:w-auto">글쓰기</Button>
+        </Link>
+      </Card>
 
       <section>
         <SectionHeader title="게시글" description="현재는 정적 mock 게시글입니다. 이후 DB posts와 연결합니다." />
