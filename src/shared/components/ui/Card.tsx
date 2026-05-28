@@ -1,5 +1,14 @@
 import { cn } from "@/shared/lib/cn";
 import type { HTMLAttributes } from "react";
-export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-card border border-border bg-surface p-4", className)} {...props} />;
+
+type CardVariant = "default" | "muted" | "dark";
+
+const variantClass: Record<CardVariant, string> = {
+  default: "border-border bg-surface text-text-primary",
+  muted: "border-border bg-background text-text-primary",
+  dark: "border-graphite bg-graphite text-white",
+};
+
+export function Card({ className, variant = "default", ...props }: HTMLAttributes<HTMLDivElement> & { variant?: CardVariant }) {
+  return <div className={cn("rounded-card border p-4", variantClass[variant], className)} {...props} />;
 }
