@@ -21,12 +21,14 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - Tailwind 디자인 토큰
 - 반응형 랜딩 페이지 mock
 - 홈 페이지 섹션 컴포넌트 분리
+- 홈 Category Boards 주요글 카드 → 게시글 상세 이동
 - 반응형 내 차고 페이지 mock: `/garage/`
 - 반응형 공개 장비 페이지 mock: `/garage/ninja-400/`
 - 장비 카테고리 탐색 페이지 mock: `/explore/`
 - 카테고리별 전체글 + 게시판 필터 mock: `/explore/[category]/`
 - 카테고리별 게시판 상세 mock: `/explore/[category]/[board]/`
 - 카테고리별 게시글 상세 mock: `/explore/[category]/[board]/[post]/`
+- 게시글 상세 댓글 mock UI
 - 카테고리별 글쓰기 mock + WYSIWYG 에디터: `/explore/[category]/[board]/write/`
 - 글쓰기 화면 모바일 확대/overflow 완화
 - 공통 PageHeader/Breadcrumbs/MenuButton 네비게이션
@@ -84,6 +86,9 @@ src/features/home/CategoryPostScroller.tsx
 - Featured Garage 수정은 `FeaturedGarageSection`에서 합니다.
 - Maintenance/Category Boards/CTA 수정은 `HomeUtilitySections`에서 합니다.
 - 홈의 카테고리별 주요글 스크롤은 `CategoryPostScroller`에서 관리합니다.
+- 홈 Category Boards의 카테고리 버튼은 페이지 이동 없이 홈 내부 주요글 목록만 변경합니다.
+- 홈 Category Boards의 게시글 카드는 해당 게시글 상세 페이지로 이동합니다.
+- 홈 Category Boards의 전체 카테고리 링크는 현재 선택된 카테고리 페이지로 이동합니다.
 - 가로 스크롤은 페이지 전체를 밀지 않고 해당 영역 안에서만 동작하도록 `HorizontalScroller`와 부모 영역에 overflow containment를 적용합니다.
 
 ## 카테고리/게시판 구조
@@ -100,10 +105,23 @@ src/shared/data/equipment-categories.ts
 src/shared/data/mock-board-posts.ts
 ```
 
+댓글 mock 데이터는 아래 파일에서 관리합니다.
+
+```txt
+src/shared/data/mock-comments.ts
+```
+
 카테고리 페이지의 전체글/게시판 필터 UI는 아래 컴포넌트에서 관리합니다.
 
 ```txt
 src/features/boards/components/CategoryBoardPostFilter.tsx
+```
+
+게시글 상세 댓글 UI는 아래 컴포넌트에서 관리합니다.
+
+```txt
+src/features/boards/components/PostCommentSection.tsx
+src/features/boards/components/PostCommentCard.tsx
 ```
 
 현재 카테고리:
@@ -139,8 +157,10 @@ custom      기타 장비
 게시판 버튼 클릭: 해당 게시판 글만 표시
 선택된 게시판 버튼 다시 클릭: 전체글로 해제
 필터 상태에 맞는 글쓰기 버튼 표시
-게시글 카드 클릭: 게시글 상세 페이지로 이동
+홈 Category Boards 게시글 카드 클릭: 게시글 상세 페이지로 이동
+카테고리 전체글/필터의 게시글 카드 클릭: 게시글 상세 페이지로 이동
 게시판 상세의 게시글 카드 클릭: 게시글 상세 페이지로 이동
+게시글 상세: 댓글 작성 mock + 댓글 목록 표시
 ```
 
 게시글 상세 mock 라우트:
@@ -348,7 +368,7 @@ npm run db:migrate
 5. 공개 장비 페이지를 mock에서 DB 데이터로 교체
 6. 게시글 저장 action과 HTML sanitize 유틸 구현
 7. 게시글 상세 페이지를 DB 데이터로 교체
-8. 댓글 mock/CRUD 구조 추가
+8. 댓글 CRUD 구조 추가
 9. R2 이미지 업로드 연결
 10. 카테고리별 게시판을 DB 기반 board/post로 교체
 11. 정비 기록 CRUD
