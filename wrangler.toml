@@ -11,5 +11,5 @@ database_name = "maniac-garage"
 database_id = "<D1_DATABASE_ID>"
 
 [[r2_buckets]]
-binding = "ASSETS"
+binding = "R2_ASSETS"
 bucket_name = "maniac-garage-assets"
