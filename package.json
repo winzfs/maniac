@@ -10,8 +10,9 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "cf:build": "next build",
-    "cf:deploy": "wrangler pages deploy .vercel/output/static",
+    "pages:build": "next build",
+    "pages:deploy": "npm run pages:build && wrangler pages deploy out --project-name maniac-garage",
+    "pages:preview": "npm run pages:build && wrangler pages dev out",
     "cf:types": "wrangler types"
   },
   "dependencies": {
