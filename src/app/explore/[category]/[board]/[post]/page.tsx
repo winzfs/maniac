@@ -1,7 +1,9 @@
 import { Badge } from "@/shared/components/ui/Badge";
 import { Card } from "@/shared/components/ui/Card";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
+import { PostCommentSection } from "@/features/boards/components/PostCommentSection";
 import { equipmentCategories, getEquipmentCategory } from "@/shared/data/equipment-categories";
+import { getMockCommentsByPostId } from "@/shared/data/mock-comments";
 import { mockBoardPosts } from "@/shared/data/mock-board-posts";
 import { notFound } from "next/navigation";
 
@@ -23,6 +25,8 @@ export default async function BoardPostDetailPage({ params }: { params: Promise<
 
   if (!category || !board || !post) notFound();
 
+  const comments = getMockCommentsByPostId(post.id);
+
   return (
     <main className="container-shell space-y-8 py-5 sm:py-8 lg:space-y-12">
       <PageHeader
@@ -32,29 +36,33 @@ export default async function BoardPostDetailPage({ params }: { params: Promise<
         description={post.excerpt}
       />
 
-      <article className="grid gap-5 lg:grid-cols-[1fr_18rem] lg:items-start">
-        <Card className="space-y-6 p-5 sm:p-7">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
-            <Badge label={board.title} tone={board.type === "trade" ? "orange" : "muted"} />
-            <span>{post.authorName}</span>
-            <span>·</span>
-            <span>{post.createdAt}</span>
-            <span>·</span>
-            <span>{post.commentCount} comments</span>
-            <span>·</span>
-            <span>{post.likeCount} likes</span>
-          </div>
+      <article className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        <div className="min-w-0 space-y-5">
+          <Card className="space-y-6 p-5 sm:p-7">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+              <Badge label={board.title} tone={board.type === "trade" ? "orange" : "muted"} />
+              <span>{post.authorName}</span>
+              <span>·</span>
+              <span>{post.createdAt}</span>
+              <span>·</span>
+              <span>{comments.length} comments</span>
+              <span>·</span>
+              <span>{post.likeCount} likes</span>
+            </div>
 
-          {post.hasImage ? <div className="aspect-[16/9] rounded-[1.75rem] bg-gradient-to-br from-zinc-200 via-zinc-300 to-zinc-500" /> : null}
+            {post.hasImage ? <div className="aspect-[16/9] rounded-[1.75rem] bg-gradient-to-br from-zinc-200 via-zinc-300 to-zinc-500" /> : null}
 
-          <div className="space-y-4 text-sm leading-7 text-text-secondary sm:text-base sm:leading-8">
-            <p>{post.excerpt}</p>
-            <p>이 화면은 실제 게시글 상세 연결 전 레이아웃과 정보 구조를 확인하기 위한 mock 상세 페이지입니다.</p>
-            <p>이후 DB 기반 게시글 본문, 댓글, 이미지, 작성자 프로필, 신고/숨김 상태를 이 구조에 연결합니다.</p>
-          </div>
-        </Card>
+            <div className="space-y-4 text-sm leading-7 text-text-secondary sm:text-base sm:leading-8">
+              <p>{post.excerpt}</p>
+              <p>이 화면은 실제 게시글 상세 연결 전 레이아웃과 정보 구조를 확인하기 위한 mock 상세 페이지입니다.</p>
+              <p>이후 DB 기반 게시글 본문, 댓글, 이미지, 작성자 프로필, 신고/숨김 상태를 이 구조에 연결합니다.</p>
+            </div>
+          </Card>
 
-        <aside className="space-y-3">
+          <PostCommentSection comments={comments} />
+        </div>
+
+        <aside className="min-w-0 space-y-3">
           <Card variant="dark" className="p-5">
             <p className="text-sm text-zinc-300">게시판</p>
             <h2 className="mt-1 text-xl font-bold">{board.title}</h2>
