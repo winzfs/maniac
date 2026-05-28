@@ -9,7 +9,10 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "cf:build": "next build",
+    "cf:deploy": "wrangler pages deploy .vercel/output/static",
+    "cf:types": "wrangler types"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.2",
@@ -19,6 +22,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260528.0",
     "@types/node": "^22.15.30",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
@@ -26,6 +30,7 @@
     "drizzle-kit": "^0.31.2",
     "postcss": "^8.5.4",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "wrangler": "^4.18.0"
   }
 }
