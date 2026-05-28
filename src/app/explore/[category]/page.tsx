@@ -1,9 +1,9 @@
-import { Badge } from "@/shared/components/ui/Badge";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
 import { equipmentCategories, getEquipmentCategory } from "@/shared/data/equipment-categories";
-import Link from "next/link";
+import { mockBoardPosts } from "@/shared/data/mock-board-posts";
+import { CategoryBoardPostFilter } from "@/features/boards/components/CategoryBoardPostFilter";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
@@ -14,6 +14,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
   const { category: slug } = await params;
   const category = getEquipmentCategory(slug);
   if (!category) notFound();
+
+  const boardSlugs = new Set(category.boards.map((board) => board.slug));
+  const posts = mockBoardPosts.filter((post) => boardSlugs.has(post.boardSlug));
 
   return (
     <main className="container-shell space-y-10 py-5 sm:py-8 lg:space-y-14">
@@ -31,23 +34,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
       </Card>
 
       <section>
-        <SectionHeader title="카테고리 게시판" description="현재는 정적 게시판 mock입니다. 이후 DB 기반 게시판으로 교체합니다." />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {category.boards.map((board) => (
-            <Link key={board.slug} href={`/explore/${category.slug}/${board.slug}/`}>
-              <Card className="h-full space-y-4 transition hover:-translate-y-0.5 hover:shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <Badge label={board.type} tone={board.type === "trade" ? "orange" : "muted"} />
-                  <span className="text-xs text-text-secondary">{board.postCount} posts</span>
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold">{board.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-text-secondary">{board.description}</p>
-                </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        <SectionHeader title="전체글" description="전체글을 먼저 보여주고, 상단 카테고리 버튼으로 게시판별 글을 필터링합니다." />
+        <CategoryBoardPostFilter categorySlug={category.slug} boards={category.boards} posts={posts} />
       </section>
     </main>
   );
