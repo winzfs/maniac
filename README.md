@@ -25,6 +25,7 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - 장비 카테고리 탐색 페이지 mock: `/explore/`
 - 카테고리별 게시판 허브 mock: `/explore/[category]/`
 - 카테고리별 게시판 상세 mock: `/explore/[category]/[board]/`
+- 카테고리별 글쓰기 mock + 간단 HTML 에디터: `/explore/[category]/[board]/write/`
 - 공통 UI 컴포넌트 초안
 - 도메인 중심 폴더 구조
 - Drizzle/D1용 DB 스키마 초안
@@ -40,6 +41,7 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 /explore/
 /explore/motorcycle/
 /explore/motorcycle/motorcycle-showcase/
+/explore/motorcycle/motorcycle-showcase/write/
 /explore/motorcycle/motorcycle-maintenance/
 /explore/motorcycle/motorcycle-parts/
 /explore/motorcycle/motorcycle-qna/
@@ -96,6 +98,26 @@ custom      기타 장비
 
 현재 게시판은 실제 작성 기능이 없는 정적 허브와 mock 게시글 목록입니다. 이후 DB 기반 `boards`, `posts`, `comments`와 연결합니다.
 
+## 글쓰기 HTML 에디터
+
+글쓰기 mock 화면에는 유지보수 쉬운 간단 HTML 에디터를 사용합니다.
+
+```txt
+src/features/editor/html-editor-config.ts
+src/features/editor/SimpleHtmlEditor.tsx
+```
+
+현재 원칙:
+
+- 무거운 WYSIWYG 라이브러리 없이 자체 컴포넌트로 시작
+- 툴바 명령과 허용 태그를 config로 분리
+- 모바일에서는 툴바가 가로 스크롤되는 심플한 UI
+- 작성/미리보기 탭 제공
+- 실제 저장 전 서버에서 sanitize를 한 번 더 적용해야 함
+- 이후 TipTap 같은 고급 에디터로 교체하기 쉽게 `features/editor` 경계 유지
+
+현재 에디터는 mock UI이며 실제 게시글 저장은 아직 연결되지 않았습니다.
+
 ## 반응형 기준
 
 현재 UI는 모바일 우선으로 구성합니다.
@@ -122,11 +144,12 @@ custom      기타 장비
 - 장비 CRUD UI
 - 정비 기록 CRUD
 - 부품 CRUD
-- 게시글/댓글 작성 기능
+- 게시글/댓글 저장 기능
 - 이미지 업로드 UI와 R2 업로드 flow
 - 어드민 UI
 - 결제/구독
 - 실제 감사 로그 DB 저장 adapter
+- HTML sanitize 서버 처리
 
 ## 로컬 실행
 
@@ -223,8 +246,9 @@ npm run db:migrate
 3. 장비 등록/수정/삭제 UI 구현
 4. 내 차고 페이지를 mock에서 DB 데이터로 교체
 5. 공개 장비 페이지를 mock에서 DB 데이터로 교체
-6. 카테고리별 게시판을 DB 기반 board/post로 교체
-7. R2 이미지 업로드
-8. 정비 기록 CRUD
-9. 부품 리스트 CRUD
-10. 어드민 기본 조회/숨김 처리
+6. HTML sanitize 유틸과 게시글 저장 action 구현
+7. 카테고리별 게시판을 DB 기반 board/post로 교체
+8. R2 이미지 업로드
+9. 정비 기록 CRUD
+10. 부품 리스트 CRUD
+11. 어드민 기본 조회/숨김 처리
