@@ -1,8 +1,7 @@
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { SimpleHtmlEditor } from "@/features/editor/SimpleHtmlEditor";
-import { Breadcrumbs } from "@/shared/components/navigation/Breadcrumbs";
-import { MenuButton } from "@/shared/components/navigation/MenuButton";
+import { PageHeader } from "@/shared/components/navigation/PageHeader";
 import { equipmentCategories, getEquipmentCategory } from "@/shared/data/equipment-categories";
 import { notFound } from "next/navigation";
 
@@ -18,15 +17,12 @@ export default async function BoardWritePage({ params }: { params: Promise<{ cat
 
   return (
     <main className="container-shell space-y-8 py-5 sm:py-8 lg:space-y-12">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Breadcrumbs items={[{ label: "홈", href: "/" }, { label: "장비 둘러보기", href: "/explore/" }, { label: category.label, href: `/explore/${category.slug}/` }, { label: board.title, href: `/explore/${category.slug}/${board.slug}/` }, { label: "글쓰기" }]} />
-        <MenuButton label={category.label} />
-      </div>
-
-      <section className="space-y-4">
-        <h1 className="text-4xl font-black tracking-tight sm:text-5xl">글쓰기</h1>
-        <p className="max-w-2xl text-sm leading-6 text-text-secondary sm:text-base sm:leading-7">모던하고 심플한 HTML 에디터 mock입니다. 실제 저장은 이후 DB posts와 연결합니다.</p>
-      </section>
+      <PageHeader
+        breadcrumbs={[{ label: "홈", href: "/" }, { label: "장비 둘러보기", href: "/explore/" }, { label: category.label, href: `/explore/${category.slug}/` }, { label: board.title, href: `/explore/${category.slug}/${board.slug}/` }, { label: "글쓰기" }]}
+        menuLabel={category.label}
+        title="글쓰기"
+        description="모던하고 심플한 HTML 에디터 mock입니다. 실제 저장은 이후 DB posts와 연결합니다."
+      />
 
       <form className="grid gap-5 lg:grid-cols-[1fr_18rem] lg:items-start">
         <div className="space-y-5">
