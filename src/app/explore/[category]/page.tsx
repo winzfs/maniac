@@ -2,6 +2,7 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
 import { equipmentCategories, getEquipmentCategory } from "@/shared/data/equipment-categories";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
@@ -32,16 +33,18 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
         <SectionHeader title="카테고리 게시판" description="현재는 정적 게시판 mock입니다. 이후 DB 기반 게시판으로 교체합니다." />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {category.boards.map((board) => (
-            <Card key={board.slug} className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <Badge label={board.type} tone={board.type === "trade" ? "orange" : "muted"} />
-                <span className="text-xs text-text-secondary">{board.postCount} posts</span>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">{board.title}</h2>
-                <p className="mt-2 text-sm leading-6 text-text-secondary">{board.description}</p>
-              </div>
-            </Card>
+            <Link key={board.slug} href={`/explore/${category.slug}/${board.slug}/`}>
+              <Card className="h-full space-y-4 transition hover:-translate-y-0.5 hover:shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <Badge label={board.type} tone={board.type === "trade" ? "orange" : "muted"} />
+                  <span className="text-xs text-text-secondary">{board.postCount} posts</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">{board.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-text-secondary">{board.description}</p>
+                </div>
+              </Card>
+            </Link>
           ))}
         </div>
       </section>
