@@ -2,16 +2,12 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
-import { Breadcrumbs } from "@/shared/components/navigation/Breadcrumbs";
-import { MenuButton } from "@/shared/components/navigation/MenuButton";
+import { PageHeader } from "@/shared/components/navigation/PageHeader";
 
 export default function MePage() {
   return (
     <main className="container-shell space-y-8 py-5 sm:py-8 lg:space-y-12">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Breadcrumbs items={[{ label: "홈", href: "/" }, { label: "내 정보" }]} />
-        <MenuButton label="내 정보" />
-      </div>
+      <PageHeader breadcrumbs={[{ label: "홈", href: "/" }, { label: "내 정보" }]} menuLabel="내 정보" />
 
       <section className="grid gap-5 lg:grid-cols-[1fr_20rem] lg:items-start">
         <Card variant="dark" className="space-y-5 p-6 sm:p-8">
