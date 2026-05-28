@@ -31,6 +31,14 @@ function escapeHtml(value: unknown) {
     .replaceAll("'", "&#039;");
 }
 
+function decodeSlug(slug: string) {
+  try {
+    return decodeURIComponent(slug);
+  } catch {
+    return slug;
+  }
+}
+
 function htmlResponse(body: string, status = 200) {
   return new Response(body, {
     status,
@@ -111,7 +119,8 @@ function renderEquipment(row: EquipmentRow) {
 export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
   if (!env.DB) return htmlResponse("D1 binding DB is not configured.", 500);
 
-  const slug = typeof params.slug === "string" ? params.slug : Array.isArray(params.slug) ? params.slug[0] : "";
+  const rawSlug = typeof params.slug === "string" ? params.slug : Array.isArray(params.slug) ? params.slug[0] : "";
+  const slug = decodeSlug(rawSlug);
   if (!slug) return renderNotFound("");
 
   const result = await env.DB.prepare(
