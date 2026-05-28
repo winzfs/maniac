@@ -1,9 +1,15 @@
 "use client";
 
 import { useId, useState } from "react";
-import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
-import { htmlEditorCommands, defaultPostHtml } from "./html-editor-config";
+
+type HtmlEditorCommand = {
+  id: string;
+  label: string;
+  before: string;
+  after: string;
+  placeholder: string;
+};
 
 type SimpleHtmlEditorProps = {
   label?: string;
@@ -11,6 +17,23 @@ type SimpleHtmlEditorProps = {
   defaultValue?: string;
   helperText?: string;
 };
+
+const open = (name: string) => String.fromCharCode(60) + name + String.fromCharCode(62);
+const close = (name: string) => String.fromCharCode(60) + "/" + name + String.fromCharCode(62);
+
+const htmlEditorCommands: HtmlEditorCommand[] = [
+  { id: "h2", label: "H2", before: open("h2"), after: close("h2"), placeholder: "소제목" },
+  { id: "strong", label: "굵게", before: open("strong"), after: close("strong"), placeholder: "강조 텍스트" },
+  { id: "em", label: "기울임", before: open("em"), after: close("em"), placeholder: "기울임 텍스트" },
+  { id: "quote", label: "인용", before: open("blockquote"), after: close("blockquote"), placeholder: "인용문" },
+  { id: "code", label: "코드", before: open("code"), after: close("code"), placeholder: "code" },
+  { id: "ul", label: "목록", before: open("ul") + "\n  " + open("li"), after: close("li") + "\n" + close("ul"), placeholder: "목록 항목" },
+];
+
+const defaultPostHtml = [
+  open("p") + "장비 소개나 정비 경험을 적어주세요." + close("p"),
+  open("p") + "사진, 부품명, 교체 주기, 느낀 점을 함께 적으면 더 좋아요." + close("p"),
+].join("\n");
 
 function insertSnippet(value: string, before: string, after: string, placeholder: string) {
   return `${value}\n${before}${placeholder}${after}`.trim();
