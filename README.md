@@ -4,7 +4,7 @@
 
 Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 
-현재 범위는 전체 서비스 구현이 아니라, 이후 장비 CRUD, 이미지 업로드, 공개 장비 페이지, 어드민 기능을 안정적으로 확장하기 위한 foundation입니다.
+현재 범위는 전체 서비스 구현이 아니라, 이후 장비 CRUD, 이미지 업로드, 공개 장비 페이지, 카테고리별 게시판, 어드민 기능을 안정적으로 확장하기 위한 foundation입니다.
 
 ## 문서 위치
 
@@ -12,6 +12,7 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - `docs/admin-management-plan.md`
 - `docs/site-content-board-management-plan.md`
 - `docs/design-direction-guide.md`
+- `docs/current-implementation-status.md`
 
 ## 현재 구현 범위
 
@@ -21,6 +22,8 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - 반응형 랜딩 페이지 mock
 - 반응형 내 차고 페이지 mock: `/garage/`
 - 반응형 공개 장비 페이지 mock: `/garage/ninja-400/`
+- 장비 카테고리 탐색 페이지 mock: `/explore/`
+- 카테고리별 게시판 허브 mock: `/explore/[category]/`
 - 공통 UI 컴포넌트 초안
 - 도메인 중심 폴더 구조
 - Drizzle/D1용 DB 스키마 초안
@@ -33,11 +36,53 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 
 ```txt
 /
+/explore/
+/explore/motorcycle/
+/explore/pc/
+/explore/keyboard/
+/explore/bicycle/
+/explore/camera/
+/explore/camping/
+/explore/audio/
+/explore/custom/
 /garage/
 /garage/ninja-400/
 ```
 
-현재 세 페이지는 정적 mock 데이터를 사용합니다. 로그인, DB, 이미지 업로드 없이 Cloudflare Pages에서 바로 확인할 수 있습니다.
+현재 페이지들은 정적 mock 데이터를 사용합니다. 로그인, DB, 이미지 업로드 없이 Cloudflare Pages에서 바로 확인할 수 있습니다.
+
+## 카테고리/게시판 구조
+
+장비 카테고리와 카테고리별 게시판 config는 아래 파일에서 관리합니다.
+
+```txt
+src/shared/data/equipment-categories.ts
+```
+
+현재 카테고리:
+
+```txt
+motorcycle  바이크
+pc          커스텀 PC
+keyboard    기계식 키보드
+bicycle     자전거
+camera      카메라
+camping     캠핑 장비
+audio       오디오
+custom      기타 장비
+```
+
+각 카테고리에는 기본 게시판이 포함됩니다.
+
+```txt
+장비 자랑
+정비/관리 기록
+부품/튜닝 리뷰
+질문/상담
+중고 부품 일부 카테고리
+```
+
+현재 게시판은 실제 작성 기능이 없는 정적 허브입니다. 이후 DB 기반 `boards`, `posts`, `comments`와 연결합니다.
 
 ## 반응형 기준
 
@@ -61,13 +106,13 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 ## 아직 mock/stub인 부분
 
 - 실제 로그인/세션 연동
-- 실제 DB client 생성 및 query layer
-- 장비 CRUD
+- 실제 DB client 런타임 연결
+- 장비 CRUD UI
 - 정비 기록 CRUD
 - 부품 CRUD
+- 게시글/댓글 작성 기능
 - 이미지 업로드 UI와 R2 업로드 flow
 - 어드민 UI
-- 게시판 UI
 - 결제/구독
 - 실제 감사 로그 DB 저장 adapter
 
@@ -161,12 +206,13 @@ npm run db:migrate
 
 ## 다음 구현 순서 추천
 
-1. DB schema와 migration 정리
-2. DB client와 repository/query layer 정리
-3. 장비 등록/수정/삭제 action 구현
+1. migration 생성/검토
+2. D1 local 적용 테스트
+3. 장비 등록/수정/삭제 UI 구현
 4. 내 차고 페이지를 mock에서 DB 데이터로 교체
 5. 공개 장비 페이지를 mock에서 DB 데이터로 교체
-6. R2 이미지 업로드
-7. 정비 기록 CRUD
-8. 부품 리스트 CRUD
-9. 어드민 기본 조회/숨김 처리
+6. 카테고리별 게시판을 DB 기반 board/post로 교체
+7. R2 이미지 업로드
+8. 정비 기록 CRUD
+9. 부품 리스트 CRUD
+10. 어드민 기본 조회/숨김 처리
