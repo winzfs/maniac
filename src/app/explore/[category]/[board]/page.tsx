@@ -1,7 +1,8 @@
-import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
+import { Breadcrumbs } from "@/shared/components/navigation/Breadcrumbs";
+import { MenuButton } from "@/shared/components/navigation/MenuButton";
 import { equipmentCategories, getEquipmentCategory } from "@/shared/data/equipment-categories";
 import { getMockPostsByBoardSlug } from "@/shared/data/mock-board-posts";
 import Link from "next/link";
@@ -21,9 +22,13 @@ export default async function BoardPage({ params }: { params: Promise<{ category
 
   return (
     <main className="container-shell space-y-8 py-5 sm:py-8 lg:space-y-12">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Breadcrumbs items={[{ label: "홈", href: "/" }, { label: "장비 둘러보기", href: "/explore/" }, { label: category.label, href: `/explore/${category.slug}/` }, { label: board.title }]} />
+        <MenuButton label={category.label} />
+      </div>
+
       <section className="grid gap-5 lg:grid-cols-[1fr_18rem] lg:items-end">
         <div className="space-y-4">
-          <Badge label={category.label} tone="orange" />
           <h1 className="text-4xl font-black tracking-tight sm:text-5xl">{board.title}</h1>
           <p className="max-w-2xl text-sm leading-6 text-text-secondary sm:text-base sm:leading-7">{board.description}</p>
         </div>
