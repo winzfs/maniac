@@ -49,20 +49,22 @@ export function CategoryPostScroller() {
         {posts.map((post) => {
           const board = selectedCategory.boards.find((item) => item.slug === post.boardSlug);
           return (
-            <Card key={post.id} className="min-w-60 max-w-64 space-y-3 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <Badge label={board?.title ?? "게시판"} tone="muted" />
-                <span className="text-xs text-text-secondary">{post.commentCount}</span>
-              </div>
-              <div>
-                <h3 className="line-clamp-2 text-base font-bold">{post.title}</h3>
-                <p className="mt-2 line-clamp-2 text-sm leading-6 text-text-secondary">{post.excerpt}</p>
-              </div>
-              <div className="flex items-center justify-between text-xs text-text-secondary">
-                <span>{post.authorName}</span>
-                <span>{post.likeCount} likes</span>
-              </div>
-            </Card>
+            <Link key={post.id} href={`/explore/${selectedCategory.slug}/${post.boardSlug}/${post.id}/`} className="shrink-0">
+              <Card className="min-w-60 max-w-64 space-y-3 p-4 transition hover:-translate-y-0.5 hover:shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge label={board?.title ?? "게시판"} tone="muted" />
+                  <span className="text-xs text-text-secondary">{post.commentCount}</span>
+                </div>
+                <div>
+                  <h3 className="line-clamp-2 text-base font-bold">{post.title}</h3>
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-text-secondary">{post.excerpt}</p>
+                </div>
+                <div className="flex items-center justify-between text-xs text-text-secondary">
+                  <span>{post.authorName}</span>
+                  <span>{post.likeCount} likes</span>
+                </div>
+              </Card>
+            </Link>
           );
         })}
       </HorizontalScroller>
