@@ -2,11 +2,9 @@ name = "maniac-garage"
 compatibility_date = "2026-05-28"
 pages_build_output_dir = "out"
 
-# Cloudflare Pages reads production/preview bindings from the dashboard.
-# Configure the D1 binding in:
-# Pages project > Settings > Bindings > D1 database
-# Binding name: DB
-# Database: maniac-garage-dev
-#
-# Do not keep placeholder database_id values here; Pages deploy validates them.
+[[d1_databases]]
+binding = "DB"
+database_name = "maniac-garage-dev"
+database_id = "3eb4039d-f12f-4d9b-be5a-047b2a714012"
+
 # R2 binding will be added after the upload flow is implemented.
