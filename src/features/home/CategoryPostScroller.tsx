@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/shared/components/ui/Badge";
-import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { HorizontalScroller } from "@/shared/components/ui/HorizontalScroller";
+import { SectionHeader } from "@/shared/components/ui/SectionHeader";
 import { equipmentCategories } from "@/shared/data/equipment-categories";
 import { mockBoardPosts } from "@/shared/data/mock-board-posts";
 
@@ -23,15 +23,13 @@ export function CategoryPostScroller() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm leading-6 text-text-secondary">카테고리를 누르면 홈 화면 안에서 주요 글만 바뀝니다.</p>
-        <Link href={`/explore/${selectedCategory.slug}/`}>
-          <Button variant="secondary" className="w-full sm:w-auto">{selectedCategory.label} 전체보기</Button>
-        </Link>
-      </div>
+      <SectionHeader
+        title="Category Boards"
+        action={<Link href={`/explore/${selectedCategory.slug}/`} className="text-xs font-semibold text-garage-orange">전체 카테고리</Link>}
+      />
 
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 pt-1">
-        {equipmentCategories.map((category) => {
+      <div className="flex flex-wrap gap-2">
+        {equipmentCategories.slice(0, 6).map((category) => {
           const isSelected = category.slug === selectedCategory.slug;
           return (
             <button
@@ -39,7 +37,7 @@ export function CategoryPostScroller() {
               type="button"
               onClick={() => setSelectedSlug(category.slug)}
               aria-pressed={isSelected}
-              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold transition ${isSelected ? "border-garage-orange bg-garage-orange text-white" : "border-border bg-background text-text-primary hover:border-garage-orange/50"}`}
+              className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${isSelected ? "border-garage-orange bg-garage-orange text-white" : "border-border bg-background text-text-secondary hover:border-garage-orange/50 hover:text-text-primary"}`}
             >
               {category.label}
             </button>
@@ -51,10 +49,10 @@ export function CategoryPostScroller() {
         {posts.map((post) => {
           const board = selectedCategory.boards.find((item) => item.slug === post.boardSlug);
           return (
-            <Card key={post.id} className="min-w-64 max-w-72 space-y-3 p-4 sm:min-w-72">
+            <Card key={post.id} className="min-w-60 max-w-64 space-y-3 p-4">
               <div className="flex items-center justify-between gap-2">
                 <Badge label={board?.title ?? "게시판"} tone="muted" />
-                <span className="text-xs text-text-secondary">{post.commentCount} comments</span>
+                <span className="text-xs text-text-secondary">{post.commentCount}</span>
               </div>
               <div>
                 <h3 className="line-clamp-2 text-base font-bold">{post.title}</h3>
