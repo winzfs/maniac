@@ -4,6 +4,7 @@ import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
 import { equipmentCategories, getEquipmentCategory } from "@/shared/data/equipment-categories";
 import { getMockPostsByBoardSlug } from "@/shared/data/mock-board-posts";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export function generateStaticParams() {
@@ -29,7 +30,9 @@ export default async function BoardPage({ params }: { params: Promise<{ category
         <Card variant="dark" className="p-5">
           <p className="text-sm text-zinc-300">게시판 상태</p>
           <h2 className="mt-1 text-2xl font-bold">{posts.length} posts</h2>
-          <Button className="mt-4 w-full">글쓰기 준비중</Button>
+          <Link href={`/explore/${category.slug}/${board.slug}/write/`}>
+            <Button className="mt-4 w-full">글쓰기</Button>
+          </Link>
         </Card>
       </section>
 
