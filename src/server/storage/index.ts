@@ -1,0 +1,5 @@
+export type StorageObjectInput = { key: string; data: ArrayBuffer; contentType: string; cacheControl?: string };
+export type StoragePutResult = { key: string; url?: string };
+export interface StorageProvider { put(input: StorageObjectInput): Promise<StoragePutResult>; delete(key: string): Promise<void>; getPublicUrl?(key: string): string; }
+export class NoopStorageProvider implements StorageProvider { async put(input: StorageObjectInput): Promise<StoragePutResult> { return { key: input.key }; } async delete(_key: string): Promise<void> {} }
+export class R2StorageProvider implements StorageProvider { constructor(private readonly bucketName: string, private readonly publicBaseUrl?: string) {} async put(input: StorageObjectInput): Promise<StoragePutResult> { return { key: input.key, url: this.getPublicUrl?.(input.key) }; } async delete(_key: string): Promise<void> {} getPublicUrl(key: string) { return this.publicBaseUrl ? `${this.publicBaseUrl}/${key}` : `r2://${this.bucketName}/${key}`; } }

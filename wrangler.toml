@@ -1,0 +1,17 @@
+name = "maniac-garage"
+main = ".open-next/worker.js"
+compatibility_date = "2026-05-28"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS_STATIC"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "maniac-garage"
+database_id = "<D1_DATABASE_ID>"
+
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "maniac-garage-assets"

@@ -1,0 +1,1 @@
+-- Placeholder migration. Run `npm run db:generate` after schema updates.
