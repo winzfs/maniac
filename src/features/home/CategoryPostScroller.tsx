@@ -26,8 +26,8 @@ export function CategoryPostScroller() {
     <section className="space-y-4">
       <SectionHeader
         title="카테고리 주요 글"
-        description="관심 있는 장비 카테고리를 선택하고 주요 글을 옆으로 넘겨보세요."
-        action={<Link href={`/explore/${selectedCategory.slug}/`} className="text-xs font-semibold text-garage-orange">전체 보기</Link>}
+        description="카테고리 버튼은 이동하지 않고, 이 영역에서 주요 글만 바꿔 보여줍니다."
+        action={<Link href={`/explore/${selectedCategory.slug}/`} className="text-xs font-semibold text-garage-orange">{selectedCategory.label} 전체보기</Link>}
       />
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -38,6 +38,7 @@ export function CategoryPostScroller() {
               key={category.slug}
               type="button"
               onClick={() => setSelectedSlug(category.slug)}
+              aria-pressed={isSelected}
               className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold transition ${isSelected ? "border-garage-orange bg-garage-orange text-white" : "border-border bg-surface text-text-secondary hover:bg-background"}`}
             >
               {category.label}
@@ -50,23 +51,21 @@ export function CategoryPostScroller() {
         {posts.map((post) => {
           const board = selectedCategory.boards.find((item) => item.slug === post.boardSlug);
           return (
-            <Link key={post.id} href={`/explore/${selectedCategory.slug}/${post.boardSlug}/`}>
-              <Card className="min-w-72 max-w-80 space-y-4 transition hover:-translate-y-0.5 hover:shadow-sm sm:min-w-80">
-                <div className="aspect-[16/9] rounded-2xl bg-gradient-to-br from-zinc-200 to-zinc-400" />
-                <div className="flex items-center justify-between gap-2">
-                  <Badge label={board?.title ?? "게시판"} tone="muted" />
-                  <span className="text-xs text-text-secondary">{post.commentCount} comments</span>
-                </div>
-                <div>
-                  <h3 className="line-clamp-2 text-lg font-bold">{post.title}</h3>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-text-secondary">{post.excerpt}</p>
-                </div>
-                <div className="flex items-center justify-between text-xs text-text-secondary">
-                  <span>{post.authorName}</span>
-                  <span>{post.likeCount} likes</span>
-                </div>
-              </Card>
-            </Link>
+            <Card key={post.id} className="min-w-72 max-w-80 space-y-4 sm:min-w-80">
+              <div className="aspect-[16/9] rounded-2xl bg-gradient-to-br from-zinc-200 to-zinc-400" />
+              <div className="flex items-center justify-between gap-2">
+                <Badge label={board?.title ?? "게시판"} tone="muted" />
+                <span className="text-xs text-text-secondary">{post.commentCount} comments</span>
+              </div>
+              <div>
+                <h3 className="line-clamp-2 text-lg font-bold">{post.title}</h3>
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-text-secondary">{post.excerpt}</p>
+              </div>
+              <div className="flex items-center justify-between text-xs text-text-secondary">
+                <span>{post.authorName}</span>
+                <span>{post.likeCount} likes</span>
+              </div>
+            </Card>
           );
         })}
       </HorizontalScroller>
