@@ -2,14 +2,11 @@ name = "maniac-garage"
 compatibility_date = "2026-05-28"
 pages_build_output_dir = "out"
 
-# Static Cloudflare Pages deployment for the current foundation phase.
-# D1/R2 bindings will be used later when Pages Functions or Workers are introduced.
-
-[[d1_databases]]
-binding = "DB"
-database_name = "maniac-garage"
-database_id = "<D1_DATABASE_ID>"
-
-[[r2_buckets]]
-binding = "R2_ASSETS"
-bucket_name = "maniac-garage-assets"
+# Cloudflare Pages reads production/preview bindings from the dashboard.
+# Configure the D1 binding in:
+# Pages project > Settings > Bindings > D1 database
+# Binding name: DB
+# Database: maniac-garage-dev
+#
+# Do not keep placeholder database_id values here; Pages deploy validates them.
+# R2 binding will be added after the upload flow is implemented.
