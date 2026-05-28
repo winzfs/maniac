@@ -13,7 +13,9 @@ export default function GaragePage() {
           <p className="text-sm text-text-secondary">My Garage</p>
           <h1 className="text-3xl font-black tracking-tight sm:text-4xl">내 차고</h1>
         </div>
-        <Button className="w-full sm:w-auto">장비 추가</Button>
+        <Link href="/garage/new/" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">장비 추가</Button>
+        </Link>
       </header>
 
       <Card variant="dark" className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[1fr_18rem] lg:items-center">
