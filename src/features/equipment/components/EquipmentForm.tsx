@@ -1,6 +1,11 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import { ZodError } from "zod";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { equipmentCategories } from "@/shared/data/equipment-categories";
+import { formDataToCreateEquipmentInput } from "../forms/form-data";
 
 const visibilityOptions = [
   { value: "private", label: "비공개", description: "나만 볼 수 있는 관리용 장비입니다." },
@@ -14,6 +19,11 @@ const usageMetricOptions = [
   { value: "days", label: "days" },
   { value: "custom", label: "custom" },
 ];
+
+type SubmitState =
+  | { status: "idle" }
+  | { status: "success"; message: string }
+  | { status: "error"; message: string };
 
 function FieldLabel({ label, description }: { label: string; description?: string }) {
   return (
@@ -32,9 +42,34 @@ function textareaClassName(className = "") {
   return `min-h-36 w-full resize-y rounded-2xl border border-border bg-surface px-4 py-3 text-base leading-7 text-text-primary outline-none transition placeholder:text-text-secondary/60 focus:border-graphite ${className}`;
 }
 
+function getErrorMessage(error: unknown) {
+  if (error instanceof ZodError) {
+    return error.issues[0]?.message ?? "입력값을 다시 확인해주세요.";
+  }
+
+  if (error instanceof Error) return error.message;
+  return "입력값을 다시 확인해주세요.";
+}
+
 export function EquipmentForm() {
+  const [submitState, setSubmitState] = useState<SubmitState>({ status: "idle" });
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    try {
+      const input = formDataToCreateEquipmentInput(new FormData(event.currentTarget));
+      setSubmitState({
+        status: "success",
+        message: `${input.nickname} 장비 입력값이 검증되었습니다. 다음 단계에서 실제 DB 저장 API에 연결합니다.`,
+      });
+    } catch (error) {
+      setSubmitState({ status: "error", message: getErrorMessage(error) });
+    }
+  }
+
   return (
-    <form className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+    <form className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start" onSubmit={handleSubmit}>
       <Card className="space-y-6 p-5 sm:p-6">
         <div className="space-y-1">
           <h2 className="text-xl font-bold">기본 정보</h2>
@@ -109,9 +144,14 @@ export function EquipmentForm() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-lime-200">Next Step</p>
             <h2 className="mt-2 text-xl font-bold">저장 연결 대기</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-300">현재 화면은 정적 mock 단계입니다. 다음 단계에서 Pages Functions 또는 Workers를 통해 createEquipment mutation에 연결합니다.</p>
+            <p className="mt-2 text-sm leading-6 text-zinc-300">현재는 브라우저에서 입력값 검증까지만 수행합니다. 다음 단계에서 Pages Functions 또는 Workers API에 연결합니다.</p>
           </div>
-          <Button className="w-full" type="submit" disabled>저장 기능 준비중</Button>
+          <Button className="w-full" type="submit">입력값 검증하기</Button>
+          {submitState.status !== "idle" ? (
+            <p className={submitState.status === "success" ? "rounded-2xl bg-white/10 p-3 text-sm leading-6 text-lime-100" : "rounded-2xl bg-white/10 p-3 text-sm leading-6 text-red-100"}>
+              {submitState.message}
+            </p>
+          ) : null}
         </Card>
 
         <Card className="space-y-3 p-5">
