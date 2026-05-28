@@ -26,6 +26,7 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - 장비 카테고리 탐색 페이지 mock: `/explore/`
 - 카테고리별 전체글 + 게시판 필터 mock: `/explore/[category]/`
 - 카테고리별 게시판 상세 mock: `/explore/[category]/[board]/`
+- 카테고리별 게시글 상세 mock: `/explore/[category]/[board]/[post]/`
 - 카테고리별 글쓰기 mock + WYSIWYG 에디터: `/explore/[category]/[board]/write/`
 - 공통 PageHeader/Breadcrumbs/MenuButton 네비게이션
 - 공통 UI 컴포넌트 초안
@@ -43,6 +44,7 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 /explore/
 /explore/motorcycle/
 /explore/motorcycle/motorcycle-showcase/
+/explore/motorcycle/motorcycle-showcase/motorcycle-showcase-post-1/
 /explore/motorcycle/motorcycle-showcase/write/
 /explore/motorcycle/motorcycle-maintenance/
 /explore/motorcycle/motorcycle-parts/
@@ -135,7 +137,14 @@ custom      기타 장비
 전체글 버튼: 전체글 표시
 게시판 버튼 클릭: 해당 게시판 글만 표시
 선택된 게시판 버튼 다시 클릭: 전체글로 해제
-게시글 카드 클릭: 해당 게시판 상세 페이지로 이동
+게시글 카드 클릭: 게시글 상세 페이지로 이동
+게시판 상세의 게시글 카드 클릭: 게시글 상세 페이지로 이동
+```
+
+게시글 상세 mock 라우트:
+
+```txt
+src/app/explore/[category]/[board]/[post]/page.tsx
 ```
 
 현재 게시판은 정적 mock 데이터 기반입니다. 이후 DB 기반 `boards`, `posts`, `comments`와 연결합니다.
@@ -325,9 +334,11 @@ npm run db:migrate
 3. 장비 등록/수정/삭제 UI 구현
 4. 내 차고 페이지를 mock에서 DB 데이터로 교체
 5. 공개 장비 페이지를 mock에서 DB 데이터로 교체
-6. HTML sanitize 유틸과 게시글 저장 action 구현
-7. R2 이미지 업로드 연결
-8. 카테고리별 게시판을 DB 기반 board/post로 교체
-9. 정비 기록 CRUD
-10. 부품 리스트 CRUD
-11. 어드민 기본 조회/숨김 처리
+6. 게시글 저장 action과 HTML sanitize 유틸 구현
+7. 게시글 상세 페이지를 DB 데이터로 교체
+8. 댓글 mock/CRUD 구조 추가
+9. R2 이미지 업로드 연결
+10. 카테고리별 게시판을 DB 기반 board/post로 교체
+11. 정비 기록 CRUD
+12. 부품 리스트 CRUD
+13. 어드민 기본 조회/숨김 처리
