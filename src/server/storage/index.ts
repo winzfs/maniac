@@ -10,6 +10,11 @@ export type StorageObjectResult = {
   url?: string;
 };
 
+type R2LikeBucket = {
+  put(key: string, value: ArrayBuffer, options?: { httpMetadata?: { contentType?: string; cacheControl?: string } }): Promise<unknown>;
+  delete(key: string): Promise<unknown>;
+};
+
 export interface StorageProvider {
   put(input: StorageObjectInput): Promise<StorageObjectResult>;
   delete(key: string): Promise<void>;
@@ -25,7 +30,7 @@ export class NoopStorageProvider implements StorageProvider {
 }
 
 export class R2StorageProvider implements StorageProvider {
-  constructor(private readonly bucket: R2Bucket, private readonly publicBaseUrl?: string) {}
+  constructor(private readonly bucket: R2LikeBucket, private readonly publicBaseUrl?: string) {}
 
   async put(input: StorageObjectInput) {
     await this.bucket.put(input.key, input.data, {
