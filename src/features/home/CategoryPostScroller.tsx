@@ -6,7 +6,6 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { HorizontalScroller } from "@/shared/components/ui/HorizontalScroller";
-import { SectionHeader } from "@/shared/components/ui/SectionHeader";
 import { equipmentCategories } from "@/shared/data/equipment-categories";
 import { mockBoardPosts } from "@/shared/data/mock-board-posts";
 
@@ -23,14 +22,19 @@ export function CategoryPostScroller() {
   if (!selectedCategory) return null;
 
   return (
-    <section className="space-y-4">
-      <SectionHeader
-        title="카테고리 주요 글"
-        description="카테고리 버튼은 이동하지 않고, 이 영역에서 주요 글만 바꿔 보여줍니다."
-        action={<Link href={`/explore/${selectedCategory.slug}/`} className="text-xs font-semibold text-garage-orange">{selectedCategory.label} 전체보기</Link>}
-      />
+    <section className="space-y-4 rounded-[2rem] border border-border bg-surface p-4 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-garage-orange">Category Feed</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">카테고리 주요 글</h2>
+          <p className="mt-2 text-sm leading-6 text-text-secondary">카테고리를 누르면 홈 화면 안에서 주요 글만 바뀝니다.</p>
+        </div>
+        <Link href={`/explore/${selectedCategory.slug}/`}>
+          <Button variant="secondary" className="w-full sm:w-auto">{selectedCategory.label} 전체보기</Button>
+        </Link>
+      </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 pt-1">
         {equipmentCategories.map((category) => {
           const isSelected = category.slug === selectedCategory.slug;
           return (
@@ -39,7 +43,7 @@ export function CategoryPostScroller() {
               type="button"
               onClick={() => setSelectedSlug(category.slug)}
               aria-pressed={isSelected}
-              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold transition ${isSelected ? "border-garage-orange bg-garage-orange text-white" : "border-border bg-surface text-text-secondary hover:bg-background"}`}
+              className={`shrink-0 rounded-full border px-5 py-3 text-sm font-black shadow-sm transition ${isSelected ? "border-garage-orange bg-garage-orange text-white" : "border-border bg-background text-text-primary hover:border-garage-orange/50"}`}
             >
               {category.label}
             </button>
@@ -69,12 +73,6 @@ export function CategoryPostScroller() {
           );
         })}
       </HorizontalScroller>
-
-      <div className="sm:hidden">
-        <Link href={`/explore/${selectedCategory.slug}/`}>
-          <Button variant="secondary" className="w-full">{selectedCategory.label} 전체보기</Button>
-        </Link>
-      </div>
     </section>
   );
 }
