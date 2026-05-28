@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import type { CategoryBoard, EquipmentCategorySlug } from "@/shared/data/equipment-categories";
 import type { MockBoardPost } from "@/shared/data/mock-board-posts";
@@ -24,36 +25,44 @@ export function CategoryBoardPostFilter({
   }, [posts, selectedBoardSlug]);
 
   const selectedBoard = boards.find((board) => board.slug === selectedBoardSlug);
+  const writeBoard = selectedBoard ?? boards[0];
 
   return (
     <section className="space-y-5">
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSelectedBoardSlug(null)}
-            aria-pressed={!selectedBoardSlug}
-            className={`rounded-full border px-4 py-2 text-sm font-bold transition ${!selectedBoardSlug ? "border-garage-orange bg-garage-orange text-white" : "border-border bg-surface text-text-secondary hover:border-garage-orange/50 hover:text-text-primary"}`}
-          >
-            전체글
-          </button>
-          {boards.map((board) => {
-            const isSelected = selectedBoardSlug === board.slug;
-            return (
-              <button
-                key={board.slug}
-                type="button"
-                onClick={() => setSelectedBoardSlug((current) => (current === board.slug ? null : board.slug))}
-                aria-pressed={isSelected}
-                className={`rounded-full border px-4 py-2 text-sm font-bold transition ${isSelected ? "border-garage-orange bg-garage-orange text-white" : "border-border bg-surface text-text-secondary hover:border-garage-orange/50 hover:text-text-primary"}`}
-              >
-                {board.title}
-              </button>
-            );
-          })}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedBoardSlug(null)}
+              aria-pressed={!selectedBoardSlug}
+              className={`rounded-full border px-4 py-2 text-sm font-bold transition ${!selectedBoardSlug ? "border-garage-orange bg-garage-orange text-white" : "border-border bg-surface text-text-secondary hover:border-garage-orange/50 hover:text-text-primary"}`}
+            >
+              전체글
+            </button>
+            {boards.map((board) => {
+              const isSelected = selectedBoardSlug === board.slug;
+              return (
+                <button
+                  key={board.slug}
+                  type="button"
+                  onClick={() => setSelectedBoardSlug((current) => (current === board.slug ? null : board.slug))}
+                  aria-pressed={isSelected}
+                  className={`rounded-full border px-4 py-2 text-sm font-bold transition ${isSelected ? "border-garage-orange bg-garage-orange text-white" : "border-border bg-surface text-text-secondary hover:border-garage-orange/50 hover:text-text-primary"}`}
+                >
+                  {board.title}
+                </button>
+              );
+            })}
+          </div>
+          {writeBoard ? (
+            <Link href={`/explore/${categorySlug}/${writeBoard.slug}/write/`} className="shrink-0">
+              <Button className="w-full sm:w-auto">글쓰기</Button>
+            </Link>
+          ) : null}
         </div>
         <p className="text-sm text-text-secondary">
-          {selectedBoard ? `${selectedBoard.title} 글만 보는 중입니다. 버튼을 다시 누르면 전체글로 돌아갑니다.` : "전체 게시판의 글을 모아보고 있습니다."}
+          {selectedBoard ? `${selectedBoard.title} 글만 보는 중입니다. 버튼을 다시 누르면 전체글로 돌아갑니다.` : `전체 게시판의 글을 모아보고 있습니다. 글쓰기는 기본적으로 ${writeBoard?.title ?? "첫 게시판"}에 작성합니다.`}
         </p>
       </div>
 
