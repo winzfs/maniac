@@ -1,4 +1,13 @@
-export const EQUIPMENT_CATEGORIES = ["motorcycle", "pc", "keyboard", "bicycle", "camera", "custom"] as const;
+export const EQUIPMENT_CATEGORIES = [
+  "motorcycle",
+  "pc",
+  "keyboard",
+  "bicycle",
+  "camera",
+  "camping",
+  "audio",
+  "custom",
+] as const;
 export const USAGE_METRIC_TYPES = ["km", "hours", "days", "custom"] as const;
 export const VISIBILITY_VALUES = ["public", "private", "unlisted"] as const;
 export const MODERATION_STATUS_VALUES = ["normal", "hidden", "removed", "pending_review"] as const;
