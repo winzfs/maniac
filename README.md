@@ -18,7 +18,9 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - Next.js 기반 앱 골격
 - 정적 Cloudflare Pages 배포 설정
 - Tailwind 디자인 토큰
-- 랜딩 페이지 mock
+- 반응형 랜딩 페이지 mock
+- 반응형 내 차고 페이지 mock: `/garage/`
+- 반응형 공개 장비 페이지 mock: `/garage/ninja-400/`
 - 공통 UI 컴포넌트 초안
 - 도메인 중심 폴더 구조
 - Drizzle/D1용 DB 스키마 초안
@@ -27,11 +29,42 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - 인증 boundary stub
 - R2 storage provider boundary
 
+## 현재 확인 가능한 페이지
+
+```txt
+/
+/garage/
+/garage/ninja-400/
+```
+
+현재 세 페이지는 정적 mock 데이터를 사용합니다. 로그인, DB, 이미지 업로드 없이 Cloudflare Pages에서 바로 확인할 수 있습니다.
+
+## 반응형 기준
+
+현재 UI는 모바일 우선으로 구성합니다.
+
+- 모바일: 1열 중심, 버튼 full width 우선
+- 태블릿: 카드 2열, 스탯 3열 전환
+- 데스크톱: Hero 2단 구성, 공개 장비 페이지는 타임라인 + 사이드바 구조
+- 전체 페이지는 `container-shell`을 통해 중앙 정렬과 최대 폭을 제한
+
+주요 확인 폭:
+
+```txt
+360px  모바일 최소 폭
+390px  일반 모바일
+768px  태블릿
+1024px 작은 데스크톱
+1280px 데스크톱
+```
+
 ## 아직 mock/stub인 부분
 
 - 실제 로그인/세션 연동
 - 실제 DB client 생성 및 query layer
 - 장비 CRUD
+- 정비 기록 CRUD
+- 부품 CRUD
 - 이미지 업로드 UI와 R2 업로드 flow
 - 어드민 UI
 - 게시판 UI
@@ -98,6 +131,11 @@ Root directory: /
 
 D1/R2는 이후 Pages Functions 또는 Workers를 붙일 때 사용합니다. 다만 `wrangler.toml`에는 나중을 위해 binding 초안을 유지합니다.
 
+주의:
+
+- Pages의 `ASSETS` 이름은 예약어라 R2 binding 이름은 `R2_ASSETS`를 사용합니다.
+- 정적 배포 중에는 Cloudflare 전역 타입에 직접 의존하지 않도록 storage boundary를 유지합니다.
+
 ## DB Migration
 
 ```bash
@@ -125,9 +163,9 @@ npm run db:migrate
 
 1. DB schema와 migration 정리
 2. DB client와 repository/query layer 정리
-3. 장비 등록/수정/삭제
-4. 내 차고 페이지
-5. 공개 장비 페이지 mock 데이터 연결
+3. 장비 등록/수정/삭제 action 구현
+4. 내 차고 페이지를 mock에서 DB 데이터로 교체
+5. 공개 장비 페이지를 mock에서 DB 데이터로 교체
 6. R2 이미지 업로드
 7. 정비 기록 CRUD
 8. 부품 리스트 CRUD
