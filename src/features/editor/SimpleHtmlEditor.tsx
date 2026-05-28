@@ -49,6 +49,13 @@ function resizeImageFile(file: File, maxEdge = maxImageEdge) {
   });
 }
 
+function closestElementFromSelection(selector: string) {
+  const selection = window.getSelection();
+  const node = selection?.anchorNode;
+  const element = node?.nodeType === Node.ELEMENT_NODE ? node as Element : node?.parentElement;
+  return element?.closest(selector) ?? null;
+}
+
 export function SimpleHtmlEditor({ label = "본문", name = "bodyHtml", defaultValue = defaultPostHtml, helperText }: SimpleHtmlEditorProps) {
   const editorId = useId();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -76,11 +83,27 @@ export function SimpleHtmlEditor({ label = "본문", name = "bodyHtml", defaultV
     syncValue();
   };
 
-  const applyLink = () => {
+  const toggleBlock = (tagName: "h2" | "blockquote") => {
+    focusEditor();
+    const current = closestElementFromSelection(tagName);
+    document.execCommand("formatBlock", false, current ? "p" : tagName);
+    syncValue();
+  };
+
+  const toggleLink = () => {
+    focusEditor();
+    const existingLink = closestElementFromSelection("a");
+    if (existingLink) {
+      document.execCommand("unlink");
+      syncValue();
+      return;
+    }
+
     const url = window.prompt("링크 URL을 입력하세요.");
     if (!url) return;
     const safeUrl = url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`;
-    runCommand("createLink", safeUrl);
+    document.execCommand("createLink", false, safeUrl);
+    syncValue();
   };
 
   const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,11 +137,13 @@ export function SimpleHtmlEditor({ label = "본문", name = "bodyHtml", defaultV
       </div>
 
       <div className="flex gap-2 overflow-x-auto rounded-[1.25rem] border border-border bg-background p-2">
+        <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => runCommand("undo")}>실행취소</button>
+        <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => runCommand("redo")}>다시실행</button>
         <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => runCommand("bold")}>굵게</button>
         <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => runCommand("italic")}>기울임</button>
-        <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => applyLink()}>링크</button>
-        <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => runCommand("formatBlock", "h2")}>H2</button>
-        <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => runCommand("formatBlock", "blockquote")}>인용</button>
+        <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={toggleLink}>링크</button>
+        <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => toggleBlock("h2")}>H2</button>
+        <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => toggleBlock("blockquote")}>인용</button>
         <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => runCommand("insertUnorderedList")}>목록</button>
         <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => fileInputRef.current?.click()}>사진</button>
       </div>
