@@ -20,10 +20,11 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - 정적 Cloudflare Pages 배포 설정
 - Tailwind 디자인 토큰
 - 반응형 랜딩 페이지 mock
+- 홈 페이지 섹션 컴포넌트 분리
 - 반응형 내 차고 페이지 mock: `/garage/`
 - 반응형 공개 장비 페이지 mock: `/garage/ninja-400/`
 - 장비 카테고리 탐색 페이지 mock: `/explore/`
-- 카테고리별 게시판 허브 mock: `/explore/[category]/`
+- 카테고리별 전체글 + 게시판 필터 mock: `/explore/[category]/`
 - 카테고리별 게시판 상세 mock: `/explore/[category]/[board]/`
 - 카테고리별 글쓰기 mock + WYSIWYG 에디터: `/explore/[category]/[board]/write/`
 - 공통 PageHeader/Breadcrumbs/MenuButton 네비게이션
@@ -61,6 +62,27 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 
 현재 페이지들은 정적 mock 데이터를 사용합니다. 로그인, DB, R2 업로드 없이 Cloudflare Pages에서 바로 확인할 수 있습니다.
 
+## 홈 페이지 구조
+
+홈 페이지는 레이아웃을 유지하면서 섹션 컴포넌트로 분리되어 있습니다.
+
+```txt
+src/app/page.tsx
+src/features/home/components/HomeHeroSection.tsx
+src/features/home/components/FeaturedGarageSection.tsx
+src/features/home/components/HomeUtilitySections.tsx
+src/features/home/CategoryPostScroller.tsx
+```
+
+원칙:
+
+- `src/app/page.tsx`는 전체 섹션 조립만 담당합니다.
+- Hero 수정은 `HomeHeroSection`에서 합니다.
+- Featured Garage 수정은 `FeaturedGarageSection`에서 합니다.
+- Maintenance/Category Boards/CTA 수정은 `HomeUtilitySections`에서 합니다.
+- 홈의 카테고리별 주요글 스크롤은 `CategoryPostScroller`에서 관리합니다.
+- 가로 스크롤은 페이지 전체를 밀지 않고 해당 영역 안에서만 동작하도록 `HorizontalScroller`와 부모 영역에 overflow containment를 적용합니다.
+
 ## 카테고리/게시판 구조
 
 장비 카테고리와 카테고리별 게시판 config는 아래 파일에서 관리합니다.
@@ -73,6 +95,12 @@ src/shared/data/equipment-categories.ts
 
 ```txt
 src/shared/data/mock-board-posts.ts
+```
+
+카테고리 페이지의 전체글/게시판 필터 UI는 아래 컴포넌트에서 관리합니다.
+
+```txt
+src/features/boards/components/CategoryBoardPostFilter.tsx
 ```
 
 현재 카테고리:
@@ -98,7 +126,19 @@ custom      기타 장비
 중고 부품 일부 카테고리
 ```
 
-현재 게시판은 정적 허브와 mock 게시글 목록입니다. 이후 DB 기반 `boards`, `posts`, `comments`와 연결합니다.
+현재 `/explore/[category]/`는 게시판 카드만 보여주는 허브가 아니라, 전체글 목록을 먼저 보여주고 상단 필터 버튼으로 게시판별 글을 필터링합니다.
+
+동작:
+
+```txt
+처음 진입: 전체글 표시
+전체글 버튼: 전체글 표시
+게시판 버튼 클릭: 해당 게시판 글만 표시
+선택된 게시판 버튼 다시 클릭: 전체글로 해제
+게시글 카드 클릭: 해당 게시판 상세 페이지로 이동
+```
+
+현재 게시판은 정적 mock 데이터 기반입니다. 이후 DB 기반 `boards`, `posts`, `comments`와 연결합니다.
 
 ## 공통 네비게이션 구조
 
@@ -164,6 +204,7 @@ H2 적용/해제
 - 태블릿: 카드 2열, 스탯 3열 전환
 - 데스크톱: Hero 2단 구성, 공개 장비 페이지는 타임라인 + 사이드바 구조
 - 전체 페이지는 `container-shell`을 통해 중앙 정렬과 최대 폭을 제한
+- 가로 스크롤 컴포넌트는 페이지 전체가 아니라 해당 영역 안에서만 스크롤되도록 containment를 유지합니다.
 
 주요 확인 폭:
 
