@@ -16,6 +16,7 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 ## 현재 구현 범위
 
 - Next.js 기반 앱 골격
+- 정적 Cloudflare Pages 배포 설정
 - Tailwind 디자인 토큰
 - 랜딩 페이지 mock
 - 공통 UI 컴포넌트 초안
@@ -25,7 +26,6 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - 감사 로그 adapter 초안
 - 인증 boundary stub
 - R2 storage provider boundary
-- Cloudflare Pages/D1/R2 설정 초안
 
 ## 아직 mock/stub인 부분
 
@@ -52,6 +52,52 @@ npm run typecheck
 npm run build
 ```
 
+`next.config.ts`에서 `output: "export"`를 사용하므로 `npm run build` 후 `out/` 폴더가 생성됩니다.
+
+## Cloudflare Pages 배포
+
+현재 단계에서는 SSR, Workers, OpenNext 없이 정적 Cloudflare Pages로 배포합니다.
+
+### 1. Cloudflare 로그인
+
+```bash
+npx wrangler login
+```
+
+### 2. 로컬에서 Pages 미리보기
+
+```bash
+npm run pages:preview
+```
+
+### 3. Pages 배포
+
+```bash
+npm run pages:deploy
+```
+
+배포 스크립트는 아래 흐름으로 동작합니다.
+
+```bash
+next build
+wrangler pages deploy out --project-name maniac-garage
+```
+
+Cloudflare 대시보드에서 GitHub 연동으로 배포할 경우 설정값은 다음과 같이 잡습니다.
+
+```txt
+Framework preset: None 또는 Next.js static export 기준
+Build command: npm run pages:build
+Build output directory: out
+Root directory: /
+```
+
+## D1/R2 사용 시점
+
+현재 정적 Pages 배포에서는 D1/R2가 직접 사용되지 않습니다.
+
+D1/R2는 이후 Pages Functions 또는 Workers를 붙일 때 사용합니다. 다만 `wrangler.toml`에는 나중을 위해 binding 초안을 유지합니다.
+
 ## DB Migration
 
 ```bash
@@ -68,14 +114,6 @@ npm run db:migrate
 
 운영 DB는 직접 수동 변경하지 않습니다.
 
-## Cloudflare 배포 고려사항
-
-- `wrangler.toml`은 Cloudflare Pages, D1, R2 바인딩 초안입니다.
-- D1 binding 이름은 `DB`, R2 binding 이름은 `ASSETS`로 유지합니다.
-- 현재 `cf:build`, `cf:deploy`, `cf:types` 스크립트는 Cloudflare 배포 준비용 초안입니다.
-- Next.js를 Cloudflare에 배포할 때는 실제 Pages adapter/OpenNext 구성을 별도로 검증해야 합니다.
-- Node 전용 패키지 의존을 최소화해 Edge 호환성을 우선합니다.
-
 ## Preview/Production 환경 분리 주의사항
 
 - D1 DB는 Preview/Production 분리 필수입니다.
@@ -85,11 +123,12 @@ npm run db:migrate
 
 ## 다음 구현 순서 추천
 
-1. DB client와 repository/query layer 정리
-2. 장비 등록/수정/삭제
-3. 내 차고 페이지
-4. 공개 장비 페이지 mock 데이터 연결
-5. R2 이미지 업로드
-6. 정비 기록 CRUD
-7. 부품 리스트 CRUD
-8. 어드민 기본 조회/숨김 처리
+1. DB schema와 migration 정리
+2. DB client와 repository/query layer 정리
+3. 장비 등록/수정/삭제
+4. 내 차고 페이지
+5. 공개 장비 페이지 mock 데이터 연결
+6. R2 이미지 업로드
+7. 정비 기록 CRUD
+8. 부품 리스트 CRUD
+9. 어드민 기본 조회/숨김 처리
