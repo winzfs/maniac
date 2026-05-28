@@ -1,6 +1,8 @@
 import { Badge } from "@/shared/components/ui/Badge";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
+import { Breadcrumbs } from "@/shared/components/navigation/Breadcrumbs";
+import { MenuButton } from "@/shared/components/navigation/MenuButton";
 import { equipmentCategories, getEquipmentCategory } from "@/shared/data/equipment-categories";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -16,9 +18,13 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
 
   return (
     <main className="container-shell space-y-10 py-5 sm:py-8 lg:space-y-14">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Breadcrumbs items={[{ label: "홈", href: "/" }, { label: "장비 둘러보기", href: "/explore/" }, { label: category.label }]} />
+        <MenuButton label={category.label} />
+      </div>
+
       <section className="grid gap-6 lg:grid-cols-[1fr_22rem] lg:items-end">
         <div className="space-y-4">
-          <Badge label={category.shortLabel} tone="orange" />
           <h1 className="text-4xl font-black tracking-tight sm:text-5xl lg:text-6xl">{category.label}</h1>
           <p className="max-w-2xl text-sm leading-6 text-text-secondary sm:text-base sm:leading-7">{category.description}</p>
         </div>
