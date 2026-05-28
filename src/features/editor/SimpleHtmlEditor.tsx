@@ -127,16 +127,16 @@ export function SimpleHtmlEditor({ label = "본문", name = "bodyHtml", defaultV
   };
 
   return (
-    <Card className="space-y-4 p-4 sm:p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+    <Card className="min-w-0 space-y-4 overflow-hidden p-4 sm:p-5">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <label htmlFor={editorId} className="font-semibold text-text-primary">{label}</label>
           <p className="mt-1 text-xs leading-5 text-text-secondary">{helperText ?? "선택한 텍스트에 바로 서식을 적용하는 간단 WYSIWYG 에디터입니다. 실제 저장 전 서버 sanitize가 필요합니다."}</p>
         </div>
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
       </div>
 
-      <div className="flex gap-2 overflow-x-auto rounded-[1.25rem] border border-border bg-background p-2">
+      <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto overflow-y-hidden rounded-[1.25rem] border border-border bg-background p-2">
         <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => runCommand("undo")}>실행취소</button>
         <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => runCommand("redo")}>다시실행</button>
         <button type="button" className="shrink-0 rounded-full bg-surface px-3 py-2 text-xs font-bold" onClick={() => runCommand("bold")}>굵게</button>
@@ -154,7 +154,7 @@ export function SimpleHtmlEditor({ label = "본문", name = "bodyHtml", defaultV
         contentEditable
         suppressContentEditableWarning
         onInput={syncValue}
-        className="min-h-80 w-full rounded-[1.5rem] border border-border bg-background p-4 text-sm leading-7 outline-none focus:border-graphite [&_a]:text-garage-orange [&_blockquote]:border-l-4 [&_blockquote]:border-garage-orange [&_blockquote]:pl-4 [&_h2]:text-2xl [&_h2]:font-black [&_img]:my-4 [&_img]:max-w-full [&_img]:rounded-2xl"
+        className="min-h-80 w-full min-w-0 max-w-full overflow-x-hidden rounded-[1.5rem] border border-border bg-background p-4 text-base leading-7 outline-none focus:border-graphite sm:text-sm [&_a]:text-garage-orange [&_blockquote]:border-l-4 [&_blockquote]:border-garage-orange [&_blockquote]:pl-4 [&_h2]:text-2xl [&_h2]:font-black [&_img]:my-4 [&_img]:max-w-full [&_img]:rounded-2xl"
       />
       <textarea name={name} value={value} readOnly className="hidden" />
       {imageStatus ? <p className="text-xs text-text-secondary">{imageStatus}</p> : null}
