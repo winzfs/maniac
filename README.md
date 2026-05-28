@@ -24,6 +24,7 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - 반응형 공개 장비 페이지 mock: `/garage/ninja-400/`
 - 장비 카테고리 탐색 페이지 mock: `/explore/`
 - 카테고리별 게시판 허브 mock: `/explore/[category]/`
+- 카테고리별 게시판 상세 mock: `/explore/[category]/[board]/`
 - 공통 UI 컴포넌트 초안
 - 도메인 중심 폴더 구조
 - Drizzle/D1용 DB 스키마 초안
@@ -38,6 +39,11 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 /
 /explore/
 /explore/motorcycle/
+/explore/motorcycle/motorcycle-showcase/
+/explore/motorcycle/motorcycle-maintenance/
+/explore/motorcycle/motorcycle-parts/
+/explore/motorcycle/motorcycle-qna/
+/explore/motorcycle/motorcycle-trade/
 /explore/pc/
 /explore/keyboard/
 /explore/bicycle/
@@ -57,6 +63,12 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 
 ```txt
 src/shared/data/equipment-categories.ts
+```
+
+게시판 mock 게시글 데이터는 아래 파일에서 관리합니다.
+
+```txt
+src/shared/data/mock-board-posts.ts
 ```
 
 현재 카테고리:
@@ -82,7 +94,7 @@ custom      기타 장비
 중고 부품 일부 카테고리
 ```
 
-현재 게시판은 실제 작성 기능이 없는 정적 허브입니다. 이후 DB 기반 `boards`, `posts`, `comments`와 연결합니다.
+현재 게시판은 실제 작성 기능이 없는 정적 허브와 mock 게시글 목록입니다. 이후 DB 기반 `boards`, `posts`, `comments`와 연결합니다.
 
 ## 반응형 기준
 
