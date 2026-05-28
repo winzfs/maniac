@@ -25,7 +25,8 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 - 장비 카테고리 탐색 페이지 mock: `/explore/`
 - 카테고리별 게시판 허브 mock: `/explore/[category]/`
 - 카테고리별 게시판 상세 mock: `/explore/[category]/[board]/`
-- 카테고리별 글쓰기 mock + 간단 HTML 에디터: `/explore/[category]/[board]/write/`
+- 카테고리별 글쓰기 mock + WYSIWYG 에디터: `/explore/[category]/[board]/write/`
+- 공통 PageHeader/Breadcrumbs/MenuButton 네비게이션
 - 공통 UI 컴포넌트 초안
 - 도메인 중심 폴더 구조
 - Drizzle/D1용 DB 스키마 초안
@@ -53,11 +54,12 @@ Maniac Garage 웹서비스의 1차 개발 기반을 구성합니다.
 /explore/camping/
 /explore/audio/
 /explore/custom/
+/me/
 /garage/
 /garage/ninja-400/
 ```
 
-현재 페이지들은 정적 mock 데이터를 사용합니다. 로그인, DB, 이미지 업로드 없이 Cloudflare Pages에서 바로 확인할 수 있습니다.
+현재 페이지들은 정적 mock 데이터를 사용합니다. 로그인, DB, R2 업로드 없이 Cloudflare Pages에서 바로 확인할 수 있습니다.
 
 ## 카테고리/게시판 구조
 
@@ -96,25 +98,61 @@ custom      기타 장비
 중고 부품 일부 카테고리
 ```
 
-현재 게시판은 실제 작성 기능이 없는 정적 허브와 mock 게시글 목록입니다. 이후 DB 기반 `boards`, `posts`, `comments`와 연결합니다.
+현재 게시판은 정적 허브와 mock 게시글 목록입니다. 이후 DB 기반 `boards`, `posts`, `comments`와 연결합니다.
 
-## 글쓰기 HTML 에디터
+## 공통 네비게이션 구조
 
-글쓰기 mock 화면에는 유지보수 쉬운 간단 HTML 에디터를 사용합니다.
+상세 페이지의 상단 구조는 공통 컴포넌트로 관리합니다.
 
 ```txt
-src/features/editor/html-editor-config.ts
+src/shared/components/navigation/Breadcrumbs.tsx
+src/shared/components/navigation/MenuButton.tsx
+src/shared/components/navigation/PageHeader.tsx
+```
+
+원칙:
+
+- 메뉴 버튼은 페이지 최상단에 표시합니다.
+- breadcrumb는 메뉴 버튼 아래에 표시합니다.
+- breadcrumb 항목은 가능한 경우 상위 페이지로 이동 가능해야 합니다.
+- 새 페이지는 개별 breadcrumb/menu UI를 직접 반복하지 않고 `PageHeader`를 우선 사용합니다.
+- 메뉴 구조 변경은 `MenuButton`, 카테고리 변경은 `equipment-categories.ts`를 중심으로 수정합니다.
+
+## 글쓰기 WYSIWYG 에디터
+
+글쓰기 mock 화면에는 자체 구현한 가벼운 WYSIWYG 에디터를 사용합니다.
+
+```txt
 src/features/editor/SimpleHtmlEditor.tsx
 ```
 
-현재 원칙:
+현재 지원 기능:
 
-- 무거운 WYSIWYG 라이브러리 없이 자체 컴포넌트로 시작
-- 툴바 명령과 허용 태그를 config로 분리
-- 모바일에서는 툴바가 가로 스크롤되는 심플한 UI
-- 작성/미리보기 탭 제공
-- 실제 저장 전 서버에서 sanitize를 한 번 더 적용해야 함
-- 이후 TipTap 같은 고급 에디터로 교체하기 쉽게 `features/editor` 경계 유지
+```txt
+굵게
+기울임
+링크 생성/해제
+H2 적용/해제
+인용 적용/해제
+목록
+실행취소
+다시실행
+사진 삽입
+```
+
+이미지 처리:
+
+- 브라우저에서 업로드 전 리사이징합니다.
+- 긴 축 기준 최대 2000px로 제한합니다.
+- 현재 mock 단계에서는 data URL을 본문에 삽입합니다.
+- 실제 서비스 단계에서는 같은 리사이징 흐름 뒤 R2 업로드 URL을 삽입하는 구조로 바꿉니다.
+
+유지보수 원칙:
+
+- 현재는 무거운 에디터 라이브러리 없이 `contentEditable` 기반 자체 컴포넌트로 시작합니다.
+- 실제 저장 전 서버에서 HTML sanitize를 반드시 적용해야 합니다.
+- 이후 TipTap 같은 고급 에디터로 교체하더라도 `features/editor` 경계를 유지합니다.
+- 에디터 버튼은 “적용만”이 아니라 가능한 경우 다시 누르면 해제되는 toggle 동작을 우선합니다.
 
 현재 에디터는 mock UI이며 실제 게시글 저장은 아직 연결되지 않았습니다.
 
@@ -145,7 +183,7 @@ src/features/editor/SimpleHtmlEditor.tsx
 - 정비 기록 CRUD
 - 부품 CRUD
 - 게시글/댓글 저장 기능
-- 이미지 업로드 UI와 R2 업로드 flow
+- R2 이미지 업로드 flow
 - 어드민 UI
 - 결제/구독
 - 실제 감사 로그 DB 저장 adapter
@@ -247,8 +285,8 @@ npm run db:migrate
 4. 내 차고 페이지를 mock에서 DB 데이터로 교체
 5. 공개 장비 페이지를 mock에서 DB 데이터로 교체
 6. HTML sanitize 유틸과 게시글 저장 action 구현
-7. 카테고리별 게시판을 DB 기반 board/post로 교체
-8. R2 이미지 업로드
+7. R2 이미지 업로드 연결
+8. 카테고리별 게시판을 DB 기반 board/post로 교체
 9. 정비 기록 CRUD
 10. 부품 리스트 CRUD
 11. 어드민 기본 조회/숨김 처리
