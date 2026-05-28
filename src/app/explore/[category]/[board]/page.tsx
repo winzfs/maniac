@@ -42,22 +42,24 @@ export default async function BoardPage({ params }: { params: Promise<{ category
         <SectionHeader title="게시글" description="현재는 정적 mock 게시글입니다. 이후 DB posts와 연결합니다." />
         <div className="space-y-3">
           {posts.map((post) => (
-            <Card key={post.id} className="grid gap-4 p-4 sm:grid-cols-[8rem_1fr] sm:p-5">
-              <div className="aspect-[16/10] rounded-2xl bg-gradient-to-br from-zinc-200 to-zinc-400" />
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
-                  <span>{post.authorName}</span>
-                  <span>·</span>
-                  <span>{post.createdAt}</span>
-                  <span>·</span>
-                  <span>{post.commentCount} comments</span>
-                  <span>·</span>
-                  <span>{post.likeCount} likes</span>
+            <Link key={post.id} href={`/explore/${category.slug}/${board.slug}/${post.id}/`}>
+              <Card className="grid gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-sm sm:grid-cols-[8rem_1fr] sm:p-5">
+                <div className="aspect-[16/10] rounded-2xl bg-gradient-to-br from-zinc-200 to-zinc-400" />
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+                    <span>{post.authorName}</span>
+                    <span>·</span>
+                    <span>{post.createdAt}</span>
+                    <span>·</span>
+                    <span>{post.commentCount} comments</span>
+                    <span>·</span>
+                    <span>{post.likeCount} likes</span>
+                  </div>
+                  <h2 className="text-lg font-bold">{post.title}</h2>
+                  <p className="text-sm leading-6 text-text-secondary">{post.excerpt}</p>
                 </div>
-                <h2 className="text-lg font-bold">{post.title}</h2>
-                <p className="text-sm leading-6 text-text-secondary">{post.excerpt}</p>
-              </div>
-            </Card>
+              </Card>
+            </Link>
           ))}
         </div>
       </section>
