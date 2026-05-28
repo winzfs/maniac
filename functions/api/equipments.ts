@@ -1,3 +1,5 @@
+/// <reference types="@cloudflare/workers-types" />
+
 import { eq } from "drizzle-orm";
 import { ZodError } from "zod";
 import { createEquipment } from "../../src/features/equipment/actions/mutations";
