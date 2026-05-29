@@ -1,9 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { sanitizePostHtml } from "../../src/features/boards/utils/html";
-import { requireWritableMockUser } from "../_shared/auth";
-import { MOCK_USER_ID } from "../_shared/dev-user";
-import { ensureDevUser } from "../_shared/db-users";
+import { requireCurrentUser } from "../_shared/auth";
 import { allowMethods, errorResponse, getErrorMessage, isRecord, jsonResponse, readJsonObject } from "../_shared/http";
 
 type Env = { DB: D1Database; APP_ENV?: string };
@@ -36,8 +34,8 @@ function postDetailPath(id: string) {
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  const authError = requireWritableMockUser(env);
-  if (authError) return authError;
+  const auth = await requireCurrentUser(request, env);
+  if (auth.response) return auth.response;
 
   try {
     const body = await readJsonObject(request);
@@ -65,8 +63,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     if (!board) return errorResponse("게시판을 찾을 수 없습니다.", 404);
 
-    await ensureDevUser(env.DB);
-
     const id = crypto.randomUUID();
     const now = Date.now();
 
@@ -83,7 +79,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
          created_at,
          updated_at
        ) VALUES (?, ?, ?, ?, ?, 'published', 'public', 'normal', ?, ?)`,
-    ).bind(id, board.id, MOCK_USER_ID, title, postBody, now, now).run();
+    ).bind(id, board.id, auth.user.id, title, postBody, now, now).run();
 
     const post = await env.DB.prepare(
       `SELECT id, board_id, title, body, created_at
@@ -96,7 +92,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       ok: true,
       post,
       nextPath: postDetailPath(id),
-      authMode: "mock-user",
+      authMode: "session",
     }, { status: 201 });
   } catch (error) {
     return errorResponse(getErrorMessage(error, "게시글 저장에 실패했습니다."), 400);
