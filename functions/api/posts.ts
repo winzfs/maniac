@@ -1,5 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 
+import { sanitizePostHtml } from "../../src/features/boards/utils/html";
 import { allowMethods, errorResponse, getErrorMessage, isRecord, jsonResponse, readJsonObject } from "../_shared/http";
 import { MOCK_USER_ID } from "../_shared/dev-user";
 
@@ -18,6 +19,9 @@ type CreatedPostRow = {
   body: string;
   created_at: number;
 };
+
+const maxTitleLength = 120;
+const maxPostBodyLength = 200_000;
 
 function textField(body: Record<string, unknown>, key: string) {
   const value = body[key];
@@ -44,11 +48,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
     const boardSlug = textField(body, "boardSlug");
     const title = textField(body, "title");
-    const postBody = textField(body, "bodyHtml") || textField(body, "body");
+    const rawPostBody = textField(body, "bodyHtml") || textField(body, "body");
+    const postBody = sanitizePostHtml(rawPostBody);
 
     if (!boardSlug) return errorResponse("Board slug is required.", 400);
     if (title.length < 2) return errorResponse("제목은 2자 이상 입력해 주세요.", 422);
+    if (title.length > maxTitleLength) return errorResponse(`제목은 ${maxTitleLength}자 이하로 입력해 주세요.`, 422);
     if (postBody.length < 5) return errorResponse("본문은 5자 이상 입력해 주세요.", 422);
+    if (postBody.length > maxPostBodyLength) return errorResponse("본문이 너무 깁니다. 이미지를 줄이거나 내용을 나눠서 작성해 주세요.", 422);
 
     const board = await env.DB.prepare(
       `SELECT id, slug, category
