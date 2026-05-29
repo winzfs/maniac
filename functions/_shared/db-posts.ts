@@ -90,7 +90,7 @@ export async function getPublicPostDetail(db: D1Database, id: string) {
        posts.title,
        posts.body,
        posts.author_id,
-       posts.author_id AS author_nickname,
+       COALESCE(users.nickname, posts.author_id) AS author_nickname,
        posts.status,
        posts.visibility,
        posts.moderation_status,
@@ -98,6 +98,7 @@ export async function getPublicPostDetail(db: D1Database, id: string) {
        posts.updated_at
      FROM posts
      INNER JOIN boards ON boards.id = posts.board_id
+     LEFT JOIN users ON users.id = posts.author_id
      WHERE ${publicPostWhereClause}
      LIMIT 1`,
   ).bind(id).first<PublicPostDetailRow>();
@@ -129,7 +130,7 @@ export async function listPublicPosts(db: D1Database, filters: PublicPostListFil
        posts.title,
        posts.body,
        posts.author_id,
-       posts.author_id AS author_nickname,
+       COALESCE(users.nickname, posts.author_id) AS author_nickname,
        posts.status,
        posts.visibility,
        posts.moderation_status,
@@ -138,6 +139,7 @@ export async function listPublicPosts(db: D1Database, filters: PublicPostListFil
        COUNT(comments.id) AS comment_count
      FROM posts
      INNER JOIN boards ON boards.id = posts.board_id
+     LEFT JOIN users ON users.id = posts.author_id
      LEFT JOIN comments
        ON comments.post_id = posts.id
       AND comments.deleted_at IS NULL
@@ -159,10 +161,11 @@ export async function listPublicComments(db: D1Database, postId: string) {
        comments.post_id,
        comments.body,
        comments.author_id,
-       comments.author_id AS author_nickname,
+       COALESCE(users.nickname, comments.author_id) AS author_nickname,
        comments.created_at,
        comments.updated_at
      FROM comments
+     LEFT JOIN users ON users.id = comments.author_id
      WHERE comments.post_id = ?
        AND comments.deleted_at IS NULL
        AND comments.status = 'published'
