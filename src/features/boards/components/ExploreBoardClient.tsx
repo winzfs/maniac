@@ -34,7 +34,7 @@ type PostsResponse = { ok: true; posts: PublicPost[] } | { ok: false; error?: st
 
 type State =
   | { status: "loading" }
-  | { status: "ready"; board: PublicBoard | null; posts: PublicPost[] }
+  | { status: "ready"; board: PublicBoard | null; posts: PublicPost[]; postsError?: string }
   | { status: "error"; message: string };
 
 async function readJson<T>(url: string) {
@@ -64,16 +64,22 @@ export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: 
 
     async function load() {
       try {
-        const [boardsData, postsData] = await Promise.all([
-          readJson<BoardsResponse>("/api/public/boards"),
-          readJson<PostsResponse>(`/api/public/posts?board=${encodeURIComponent(boardSlug)}&limit=30`),
-        ]);
-
+        const boardsData = await readJson<BoardsResponse>("/api/public/boards");
         if (!boardsData.ok) throw new Error(boardsData.error ?? "게시판 정보를 불러오지 못했습니다.");
-        if (!postsData.ok) throw new Error(postsData.error ?? "게시글 목록을 불러오지 못했습니다.");
 
         const board = boardsData.boards.find((item) => item.slug === boardSlug && item.category === categorySlug) ?? null;
-        if (mounted) setState({ status: "ready", board, posts: postsData.posts });
+        let posts: PublicPost[] = [];
+        let postsError: string | undefined;
+
+        try {
+          const postsData = await readJson<PostsResponse>(`/api/public/posts?board=${encodeURIComponent(boardSlug)}&limit=30`);
+          if (!postsData.ok) throw new Error(postsData.error ?? "게시글 목록을 불러오지 못했습니다.");
+          posts = postsData.posts;
+        } catch (error) {
+          postsError = error instanceof Error ? error.message : "게시글 목록을 불러오지 못했습니다.";
+        }
+
+        if (mounted) setState({ status: "ready", board, posts, postsError });
       } catch (error) {
         if (!mounted) return;
         setState({ status: "error", message: error instanceof Error ? error.message : "데이터를 불러오지 못했습니다." });
@@ -123,7 +129,8 @@ export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: 
 
       <section>
         <SectionHeader title="게시글" description="D1 posts 테이블의 공개 게시글을 표시합니다." />
-        {state.posts.length === 0 ? <Card className="mt-4 p-5 text-sm text-text-secondary">아직 공개된 게시글이 없습니다.</Card> : null}
+        {state.postsError ? <Card className="mt-4 p-5 text-sm text-text-secondary">게시글 목록을 불러오지 못했습니다. 글쓰기는 계속 사용할 수 있습니다.</Card> : null}
+        {!state.postsError && state.posts.length === 0 ? <Card className="mt-4 p-5 text-sm text-text-secondary">아직 공개된 게시글이 없습니다.</Card> : null}
         <div className="mt-4 space-y-3">
           {state.posts.map((post) => (
             <Link key={post.id} href={postDetailHref(post.id)}>
