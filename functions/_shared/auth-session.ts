@@ -21,11 +21,13 @@ function isProduction(env: { APP_ENV?: string }) {
   return env.APP_ENV === "production";
 }
 
-function cookieOptions(env: { APP_ENV?: string }, maxAge: number) {
+function buildCookie(value: string, env: { APP_ENV?: string }, maxAge: number) {
+  const expiresAt = new Date(Date.now() + maxAge * 1000);
   return [
-    `${sessionCookieName}=`,
-    `Path=/`,
+    `${sessionCookieName}=${value}`,
+    "Path=/",
     `Max-Age=${maxAge}`,
+    `Expires=${expiresAt.toUTCString()}`,
     "HttpOnly",
     "SameSite=Lax",
     isProduction(env) ? "Secure" : "",
@@ -41,11 +43,11 @@ export function getSessionToken(request: Request) {
 }
 
 export function setSessionCookieHeader(token: string, env: { APP_ENV?: string }) {
-  return `${sessionCookieName}=${encodeURIComponent(token)}; ${cookieOptions(env, sessionMaxAgeSeconds).replace(`${sessionCookieName}=; `, "")}`;
+  return buildCookie(encodeURIComponent(token), env, sessionMaxAgeSeconds);
 }
 
 export function clearSessionCookieHeader(env: { APP_ENV?: string }) {
-  return cookieOptions(env, 0);
+  return buildCookie("", env, 0);
 }
 
 export async function createAuthSession(db: D1Database, userId: string) {
