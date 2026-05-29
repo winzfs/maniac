@@ -46,7 +46,7 @@ export function MeProfileClient() {
     return (
       <Card className="space-y-5 p-6">
         <div className="space-y-1">
-          <Badge label="Guest" tone="neutral" />
+          <Badge label="Guest" tone="muted" />
           <h1 className="text-3xl font-black tracking-tight">로그인이 필요합니다</h1>
           <p className="text-sm text-text-secondary">내 차고와 작성 기능을 사용하려면 로그인해 주세요.</p>
         </div>
