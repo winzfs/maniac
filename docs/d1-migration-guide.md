@@ -39,7 +39,7 @@ comments
 src/server/db/schema/index.ts
 ```
 
-추가로 장기 확장을 위한 아래 테이블 정의도 Drizzle schema에 존재한다.
+추가로 장기 확장을 위한 아래 테이블 정의도 Drizzle schema와 `migrations/0001_initial.sql`에 존재한다.
 
 ```txt
 user_roles
@@ -56,8 +56,6 @@ moderation_actions
 admin_audit_logs
 ```
 
-주의: repository에는 아직 `migrations/0001_initial.sql`이 없다. 새 D1 데이터베이스를 처음부터 재현하려면 `users`, `equipments` 및 장기 확장 테이블을 생성하는 초기 migration을 별도로 정리해야 한다.
-
 ---
 
 ## Migration 파일
@@ -65,10 +63,35 @@ admin_audit_logs
 현재 repository에서 확인 가능한 migration 파일:
 
 ```txt
+migrations/0001_initial.sql
 migrations/0002_add_maintenance_logs_and_parts.sql
 migrations/0003_add_boards_posts_comments.sql
 migrations/0004_add_board_metadata.sql
 ```
+
+### 0001_initial.sql
+
+포함 내용:
+
+```txt
+users
+user_roles
+equipments
+equipment_photos
+reminders
+themes
+site_pages
+site_sections
+banners
+notices
+faq_items
+reports
+moderation_actions
+admin_audit_logs
+dev_user_maniac seed
+```
+
+주의: `maintenance_logs`, `parts`, `boards`, `posts`, `comments`는 later migration과 충돌하지 않도록 `0001_initial.sql`에서 생성하지 않는다.
 
 ### 0002_add_maintenance_logs_and_parts.sql
 
@@ -95,7 +118,7 @@ board seed data
 initial post seed data
 ```
 
-주의: seed post는 `author_id = dev_user_maniac`를 사용하므로, 적용 전 `users` 테이블에 개발용 mock user가 있어야 한다.
+주의: seed post는 `author_id = dev_user_maniac`를 사용하므로, 적용 전 `0001_initial.sql`로 개발용 mock user가 생성되어 있어야 한다.
 
 ### 0004_add_board_metadata.sql
 
@@ -114,9 +137,10 @@ boards_category_sort_idx
 
 ## 적용 명령
 
-로컬에서 Wrangler 로그인이 되어 있다면 다음 명령으로 remote D1에 적용한다.
+새 D1 데이터베이스에는 아래 순서로 적용한다.
 
 ```bash
+npx wrangler d1 execute maniac-garage-dev --remote --file migrations/0001_initial.sql
 npx wrangler d1 execute maniac-garage-dev --remote --file migrations/0002_add_maintenance_logs_and_parts.sql
 npx wrangler d1 execute maniac-garage-dev --remote --file migrations/0003_add_boards_posts_comments.sql
 npx wrangler d1 execute maniac-garage-dev --remote --file migrations/0004_add_board_metadata.sql
@@ -125,13 +149,21 @@ npx wrangler d1 execute maniac-garage-dev --remote --file migrations/0004_add_bo
 `package.json`에는 아래 remote migration script가 있다.
 
 ```bash
+npm run d1:migrate:initial:remote
 npm run d1:migrate:remote
 npm run d1:migrate:community:remote
 npm run d1:migrate:board-meta:remote
+npm run d1:migrate:all:remote
 npm run d1:tables:remote
 ```
 
-모바일 또는 Cloudflare 대시보드 중심으로 작업한다면 D1 Console에서 migration SQL 내용을 직접 붙여넣고 실행해도 된다.
+전체 migration을 순서대로 적용하려면 다음 명령을 사용한다.
+
+```bash
+npm run d1:migrate:all:remote
+```
+
+모바일 또는 Cloudflare 대시보드 중심으로 작업한다면 D1 Console에서 migration SQL 내용을 순서대로 붙여넣고 실행해도 된다.
 
 ---
 
@@ -176,12 +208,14 @@ ORDER BY name;
 ## 현재 상태
 
 ```txt
+initial schema migration 추가 ✅
 maintenance_logs / parts migration 분리 ✅
 boards / posts / comments migration 추가 ✅
 board metadata migration 추가 ✅
 remote D1 적용용 package scripts 추가 ✅
+전체 migration 실행 script 추가 ✅
 API 내부 runtime ensureTable 제거 ✅
-Drizzle schema에 maintenance_logs, parts, boards, posts, comments 반영 ✅
+Drizzle schema에 핵심 MVP 테이블 반영 ✅
 ```
 
 ---
@@ -189,11 +223,11 @@ Drizzle schema에 maintenance_logs, parts, boards, posts, comments 반영 ✅
 ## 주의사항
 
 ```txt
-1. repository에 0001_initial.sql이 아직 없으므로 새 DB 완전 재현성은 부족하다.
-2. Drizzle schema와 SQL migration을 변경할 때는 둘 다 함께 수정해야 한다.
-3. 운영 환경에서 mock user 기반 쓰기는 APP_ENV=production일 때 차단된다.
-4. 실제 로그인 연결 후에는 MOCK_USER_ID 대신 세션 userId 기준으로 권한 검증을 통일해야 한다.
-5. 게시글 HTML은 서버 저장 전 sanitize를 적용하지만, 장기적으로는 검증된 sanitizer 라이브러리나 더 엄격한 allowlist 정책을 검토한다.
+1. Drizzle schema와 SQL migration을 변경할 때는 둘 다 함께 수정해야 한다.
+2. 운영 환경에서 mock user 기반 쓰기는 APP_ENV=production일 때 차단된다.
+3. 실제 로그인 연결 후에는 MOCK_USER_ID 대신 세션 userId 기준으로 권한 검증을 통일해야 한다.
+4. 게시글 HTML은 서버 저장 전 sanitize를 적용하지만, 장기적으로는 검증된 sanitizer 라이브러리나 더 엄격한 allowlist 정책을 검토한다.
+5. 기존 DB에 0001을 나중에 재적용해도 CREATE TABLE IF NOT EXISTS / INSERT OR IGNORE 중심이라 비교적 안전하지만, migration 적용 이력 관리는 별도로 정리해야 한다.
 ```
 
 ---
@@ -201,9 +235,9 @@ Drizzle schema에 maintenance_logs, parts, boards, posts, comments 반영 ✅
 ## 다음 정리 작업
 
 ```txt
-1. migrations/0001_initial.sql 추가
-2. local D1 migration 흐름 정리
-3. 공통 DB utility 추가
-4. 실제 로그인 연결 후 user_id 기준 권한 검증 정리
-5. R2 업로드 도입 후 data URL 저장 방식 제거
+1. local D1 migration 흐름 정리
+2. 공통 DB utility 추가
+3. 실제 로그인 연결 후 user_id 기준 권한 검증 정리
+4. R2 업로드 도입 후 data URL 저장 방식 제거
+5. migration 적용 이력 관리 방식 검토
 ```
