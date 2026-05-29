@@ -91,6 +91,22 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
     }
   }
 
+  async function handleDelete(logId: string) {
+    if (state.status !== "ready") return;
+    const confirmed = window.confirm("이 정비 기록을 삭제할까요? 공개 페이지에서도 사라집니다.");
+    if (!confirmed) return;
+
+    const previous = state.logs;
+    setState({ status: "saving", logs: previous });
+
+    try {
+      const data = await readApi(await fetch(`/api/equipments/${equipmentId}/logs?logId=${encodeURIComponent(logId)}`, { method: "DELETE" }));
+      setState({ status: "ready", logs: data.logs ?? [], message: "정비 기록이 삭제되었습니다." });
+    } catch (error) {
+      setState({ status: "ready", logs: previous, message: error instanceof Error ? error.message : "정비 기록 삭제에 실패했습니다." });
+    }
+  }
+
   if (state.status === "loading") return <Card className="p-6 text-sm text-text-secondary">정비 기록을 불러오는 중입니다...</Card>;
   if (state.status === "error") return <Card className="p-6 text-sm text-red-700">{state.message}</Card>;
 
@@ -108,8 +124,13 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
         <div className="space-y-3">
           {logs.map((log) => (
             <article key={log.id} className="rounded-2xl border border-border bg-surface p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{log.type} · {formatDate(log.performed_at)}</p>
-              <h3 className="mt-1 text-lg font-bold">{log.title}</h3>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{log.type} · {formatDate(log.performed_at)}</p>
+                  <h3 className="mt-1 text-lg font-bold">{log.title}</h3>
+                </div>
+                <Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => handleDelete(log.id)}>삭제</Button>
+              </div>
               {log.description ? <p className="mt-2 text-sm leading-6 text-text-secondary">{log.description}</p> : null}
               <p className="mt-3 text-xs font-semibold text-text-secondary">{log.usage_metric_value != null ? `${log.usage_metric_value.toLocaleString()} km` : ""} {log.cost != null ? `· ${log.cost.toLocaleString()}원` : ""} {log.shop_name ? `· ${log.shop_name}` : ""}</p>
             </article>
@@ -127,7 +148,7 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
           <input className={fieldClass} name="shopName" placeholder="정비소명" />
           <textarea className={areaClass} name="description" placeholder="메모" />
           <select className={fieldClass} name="visibility" defaultValue="public"><option value="public">전체 공개</option><option value="unlisted">링크 공개</option><option value="private">비공개</option></select>
-          <Button className="w-full" type="submit" disabled={isSaving}>{isSaving ? "추가 중..." : "정비 기록 추가"}</Button>
+          <Button className="w-full" type="submit" disabled={isSaving}>{isSaving ? "처리 중..." : "정비 기록 추가"}</Button>
           {state.status === "ready" && state.message ? <p className="rounded-2xl bg-background p-3 text-sm leading-6 text-text-secondary">{state.message}</p> : null}
         </form>
       </Card>
