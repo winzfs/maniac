@@ -8,7 +8,6 @@ export default function PublicPostPage() {
     <main className="container-shell space-y-8 py-5 sm:py-8 lg:space-y-12">
       <PageHeader
         breadcrumbs={[{ label: "홈", href: "/" }, { label: "장비 둘러보기", href: "/explore/" }, { label: "게시글" }]}
-        menuLabel="게시글"
         title="게시글 상세"
         description="D1 posts 테이블의 공개 게시글을 표시합니다."
       />
