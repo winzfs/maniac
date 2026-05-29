@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Card } from "@/shared/components/ui/Card";
+import { sanitizePostHtml } from "@/features/boards/utils/html";
 
 type PublicPost = {
   id: string;
@@ -97,7 +98,7 @@ export function PublicPostDetailClient({ id }: { id: string }) {
     <article className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
       <div className="min-w-0 space-y-5">
         <Card className="space-y-6 p-5 sm:p-7">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
             <Badge label={post.board_title} tone={post.board_type === "trade" ? "orange" : "muted"} />
             <span>{post.author_nickname ?? "maniac"}</span>
             <span>·</span>
@@ -110,9 +111,10 @@ export function PublicPostDetailClient({ id }: { id: string }) {
             <h1 className="text-3xl font-black tracking-[-0.05em] sm:text-5xl">{post.title}</h1>
           </div>
 
-          <div className="whitespace-pre-wrap text-sm leading-7 text-text-secondary sm:text-base sm:leading-8">
-            {post.body}
-          </div>
+          <div
+            className="post-body text-sm leading-7 text-text-secondary sm:text-base sm:leading-8 [&_a]:font-bold [&_a]:text-garage-orange [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-garage-orange [&_blockquote]:bg-surface [&_blockquote]:py-2 [&_blockquote]:pl-4 [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-2xl [&_h2]:font-black [&_img]:my-5 [&_img]:max-w-full [&_img]:rounded-2xl [&_li]:ml-5 [&_li]:list-disc [&_p]:my-3"
+            dangerouslySetInnerHTML={{ __html: sanitizePostHtml(post.body) }}
+          />
         </Card>
 
         <Card className="space-y-4 p-5 sm:p-6">
@@ -134,12 +136,12 @@ export function PublicPostDetailClient({ id }: { id: string }) {
       </div>
 
       <aside className="min-w-0 space-y-3">
-        <Card variant="dark" className="p-5">
+        <Card variant="dark" className="p-5 sm:p-6">
           <p className="text-sm text-zinc-300">게시판</p>
           <h2 className="mt-1 text-xl font-bold">{post.board_title}</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-300">{post.board_description ?? "게시판 설명이 없습니다."}</p>
         </Card>
-        <Card className="p-5">
+        <Card className="p-5 sm:p-6">
           <p className="text-sm font-bold">바로가기</p>
           <Link className="mt-2 inline-flex text-sm font-black text-orange-600" href={`/explore/${post.category}/${post.board_slug}/`}>
             게시판으로 돌아가기
