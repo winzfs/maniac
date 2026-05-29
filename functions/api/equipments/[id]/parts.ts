@@ -34,6 +34,7 @@ const createPartSchema = z.object({
   visibility: z.enum(["public", "private", "unlisted"]).default("public"),
 });
 const updatePartSchema = createPartSchema.partial();
+type UpdatePartInput = z.infer<typeof updatePartSchema>;
 
 function getEquipmentId(params: EventContext<Env, string, unknown>["params"]) {
   return paramValue(params, "id");
@@ -54,6 +55,35 @@ async function listParts(env: Env, equipmentId: string) {
   const rows = await env.DB.prepare(`SELECT id, equipment_id, category, brand, name, price, installed_at, purchase_url, image_url, memo, visibility, moderation_status, created_at, updated_at
     FROM parts WHERE equipment_id = ? AND deleted_at IS NULL ORDER BY installed_at DESC, created_at DESC LIMIT 100`).bind(equipmentId).all<PartRow>();
   return rows.results ?? [];
+}
+
+function buildUpdatePartQuery(input: UpdatePartInput, now: number, partId: string, equipmentId: string) {
+  const updates: string[] = [];
+  const values: unknown[] = [];
+
+  function set(column: string, value: unknown) {
+    updates.push(`${column} = ?`);
+    values.push(value);
+  }
+
+  if ("category" in input) set("category", input.category);
+  if ("brand" in input) set("brand", input.brand ?? null);
+  if ("name" in input) set("name", input.name);
+  if ("price" in input) set("price", input.price ?? null);
+  if ("installedAt" in input) set("installed_at", input.installedAt ?? null);
+  if ("purchaseUrl" in input) set("purchase_url", input.purchaseUrl ?? null);
+  if ("imageUrl" in input) set("image_url", input.imageUrl ?? null);
+  if ("memo" in input) set("memo", input.memo ?? null);
+  if ("visibility" in input) set("visibility", input.visibility);
+
+  set("updated_at", now);
+
+  return {
+    sql: `UPDATE parts
+      SET ${updates.join(", ")}
+      WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL`,
+    values: [...values, partId, equipmentId],
+  };
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
@@ -94,22 +124,10 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
     if (!(await hasPart(env, equipmentId, partId))) return errorResponse("Part not found.", 404);
     const input = updatePartSchema.parse(await readJsonObject(request));
     const now = Date.now();
-    await env.DB.prepare(`UPDATE parts
-      SET category = COALESCE(?, category), brand = ?, name = COALESCE(?, name), price = ?, installed_at = ?, purchase_url = ?, image_url = ?, memo = ?, visibility = COALESCE(?, visibility), updated_at = ?
-      WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL`).bind(
-      input.category ?? null,
-      input.brand ?? null,
-      input.name ?? null,
-      input.price ?? null,
-      input.installedAt ?? null,
-      input.purchaseUrl ?? null,
-      input.imageUrl ?? null,
-      input.memo ?? null,
-      input.visibility ?? null,
-      now,
-      partId,
-      equipmentId,
-    ).run();
+    const update = buildUpdatePartQuery(input, now, partId, equipmentId);
+
+    await env.DB.prepare(update.sql).bind(...update.values).run();
+
     return jsonResponse({ ok: true, id: partId, parts: await listParts(env, equipmentId) });
   } catch (error) {
     return errorResponse(getErrorMessage(error, "Invalid part input."), statusFromError(error), zodDetails(error));
