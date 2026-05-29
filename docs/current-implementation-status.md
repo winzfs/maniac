@@ -25,7 +25,8 @@ React 공개 장비 페이지 ✅
 게시글 상세 HTML sanitize 렌더링 ✅
 게시글 저장 전 서버 sanitize/길이 제한 ✅
 D1 저장 ✅
-D1 migration 정리 진행 중 ✅
+D1 migration 정리 ✅
+초기 D1 schema migration ✅
 API 공통 HTTP 유틸 1차 적용 ✅
 운영 환경 mock user 쓰기 차단 가드 ✅
 R2 업로드 ❌ 보류
@@ -148,87 +149,17 @@ mock user 제거
 → /explore/post/?id=:post
 ```
 
-관련 파일:
-
-```txt
-functions/explore/[category]/[board]/[post].ts
-```
-
 ---
 
-## 5. 장비 기능 구현 상태
+## 5. 기능 구현 상태
 
-### 5.1 장비 등록 `/garage/new/`
-
-장비 등록 폼에서 입력한 정보를 D1 `equipments` 테이블에 저장한다.
+### 장비 관리
 
 ```txt
-/garage/new/
-→ POST /api/equipments
-→ D1 equipments insert
-→ nextPath: /garage/view/?slug=장비slug
-```
-
-관련 파일:
-
-```txt
-src/app/garage/new/page.tsx
-src/features/equipment/components/EquipmentCreateForm.tsx
-functions/api/equipments.ts
-src/features/equipment/actions/mutations.ts
-src/features/equipment/schemas/index.ts
-```
-
-한글 slug를 허용한다.
-
-```txt
-예: 닌자-400-3
-```
-
-React 공개 페이지 이동 시 slug는 `encodeURIComponent`로 인코딩한다.
-
-### 5.2 내 차고 `/garage/`
-
-D1에 저장된 장비 목록을 불러온다.
-
-```txt
-GET /api/equipments
-```
-
-장비 카드에는 기본 정보와 정비 요약을 표시한다.
-
-```txt
-장비명
-브랜드/모델/연식
-사용량
-공개 상태
-정비 기록 개수
-최근 정비일
-총 정비 비용
-보기 버튼
-수정 버튼
-```
-
-### 5.3 장비 수정/삭제 `/garage/edit/?id=...`
-
-장비 id를 query string으로 받아 클라이언트 컴포넌트에서 조회한다.
-
-```txt
-GET    /api/equipments/:id
-PATCH  /api/equipments/:id
-DELETE /api/equipments/:id
-```
-
-삭제는 hard delete가 아니라 `deleted_at`을 채우는 soft delete 방식이다.
-
-### 5.4 React 공개 장비 페이지 `/garage/view/?slug=...`
-
-현재 실사용 공개 장비 페이지다.
-
-```txt
-/garage/view/?slug=장비slug
-→ GET /api/public/equipments/:slug
-→ PublicEquipmentDetail 렌더링
+/garage/new/ → POST /api/equipments → D1 equipments insert
+/garage/ → GET /api/equipments
+/garage/edit/?id=... → GET/PATCH/DELETE /api/equipments/:id
+/garage/view/?slug=... → GET /api/public/equipments/:slug
 ```
 
 공개 장비 JSON API는 아래 조건을 만족하는 장비만 반환한다.
@@ -239,261 +170,46 @@ visibility = public
 moderation_status = normal
 ```
 
-공개 페이지 표시 내용:
+기존 `/garage/[slug]/` 공유 링크는 `/garage/view/?slug=...`로 redirect한다.
 
-```txt
-장비 기본 정보
-장비 소개
-대표 사진 또는 GARAGE 플레이스홀더
-스펙
-사용량
-공개 상태
-slug
-정비 타임라인
-장착 부품
-```
-
-### 5.5 기존 slug 공개 링크 `/garage/[slug]/`
-
-기존 공유 링크 호환용 경로다.
-
-```txt
-/garage/장비slug/
-→ 302 redirect
-→ /garage/view/?slug=장비slug
-```
-
-관련 파일:
-
-```txt
-functions/garage/[slug].ts
-functions/garage/view.ts
-```
-
-`functions/garage/view.ts`는 `/garage/view/` 요청이 기존 `/garage/[slug]/` Function에 잡히지 않고 정적 React 페이지로 넘어가도록 하기 위한 bypass Function이다.
-
----
-
-## 6. 정비 기록 기능 구현 상태
-
-장비 수정 화면에서 정비 기록을 추가, 조회, 수정, 삭제할 수 있다.
+### 정비 기록
 
 ```txt
 GET    /api/equipments/:id/logs
 POST   /api/equipments/:id/logs
-PATCH  /api/equipments/:id/logs?logId=정비기록ID
-DELETE /api/equipments/:id/logs?logId=정비기록ID
+PATCH  /api/equipments/:id/logs?logId=...
+DELETE /api/equipments/:id/logs?logId=...
 ```
 
-관련 파일:
+PATCH는 동적 SET 절을 사용해 요청 body에 포함된 필드만 수정한다. 누락된 `description`, `usageMetricValue`, `cost`, `shopName` 등이 `null`로 덮이는 문제를 수정했다.
 
-```txt
-functions/api/equipments/[id]/logs.ts
-src/features/equipment/components/MaintenanceLogPanel.tsx
-src/features/equipment/components/EquipmentMaintenanceSection.tsx
-```
+공개 장비 페이지에는 `visibility = public`이고 `deleted_at IS NULL`인 정비 기록만 표시한다.
 
-최근 수정:
-
-```txt
-PATCH는 동적 SET 절을 사용한다.
-요청 body에 포함된 필드만 수정한다.
-누락된 description, usageMetricValue, cost, shopName 등이 null로 덮이는 문제를 수정했다.
-```
-
-공개 장비 페이지에는 아래 조건의 정비 기록만 표시한다.
-
-```txt
-visibility = public
-deleted_at IS NULL
-```
-
----
-
-## 7. 부품 기록 기능 구현 상태
-
-장비 수정 화면에서 부품 기록을 추가, 조회, 수정, 삭제할 수 있다.
+### 부품 기록
 
 ```txt
 GET    /api/equipments/:id/parts
 POST   /api/equipments/:id/parts
-PATCH  /api/equipments/:id/parts?partId=부품ID
-DELETE /api/equipments/:id/parts?partId=부품ID
+PATCH  /api/equipments/:id/parts?partId=...
+DELETE /api/equipments/:id/parts?partId=...
 ```
 
-관련 파일:
+PATCH는 동적 SET 절을 사용해 요청 body에 포함된 필드만 수정한다. 누락된 `brand`, `price`, `installedAt`, `purchaseUrl`, `imageUrl`, `memo` 등이 `null`로 덮이는 문제를 수정했다.
+
+공개 장비 페이지에는 `visibility = public`이고 `deleted_at IS NULL`인 부품만 표시한다.
+
+### 커뮤니티 / Explore
+
+`/explore`는 D1 API 기반 게시판/게시글 구조로 동작한다.
 
 ```txt
-functions/api/equipments/[id]/parts.ts
-src/features/equipment/components/PartsPanel.tsx
-src/features/equipment/components/EquipmentMaintenanceSection.tsx
+/explore/ → GET /api/public/boards
+/explore/[category]/ → GET /api/public/posts?category=...
+/explore/[category]/[board]/ → GET /api/public/posts?board=...
+/explore/post/?id=게시글ID → GET /api/public/posts/:id
 ```
 
-최근 수정:
-
-```txt
-PATCH는 동적 SET 절을 사용한다.
-요청 body에 포함된 필드만 수정한다.
-누락된 brand, price, installedAt, purchaseUrl, imageUrl, memo 등이 null로 덮이는 문제를 수정했다.
-```
-
-R2 업로드가 아직 없으므로 이미지는 외부 URL을 직접 입력한다.
-
-공개 장비 페이지에는 아래 조건의 부품만 표시한다.
-
-```txt
-visibility = public
-deleted_at IS NULL
-```
-
----
-
-## 8. 커뮤니티 / Explore 구현 상태
-
-`/explore`는 기존 mock 중심 구조에서 D1 API 기반 구조로 전환했다.
-
-### 8.1 게시판 데이터
-
-게시판은 `boards` 테이블에서 관리한다.
-
-```txt
-id
-slug
-title
-category
-type
-description
-status
-permission
-sort_order
-created_at
-updated_at
-```
-
-category/type/description/sort_order는 `migrations/0004_add_board_metadata.sql`로 추가했다.
-
-### 8.2 게시글 데이터
-
-게시글은 `posts` 테이블에 저장한다.
-
-```txt
-id
-board_id
-author_id
-title
-body
-status
-visibility
-moderation_status
-created_at
-updated_at
-deleted_at
-```
-
-현재 게시글 본문은 `SimpleHtmlEditor`에서 생성한 HTML 문자열을 저장한다.
-
-목록 카드에서는 HTML 태그를 제거한 plain text excerpt를 표시하고, 상세에서는 sanitize 후 HTML 본문으로 렌더링한다. 게시글 저장 API에서도 서버 저장 전 `sanitizePostHtml()`을 적용하고, 제목/본문 길이 제한을 검사한다.
-
-```txt
-제목 최대 길이: 120자
-본문 최대 길이: 200KB
-```
-
-관련 파일:
-
-```txt
-src/features/boards/utils/html.ts
-src/features/boards/components/ExploreBoardClient.tsx
-src/features/boards/components/ExploreCategoryClient.tsx
-src/features/boards/components/PublicPostDetailClient.tsx
-functions/api/posts.ts
-```
-
-### 8.3 댓글 데이터
-
-댓글은 `comments` 테이블에 저장한다.
-
-현재 상태:
-
-```txt
-공개 상세 API에서 댓글 조회 지원 ✅
-댓글 작성 UI 연결 ✅
-댓글 작성 API 연결 ✅
-댓글 삭제 API 연결 ✅
-실제 로그인 전까지 mock user 기반 저장 ✅
-```
-
-관련 파일:
-
-```txt
-src/features/boards/components/PublicPostDetailClient.tsx
-functions/api/public/posts/[id].ts
-functions/api/public/posts/[id]/comments.ts
-```
-
-### 8.4 Explore 페이지 구조
-
-```txt
-/explore/
-→ GET /api/public/boards
-→ 카테고리/게시판 목록 표시
-
-/explore/[category]/
-→ 정적 shell
-→ GET /api/public/boards
-→ GET /api/public/posts?category=...
-
-/explore/[category]/[board]/
-→ 정적 shell
-→ GET /api/public/boards
-→ GET /api/public/posts?board=...
-
-/explore/post/?id=게시글ID
-→ 정적 shell
-→ GET /api/public/posts/:id
-```
-
-### 8.5 홈 게시글 스크롤러
-
-홈의 `CategoryPostScroller`도 DB API 기반으로 전환했다.
-
-```txt
-GET /api/public/posts?category=카테고리&limit=8
-```
-
-기존 mock 링크 문제를 해결해 홈에서 들어가도 새 상세 페이지로 이동한다.
-
-```txt
-/explore/post/?id=게시글ID
-```
-
----
-
-## 9. 글쓰기/WYSIWYG 상태
-
-글쓰기 화면에는 자체 구현한 가벼운 WYSIWYG 에디터를 사용한다.
-
-```txt
-src/features/editor/SimpleHtmlEditor.tsx
-src/app/explore/[category]/[board]/write/page.tsx
-src/features/boards/components/BoardWriteForm.tsx
-```
-
-현재 지원 기능:
-
-```txt
-굵게
-기울임
-링크 생성/해제
-H2 적용/해제
-인용 적용/해제
-목록
-실행취소
-다시실행
-사진 삽입
-```
-
-저장 흐름:
+게시글 저장 흐름:
 
 ```txt
 /explore/[category]/[board]/write/
@@ -503,11 +219,26 @@ H2 적용/해제
 → /explore/post/?id=새글ID
 ```
 
-현재는 개발용 mock user로 저장한다. `APP_ENV=production`일 때는 mock user 기반 쓰기 요청을 401로 차단한다.
+게시글 저장 API는 서버 저장 전 `sanitizePostHtml()`을 적용하고, 제목/본문 길이 제한을 검사한다.
+
+```txt
+제목 최대 길이: 120자
+본문 최대 길이: 200KB
+```
+
+댓글 상태:
+
+```txt
+공개 상세 API에서 댓글 조회 지원 ✅
+댓글 작성 UI 연결 ✅
+댓글 작성 API 연결 ✅
+댓글 삭제 API 연결 ✅
+실제 로그인 전까지 mock user 기반 저장 ✅
+```
 
 ---
 
-## 10. D1/Drizzle schema 상태
+## 6. D1/Drizzle schema 상태
 
 현재 사용 중인 주요 테이블:
 
@@ -524,12 +255,13 @@ comments
 주요 migration:
 
 ```txt
+migrations/0001_initial.sql
 migrations/0002_add_maintenance_logs_and_parts.sql
 migrations/0003_add_boards_posts_comments.sql
 migrations/0004_add_board_metadata.sql
 ```
 
-Drizzle schema에도 `maintenanceLogs`, `parts`, `boards`, `posts`, `comments`, board metadata 필드가 반영되어 있다.
+Drizzle schema에도 핵심 MVP 테이블과 board metadata 필드가 반영되어 있다.
 
 ```txt
 src/server/db/schema/index.ts
@@ -538,9 +270,11 @@ src/server/db/schema/index.ts
 추가된 package scripts:
 
 ```txt
+npm run d1:migrate:initial:remote
 npm run d1:migrate:remote
 npm run d1:migrate:community:remote
 npm run d1:migrate:board-meta:remote
+npm run d1:migrate:all:remote
 npm run d1:tables:remote
 ```
 
@@ -550,12 +284,12 @@ npm run d1:tables:remote
 앞으로 테이블 생성/변경은 migration에서 관리한다.
 Drizzle schema와 SQL migration이 어긋나지 않게 변경 시 둘 다 확인해야 한다.
 D1 local/remote migration 흐름은 아직 더 정교하게 정리할 수 있다.
-repository에 0001_initial.sql이 아직 없으므로 새 DB 완전 재현성은 부족하다.
+새 D1 DB는 0001 → 0002 → 0003 → 0004 순서로 적용한다.
 ```
 
 ---
 
-## 11. 현재 API 목록
+## 7. 현재 API 목록
 
 ```txt
 GET    /api/equipments
@@ -590,7 +324,7 @@ GET    /explore/:category/:board/:post → redirect to /explore/post/?id=...
 
 ---
 
-## 12. API 공통 유틸 상태
+## 8. API 공통 유틸 상태
 
 공통 파일:
 
@@ -632,7 +366,7 @@ isMockUserWriteBlocked
 
 ---
 
-## 13. 최근 해결한 이슈
+## 9. 최근 해결한 이슈
 
 ```txt
 D1 binding 문제 해결 ✅
@@ -650,40 +384,13 @@ Cloudflare Error 1101 redirect 문제 해결 ✅
 게시글 HTML sanitize allowlist 강화 ✅
 게시글 저장 전 서버 sanitize 및 길이 제한 추가 ✅
 APP_ENV=production에서 mock user 쓰기 차단 추가 ✅
+초기 D1 schema migration 추가 ✅
+전체 remote migration script 추가 ✅
 ```
 
 ---
 
-## 14. 현재 전체 점검 결과
-
-### 완료 확인
-
-```txt
-mockBoardPosts 참조 제거 확인 ✅
-mock-comments 참조 제거 확인 ✅
-구형 /explore/{category}/{board}/{post} 목록 링크 제거 확인 ✅
-홈 게시글 스크롤러 DB API 전환 확인 ✅
-Drizzle schema의 board metadata 반영 확인 ✅
-게시글 목록 plain text excerpt 적용 확인 ✅
-게시글 상세 HTML 렌더링 적용 확인 ✅
-게시글 저장 전 서버 sanitize 적용 확인 ✅
-기존 게시글 URL redirect Function 절대 URL 사용 확인 ✅
-댓글 작성/삭제 mock user 기반 연결 확인 ✅
-```
-
-### 주의할 점
-
-```txt
-output: export 유지 중이므로 /explore/[category], /explore/[category]/[board], /explore/[category]/[board]/write는 generateStaticParams shell을 계속 필요로 한다.
-DB의 새 게시글 상세는 /explore/post/?id=... 로 접근해야 한다.
-게시글 HTML sanitize는 강화했지만 장기적으로는 검증된 sanitizer 라이브러리 또는 더 엄격한 서버 정책을 검토한다.
-실제 로그인 전까지 개발 환경의 작성 데이터는 dev_user_maniac에 귀속된다.
-운영 환경에서는 APP_ENV=production 설정 여부를 반드시 확인해야 한다.
-```
-
----
-
-## 15. 아직 mock/stub 또는 미완성인 부분
+## 10. 아직 mock/stub 또는 미완성인 부분
 
 ```txt
 실제 로그인/세션 연동
@@ -694,13 +401,13 @@ R2 이미지 업로드
 신고/모더레이션 워크플로우
 OpenNext 또는 Workers 런타임 전환 검토
 API DB 헬퍼 공통화
-D1 local/remote migration 흐름 고도화
-migrations/0001_initial.sql 추가
+D1 local migration 흐름 고도화
+migration 적용 이력 관리 방식 검토
 ```
 
 ---
 
-## 16. 다음 개발 추천 순서
+## 11. 다음 개발 추천 순서
 
 ### 1순위: 배포 후 회귀 테스트
 
@@ -733,6 +440,7 @@ migrations/0001_initial.sql 추가
 private 장비 공개 API 404 확인
 정비/부품 PATCH 시 누락 필드 보존 확인
 APP_ENV=production에서 mock 쓰기 API 401 확인
+새 D1 DB에 npm run d1:migrate:all:remote 적용 확인
 ```
 
 ### 2순위: 실제 로그인/세션 연결
@@ -741,22 +449,15 @@ mock user를 제거하고 실제 사용자별 데이터로 분리한다.
 
 ### 3순위: R2 업로드
 
-R2 사용이 가능해지면 아래 기능을 붙인다.
-
-```txt
-장비 대표 이미지 업로드
-부품 이미지 업로드
-정비 기록 사진 첨부
-게시글 이미지 업로드
-```
+R2 사용이 가능해지면 장비 대표 이미지, 부품 이미지, 정비 기록 사진, 게시글 이미지를 업로드 방식으로 전환한다.
 
 ### 4순위: API DB 헬퍼 공통화
 
 현재 HTTP 유틸과 mock user 가드는 공통화했지만 DB 접근 함수는 아직 각 API에 남아있다.
 
-### 5순위: migrations/0001_initial.sql 추가
+### 5순위: local D1 migration 흐름 정리
 
-새 D1 데이터베이스를 처음부터 재현할 수 있도록 초기 schema migration을 정리한다.
+remote 중심 script 외에 local 개발 DB 적용 흐름을 정리한다.
 
 ### 6순위: OpenNext 또는 Workers 런타임 전환 검토
 
