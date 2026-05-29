@@ -75,7 +75,7 @@ export function MeProfileClient() {
       <Card className="space-y-3 p-5">
         <h2 className="font-bold">빠른 이동</h2>
         <Link href="/garage/"><Button className="w-full">내 차고 보기</Button></Link>
-        <Button variant="secondary" className="w-full">작성 글 관리 준비중</Button>
+        <Link href="/me/posts/"><Button variant="secondary" className="w-full">내 작성글 관리</Button></Link>
         <Button variant="secondary" className="w-full">프로필 설정 준비중</Button>
         <Button variant="ghost" className="w-full" onClick={logout} disabled={loggingOut}>{loggingOut ? "로그아웃 중..." : "로그아웃"}</Button>
       </Card>
