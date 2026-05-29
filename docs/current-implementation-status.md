@@ -17,6 +17,7 @@ Cloudflare Pages + Pages Functions + D1 기반으로 장비 CRUD, 정비 기록 
 정비 기록 CRUD ✅
 부품 기록 CRUD ✅
 React 공개 장비 페이지 ✅
+기존 slug 공개 링크 redirect ✅
 공개 조회 JSON API ✅
 D1 저장 ✅
 D1 migration 1차 정리 ✅
@@ -60,6 +61,7 @@ wrangler.toml
 - R2는 카드 등록 요구로 현재 보류 중이다.
 - R2 대신 장비 대표 이미지 URL, 부품 이미지 URL 등 외부 이미지 URL 입력으로 임시 대응한다.
 - 정적 export 환경 때문에 완전한 `/garage/[slug]/` React 동적 라우트 대신 `/garage/view/?slug=...` 방식을 실사용 공개 페이지로 사용한다.
+- 기존 `/garage/[slug]/` 요청은 React 공개 페이지로 302 redirect한다.
 
 ---
 
@@ -109,15 +111,14 @@ mock user 제거
 /explore/
 /explore/motorcycle/
 /explore/motorcycle/motorcycle-showcase/
-/explore/motorcycle/motorcycle-showcase/motorcycle-showcase-post-1/
+/explore/motorcycle/motorcycle-showcase-post-1/
 /explore/motorcycle/motorcycle-showcase/write/
 /me/
 /garage/
 /garage/new/
 /garage/edit/?id=장비ID
 /garage/view/?slug=장비slug
-/garage/[slug]/
-/garage/ninja-400/
+/garage/[slug]/ → /garage/view/?slug=장비slug redirect
 ```
 
 현재 `/explore/*`, `/me/` 계열은 대부분 mock UI다.
@@ -130,8 +131,6 @@ mock user 제거
 /garage/edit/?id=장비ID
 /garage/view/?slug=장비slug
 ```
-
-기존 `/garage/[slug]/`는 HTML Function fallback으로 유지한다.
 
 ---
 
@@ -275,23 +274,23 @@ functions/garage/view.ts
 
 `functions/garage/view.ts`는 `/garage/view/` 요청이 기존 `/garage/[slug]/` Function에 잡히지 않고 정적 React 페이지로 넘어가도록 하기 위한 bypass Function이다.
 
-### 6.5 기존 HTML 공개 페이지 `/garage/[slug]/`
+### 6.5 기존 slug 공개 링크 `/garage/[slug]/`
 
-Cloudflare Pages Function이 `/garage/:slug` 요청을 받아 D1에서 장비를 조회하고 HTML을 직접 반환한다.
+기존 공유 링크 호환용 경로다.
+
+현재는 HTML을 직접 렌더링하지 않고 React 공개 페이지로 redirect한다.
 
 ```txt
-GET /garage/:slug
+/garage/장비slug/
+→ 302 redirect
+→ /garage/view/?slug=장비slug
 ```
-
-현재는 fallback 용도로 유지한다.
 
 관련 파일:
 
 ```txt
 functions/garage/[slug].ts
 ```
-
-장기적으로는 React 공개 페이지가 안정화된 뒤 redirect 처리하거나 제거할 수 있다.
 
 ---
 
@@ -445,7 +444,7 @@ React 공개 페이지 표시 내용:
 
 ---
 
-## 9. D1 테이블 상태
+## 9. D1/Drizzle schema 상태
 
 현재 사용 중인 주요 테이블:
 
@@ -456,21 +455,32 @@ maintenance_logs
 parts
 ```
 
-`users`, `equipments`는 기존 Drizzle 스키마/초기 DB 구조를 사용한다.
-
 `maintenance_logs`, `parts`는 정식 SQL migration으로 분리했다.
 
 ```txt
 migrations/0002_add_maintenance_logs_and_parts.sql
 ```
 
+Drizzle schema에도 `maintenanceLogs`, `parts`가 반영되어 있다.
+
+```txt
+src/server/db/schema/index.ts
+```
+
 현재 `functions/api/equipments/[id]/logs.ts`, `functions/api/equipments/[id]/parts.ts` 내부의 런타임 `CREATE TABLE IF NOT EXISTS` 안전장치는 제거되어 있다.
+
+추가된 package scripts:
+
+```txt
+npm run d1:migrate:remote
+npm run d1:tables:remote
+```
 
 주의:
 
 - 앞으로 테이블 생성/변경은 migration에서 관리한다.
-- D1 schema와 Drizzle schema는 아직 완전히 동기화하지 않았다.
-- 다음 단계에서 schema 싱크 또는 migration 관리 스크립트를 정리해야 한다.
+- Drizzle schema와 SQL migration이 어긋나지 않게 변경 시 둘 다 확인해야 한다.
+- D1 local/remote migration 흐름은 아직 더 정교하게 정리할 수 있다.
 
 ---
 
@@ -495,7 +505,7 @@ PATCH  /api/equipments/:id/parts?partId=...
 DELETE /api/equipments/:id/parts?partId=...
 
 GET    /api/public/equipments/:slug
-GET    /garage/:slug
+GET    /garage/:slug → redirect to /garage/view/?slug=...
 ```
 
 ---
@@ -576,8 +586,9 @@ src/features/equipment/components/PublicEquipmentViewSection.tsx
 src/features/equipment/schemas/index.ts
 src/features/equipment/actions/mutations.ts
 src/server/db/client.ts
-src/server/db/schema.ts
+src/server/db/schema/index.ts
 migrations/0002_add_maintenance_logs_and_parts.sql
+package.json
 ```
 
 ---
@@ -673,6 +684,7 @@ React 이동 경로는 encodeURIComponent 처리
 
 ```txt
 초기: functions/garage/[slug].ts에서 동적 slug를 받아 D1 조회 후 HTML 반환
+현재: /garage/[slug]/는 /garage/view/?slug=... 로 redirect
 현재: /garage/view/?slug=... 정적 React 페이지 + /api/public/equipments/:slug JSON API 사용
 ```
 
@@ -722,10 +734,9 @@ R2 이미지 업로드
 어드민 UI
 결제/구독
 신고/모더레이션 워크플로우
-D1 schema와 Drizzle schema 완전 동기화
-기존 HTML 공개 페이지 fallback 정리
 OpenNext 또는 Workers 런타임 전환 검토
 API DB 헬퍼 공통화
+D1 local/remote migration 흐름 고도화
 ```
 
 ---
@@ -734,7 +745,7 @@ API DB 헬퍼 공통화
 
 ### 1순위: React 공개 페이지 실사용 안정화
 
-현재 `/garage/`, 장비 등록, 장비 수정 후 이동이 React 공개 페이지로 연결되어 있다.
+현재 `/garage/`, 장비 등록, 장비 수정, 기존 slug 링크까지 React 공개 페이지로 연결되어 있다.
 
 할 일:
 
@@ -745,25 +756,11 @@ API DB 헬퍼 공통화
 비공개/링크공개 표시 정책 확인
 ```
 
-### 2순위: 기존 HTML fallback 정리
-
-현재 `/garage/[slug]/` HTML Function은 fallback이다.
-
-선택지:
-
-```txt
-1. 유지
-2. /garage/view/?slug=... 로 redirect
-3. 제거
-```
-
-정적 export 구조에서는 1 또는 2가 안전하다.
-
-### 3순위: 로그인/세션 연결
+### 2순위: 로그인/세션 연결
 
 mock user를 제거하고 실제 사용자별 데이터로 분리한다.
 
-### 4순위: R2 업로드
+### 3순위: R2 업로드
 
 R2 사용이 가능해지면 아래 기능을 붙인다.
 
@@ -774,10 +771,14 @@ R2 사용이 가능해지면 아래 기능을 붙인다.
 게시글 이미지 업로드
 ```
 
-### 5순위: D1 schema와 Drizzle schema 싱크
+### 4순위: API DB 헬퍼 공통화
 
-현재 `maintenance_logs`, `parts`는 SQL migration으로 존재하지만 Drizzle schema에는 완전히 반영되어 있지 않다.
+현재 HTTP 유틸은 공통화했지만 DB 접근 함수는 아직 각 API에 남아있다.
 
-### 6순위: 게시글/댓글 DB 저장 연결
+### 5순위: 게시글/댓글 DB 저장 연결
 
 현재 `/explore/*`는 mock 중심이다. 장비 MVP 이후 커뮤니티 기능을 DB로 전환한다.
+
+### 6순위: OpenNext 또는 Workers 런타임 전환 검토
+
+정적 export를 유지할지, 더 동적인 런타임으로 전환할지 실험 브랜치에서 검토한다.
