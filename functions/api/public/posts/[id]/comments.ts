@@ -101,4 +101,45 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   }
 };
 
-export const onRequestOptions = () => allowMethods(["POST", "OPTIONS"]);
+export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
+  if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
+
+  try {
+    const postId = paramValue(params, "id");
+    if (!postId) return errorResponse("Post id is required.", 400);
+
+    const url = new URL(request.url);
+    const commentId = url.searchParams.get("commentId")?.trim();
+    if (!commentId) return errorResponse("Comment id is required.", 400);
+
+    const post = await getPublicPost(env.DB, postId);
+    if (!post) return errorResponse("Post not found.", 404);
+
+    const comment = await env.DB.prepare(
+      `SELECT id, author_id
+       FROM comments
+       WHERE id = ?
+         AND post_id = ?
+         AND deleted_at IS NULL
+       LIMIT 1`,
+    ).bind(commentId, postId).first<{ id: string; author_id: string }>();
+
+    if (!comment) return errorResponse("Comment not found.", 404);
+    if (comment.author_id !== MOCK_USER_ID) return errorResponse("댓글을 삭제할 권한이 없습니다.", 403);
+
+    await env.DB.prepare(
+      `UPDATE comments
+       SET deleted_at = ?, updated_at = ?
+       WHERE id = ?
+         AND post_id = ?
+         AND author_id = ?
+         AND deleted_at IS NULL`,
+    ).bind(Date.now(), Date.now(), commentId, postId, MOCK_USER_ID).run();
+
+    return jsonResponse({ ok: true, deletedId: commentId });
+  } catch (error) {
+    return errorResponse(getErrorMessage(error, "댓글 삭제에 실패했습니다."), 400);
+  }
+};
+
+export const onRequestOptions = () => allowMethods(["POST", "DELETE", "OPTIONS"]);
