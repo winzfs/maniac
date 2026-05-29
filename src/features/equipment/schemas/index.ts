@@ -5,7 +5,7 @@ export const equipmentCategorySchema = z.enum(EQUIPMENT_CATEGORIES);
 export const usageMetricTypeSchema = z.enum(USAGE_METRIC_TYPES);
 export const visibilitySchema = z.enum(VISIBILITY_VALUES);
 export const moderationStatusSchema = z.enum(MODERATION_STATUS_VALUES);
-export const equipmentSlugSchema = z.string().trim().min(2).max(80).regex(/^[a-z0-9-]+$/);
+export const equipmentSlugSchema = z.string().trim().min(2).max(80).regex(/^[a-z0-9가-힣-]+$/);
 
 export const createEquipmentSchema = z.object({
   category: equipmentCategorySchema.default("motorcycle"),
