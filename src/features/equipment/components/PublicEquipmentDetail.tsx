@@ -7,6 +7,7 @@ type PublicEquipment = {
   slug: string;
   year: number | null;
   description: string | null;
+  main_image_url: string | null;
   usage_metric_type: string;
   usage_metric_value: number | null;
   visibility: string;
@@ -64,15 +65,28 @@ export function PublicEquipmentDetail({ equipment, logs, parts }: PublicEquipmen
   return (
     <main className="container-shell space-y-6 py-5 sm:py-8 lg:space-y-8">
       <section className="overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-surface to-background p-5 shadow-soft sm:p-8 lg:rounded-[2.5rem]">
-        <span className="inline-flex rounded-full bg-graphite px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-white">
-          {equipment.category}
-        </span>
-        <h1 className="mt-5 max-w-4xl text-5xl font-black leading-[0.9] tracking-[-0.08em] sm:text-7xl lg:text-8xl">
-          {equipment.nickname}
-        </h1>
-        <p className="mt-5 max-w-3xl text-base leading-8 text-text-secondary">
-          {equipment.description || "아직 장비 소개가 없습니다."}
-        </p>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-stretch">
+          <div>
+            <span className="inline-flex rounded-full bg-graphite px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-white">
+              {equipment.category}
+            </span>
+            <h1 className="mt-5 max-w-4xl text-5xl font-black leading-[0.9] tracking-[-0.08em] sm:text-7xl lg:text-8xl">
+              {equipment.nickname}
+            </h1>
+            <p className="mt-5 max-w-3xl text-base leading-8 text-text-secondary">
+              {equipment.description || "아직 장비 소개가 없습니다."}
+            </p>
+          </div>
+          <div className="min-h-64 overflow-hidden rounded-[1.75rem] border border-border bg-zinc-200 lg:min-h-full">
+            {equipment.main_image_url ? (
+              <img className="h-full min-h-64 w-full object-cover" src={equipment.main_image_url} alt={equipment.nickname} />
+            ) : (
+              <div className="flex h-full min-h-64 items-center justify-center bg-[radial-gradient(circle_at_20%_20%,#ff8a4c,transparent_30%),linear-gradient(135deg,#28221f,#5f554a)] text-5xl font-black tracking-[-0.08em] text-white">
+                GARAGE
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-3xl border border-border bg-white/60 p-5">
@@ -120,23 +134,18 @@ export function PublicEquipmentDetail({ equipment, logs, parts }: PublicEquipmen
         {parts.length === 0 ? <p className="mt-3 text-sm text-text-secondary">아직 공개된 부품 기록이 없습니다.</p> : null}
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {parts.map((part) => (
-            <article key={part.id} className="overflow-hidden rounded-3xl border border-border bg-white/60">
-              <div className="flex aspect-[16/9] items-center justify-center bg-zinc-200 text-xl font-black tracking-[-0.06em] text-text-secondary">
-                {part.image_url ? <img className="h-full w-full object-cover" src={part.image_url} alt={`${part.brand ?? ""} ${part.name}`} /> : "PART"}
-              </div>
-              <div className="p-4">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-text-secondary">
-                  {part.category} · {formatDate(part.installed_at)}
-                </p>
-                <h3 className="mt-1 text-lg font-black">{part.brand ? `${part.brand} ` : ""}{part.name}</h3>
-                {part.memo ? <p className="mt-2 text-sm leading-6 text-text-secondary">{part.memo}</p> : null}
-                <p className="mt-3 text-xs font-bold text-text-secondary">{formatMoney(part.price)}</p>
-                {part.purchase_url ? (
-                  <a className="mt-3 inline-flex text-sm font-black text-orange-600" href={part.purchase_url} target="_blank" rel="noreferrer">
-                    구매 링크
-                  </a>
-                ) : null}
-              </div>
+            <article key={part.id} className="rounded-3xl border border-border bg-white/60 p-4">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-text-secondary">
+                {part.category} · {formatDate(part.installed_at)}
+              </p>
+              <h3 className="mt-1 text-lg font-black">{part.brand ? `${part.brand} ` : ""}{part.name}</h3>
+              {part.memo ? <p className="mt-2 text-sm leading-6 text-text-secondary">{part.memo}</p> : null}
+              <p className="mt-3 text-xs font-bold text-text-secondary">{formatMoney(part.price)}</p>
+              {part.purchase_url ? (
+                <a className="mt-3 inline-flex text-sm font-black text-orange-600" href={part.purchase_url} target="_blank" rel="noreferrer">
+                  구매 링크
+                </a>
+              ) : null}
             </article>
           ))}
         </div>
