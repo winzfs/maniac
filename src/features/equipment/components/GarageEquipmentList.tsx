@@ -118,9 +118,14 @@ export function GarageEquipmentList() {
             <p className="text-sm text-text-secondary">{formatUsage(equipment)}</p>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{equipment.visibility}</p>
           </div>
-          <Link href={`/garage/${equipment.slug}/`} className="mt-auto">
-            <Button className="w-full">공개 페이지 보기</Button>
-          </Link>
+          <div className="mt-auto grid grid-cols-2 gap-2">
+            <Link href={`/garage/${equipment.slug}/`}>
+              <Button className="w-full">보기</Button>
+            </Link>
+            <Link href={`/garage/edit/?id=${equipment.id}`}>
+              <Button className="w-full" variant="secondary">수정</Button>
+            </Link>
+          </div>
         </Card>
       ))}
     </div>
