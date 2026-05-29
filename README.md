@@ -46,12 +46,19 @@ docs/site-content-board-management-plan.md
 docs/design-direction-guide.md
 docs/current-implementation-status.md
 docs/d1-migration-guide.md
+docs/regression-test-checklist.md
 ```
 
 가장 최신 개발 현황은 아래 문서를 기준으로 확인합니다.
 
 ```txt
 docs/current-implementation-status.md
+```
+
+배포 후 회귀 테스트는 아래 문서를 기준으로 진행합니다.
+
+```txt
+docs/regression-test-checklist.md
 ```
 
 ## 배포/런타임 구조
@@ -324,7 +331,13 @@ GET    /explore/:category/:board/:post → redirect to /explore/post/?id=...
 
 ```txt
 functions/_shared/http.ts
+functions/_shared/auth.ts
 functions/_shared/dev-user.ts
+functions/_shared/db-users.ts
+functions/_shared/db-equipment.ts
+functions/_shared/db-posts.ts
+functions/_shared/db-public-equipment.ts
+functions/_shared/db-boards.ts
 
 functions/api/equipments.ts
 functions/api/equipments/[id].ts
@@ -382,7 +395,6 @@ R2 이미지 업로드
 어드민 UI
 결제/구독
 신고/모더레이션 워크플로우
-API DB 헬퍼 공통화
 D1 local migration 흐름 고도화
 migration 적용 이력 관리 방식 검토
 기존 HTML 공개 페이지 fallback 정리
@@ -394,7 +406,6 @@ OpenNext 또는 Workers 런타임 전환 검토
 1. 배포 후 회귀 테스트
 2. 로그인/세션 연결
 3. R2 사용 가능 시 이미지 업로드 추가
-4. API DB 헬퍼 공통화
-5. local D1 migration 흐름 정리
-6. 기존 `/garage/[slug]/` fallback 정리
-7. OpenNext 또는 Workers 런타임 전환 검토
+4. local D1 migration 흐름 정리
+5. 기존 `/garage/[slug]/` fallback 정리
+6. OpenNext 또는 Workers 런타임 전환 검토
