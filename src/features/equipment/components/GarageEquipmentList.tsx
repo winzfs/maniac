@@ -55,6 +55,10 @@ function formatCost(value: number | null) {
   return `${value.toLocaleString()}원`;
 }
 
+function publicViewHref(slug: string) {
+  return `/garage/view/?slug=${encodeURIComponent(slug)}`;
+}
+
 export function GarageEquipmentList() {
   const [state, setState] = useState<ListState>({ status: "loading" });
 
@@ -146,7 +150,7 @@ export function GarageEquipmentList() {
             </div>
           </div>
           <div className="mt-auto grid grid-cols-2 gap-2">
-            <Link href={`/garage/${equipment.slug}/`}>
+            <Link href={publicViewHref(equipment.slug)}>
               <Button className="w-full">보기</Button>
             </Link>
             <Link href={`/garage/edit/?id=${equipment.id}`}>
