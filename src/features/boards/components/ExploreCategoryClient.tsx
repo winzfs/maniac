@@ -53,6 +53,10 @@ function excerpt(body: string) {
   return body.length > 100 ? `${body.slice(0, 100)}...` : body;
 }
 
+function postDetailHref(id: string) {
+  return `/explore/post/?id=${encodeURIComponent(id)}`;
+}
+
 export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const category = getEquipmentCategory(categorySlug);
@@ -142,7 +146,7 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
           {state.posts.map((post) => {
             const board = boardsBySlug.get(post.board_slug);
             return (
-              <Link key={post.id} href={`/explore/${categorySlug}/${post.board_slug}/${post.id}/`}>
+              <Link key={post.id} href={postDetailHref(post.id)}>
                 <Card className="p-4 transition hover:-translate-y-0.5 hover:shadow-sm sm:p-5">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
                     <Badge label={post.board_title} tone={board?.type === "trade" ? "orange" : "muted"} />
