@@ -97,15 +97,19 @@ export function PartsPanel({ equipmentId }: { equipmentId: string }) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (state.status !== "ready") return;
+
+    const form = event.currentTarget;
+    const payload = makePayload(new FormData(form));
     const previous = state.parts;
     setState({ status: "saving", parts: previous });
+
     try {
       const data = await readApi(await fetch(`/api/equipments/${equipmentId}/parts`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(makePayload(new FormData(event.currentTarget))),
+        body: JSON.stringify(payload),
       }));
-      event.currentTarget.reset();
+      form.reset();
       setState({ status: "ready", parts: data.parts ?? [], message: "부품 기록이 추가되었습니다." });
     } catch (error) {
       setState({ status: "ready", parts: previous, message: error instanceof Error ? error.message : "부품 기록 추가에 실패했습니다." });
@@ -115,13 +119,17 @@ export function PartsPanel({ equipmentId }: { equipmentId: string }) {
   async function handleUpdate(event: FormEvent<HTMLFormElement>, partId: string) {
     event.preventDefault();
     if (state.status !== "ready") return;
+
+    const form = event.currentTarget;
+    const payload = makePayload(new FormData(form));
     const previous = state.parts;
     setState({ status: "saving", parts: previous });
+
     try {
       const data = await readApi(await fetch(`/api/equipments/${equipmentId}/parts?partId=${encodeURIComponent(partId)}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(makePayload(new FormData(event.currentTarget))),
+        body: JSON.stringify(payload),
       }));
       setEditingPartId(null);
       setState({ status: "ready", parts: data.parts ?? [], message: "부품 기록이 수정되었습니다." });
