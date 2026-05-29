@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
+import { excerptFromHtml } from "@/features/boards/utils/html";
 
 type PublicBoard = {
   id: string;
@@ -46,10 +47,6 @@ async function readJson<T>(url: string) {
 
 function formatDate(value: number) {
   return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
-}
-
-function excerpt(body: string) {
-  return body.length > 120 ? `${body.slice(0, 120)}...` : body;
 }
 
 function postDetailHref(id: string) {
@@ -117,11 +114,11 @@ export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: 
 
   return (
     <div className="space-y-8 lg:space-y-12">
-      <Card variant="dark" className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+      <Card variant="dark" className="grid gap-5 p-6 sm:grid-cols-[1fr_auto] sm:items-center sm:p-7">
         <div>
           <p className="text-sm text-zinc-300">게시판 상태</p>
-          <h2 className="mt-1 text-2xl font-bold">{state.posts.length} posts</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-300">{state.board.description ?? "게시판 설명이 없습니다."}</p>
+          <h2 className="mt-1 text-3xl font-black tracking-[-0.05em]">{state.posts.length} posts</h2>
+          <p className="mt-3 text-sm leading-6 text-zinc-300">{state.board.description ?? "게시판 설명이 없습니다."}</p>
         </div>
         <Link href={writeHref}>
           <Button className="w-full sm:w-auto">글쓰기</Button>
@@ -131,7 +128,7 @@ export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: 
       <section>
         <SectionHeader title="게시글" description="D1 posts 테이블의 공개 게시글을 표시합니다." />
         {state.postsError ? (
-          <Card className="mt-4 space-y-4 p-5">
+          <Card className="mt-4 space-y-4 p-5 sm:p-6">
             <p className="text-sm leading-6 text-text-secondary">게시글 목록을 불러오지 못했습니다. 글쓰기는 계속 사용할 수 있습니다.</p>
             <Link href={writeHref}>
               <Button>글쓰기</Button>
@@ -139,7 +136,7 @@ export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: 
           </Card>
         ) : null}
         {!state.postsError && state.posts.length === 0 ? (
-          <Card className="mt-4 space-y-4 p-5">
+          <Card className="mt-4 space-y-4 p-5 sm:p-6">
             <div>
               <h3 className="text-lg font-bold">아직 공개된 게시글이 없습니다.</h3>
               <p className="mt-2 text-sm leading-6 text-text-secondary">이 게시판의 첫 글을 작성해 보세요.</p>
@@ -152,18 +149,16 @@ export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: 
         <div className="mt-4 space-y-3">
           {state.posts.map((post) => (
             <Link key={post.id} href={postDetailHref(post.id)}>
-              <Card className="p-4 transition hover:-translate-y-0.5 hover:shadow-sm sm:p-5">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
-                    <span>{post.author_nickname ?? "maniac"}</span>
-                    <span>·</span>
-                    <span>{formatDate(post.created_at)}</span>
-                    <span>·</span>
-                    <span>{post.comment_count} comments</span>
-                  </div>
-                  <h2 className="text-lg font-bold">{post.title}</h2>
-                  <p className="text-sm leading-6 text-text-secondary">{excerpt(post.body)}</p>
+              <Card className="space-y-3 p-5 transition hover:-translate-y-0.5 hover:shadow-sm sm:p-6">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
+                  <span>{post.author_nickname ?? "maniac"}</span>
+                  <span>·</span>
+                  <span>{formatDate(post.created_at)}</span>
+                  <span>·</span>
+                  <span>{post.comment_count} comments</span>
                 </div>
+                <h2 className="text-xl font-black tracking-[-0.04em]">{post.title}</h2>
+                <p className="line-clamp-2 text-sm leading-6 text-text-secondary">{excerptFromHtml(post.body)}</p>
               </Card>
             </Link>
           ))}
