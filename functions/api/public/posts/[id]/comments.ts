@@ -1,12 +1,11 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../../../../_shared/dev-user";
+import { getPublicPost } from "../../../../_shared/db-posts";
 import { ensureDevUser } from "../../../../_shared/db-users";
 import { allowMethods, errorResponse, getErrorMessage, isRecord, jsonResponse, paramValue, readJsonObject } from "../../../../_shared/http";
 
 type Env = { DB: D1Database; APP_ENV?: string };
-
-type PostRow = { id: string };
 
 type CommentRow = {
   id: string;
@@ -21,22 +20,6 @@ type CommentRow = {
 function textField(body: Record<string, unknown>, key: string) {
   const value = body[key];
   return typeof value === "string" ? value.trim() : "";
-}
-
-async function getPublicPost(db: D1Database, id: string) {
-  return db.prepare(
-    `SELECT posts.id
-     FROM posts
-     INNER JOIN boards ON boards.id = posts.board_id
-     WHERE posts.id = ?
-       AND posts.deleted_at IS NULL
-       AND posts.status = 'published'
-       AND posts.visibility = 'public'
-       AND posts.moderation_status = 'normal'
-       AND boards.status = 'active'
-       AND boards.permission = 'public'
-     LIMIT 1`,
-  ).bind(id).first<PostRow>();
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
