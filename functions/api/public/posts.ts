@@ -13,7 +13,7 @@ type PostRow = {
   title: string;
   body: string;
   author_id: string;
-  author_nickname: string | null;
+  author_nickname: string;
   status: string;
   visibility: string;
   moderation_status: string;
@@ -68,7 +68,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
        posts.title,
        posts.body,
        posts.author_id,
-       users.nickname AS author_nickname,
+       posts.author_id AS author_nickname,
        posts.status,
        posts.visibility,
        posts.moderation_status,
@@ -77,7 +77,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
        COUNT(comments.id) AS comment_count
      FROM posts
      INNER JOIN boards ON boards.id = posts.board_id
-     LEFT JOIN users ON users.id = posts.author_id
      LEFT JOIN comments
        ON comments.post_id = posts.id
       AND comments.deleted_at IS NULL
