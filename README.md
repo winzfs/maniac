@@ -25,6 +25,8 @@ HttpOnly 쿠키 기반 세션 ✅
 댓글 작성/삭제 ✅
 내 정보 페이지 ✅
 프로필 설정 페이지 ✅
+프로필 이미지 업로드 ✅ Supabase Storage 기반
+provider 추상화 image_assets ✅ R2 이전 가능 구조
 내 활동 요약 ✅
 내 작성글 관리 ✅
 내 댓글 관리 ✅
@@ -33,7 +35,7 @@ HttpOnly 쿠키 기반 세션 ✅
 샘플 콘텐츠 seed endpoint ✅
 개발용 /api/dev/* endpoint 보호 ✅
 D1 migration 정리 ✅
-R2 업로드 ❌ 보류
+R2 직접 업로드 ❌ 보류
 결제/구독 ❌ 미구현
 관리자/모더레이션 UI ❌ 미구현
 ```
@@ -75,6 +77,7 @@ Next.js static export
 Cloudflare Pages
 Cloudflare Pages Functions
 Cloudflare D1
+Supabase Storage // image provider
 ```
 
 주요 설정:
@@ -97,7 +100,9 @@ wrangler.toml
 D1 binding은 wrangler.toml 기준으로 관리합니다.
 Cloudflare 대시보드에서 binding을 추가해도 wrangler.toml 설정이 우선될 수 있습니다.
 R2는 카드 등록 요구로 현재 보류 중입니다.
-R2 대신 장비 대표 이미지 URL, 부품 이미지 URL, 게시글 본문 data URL 방식으로 임시 대응합니다.
+현재 이미지는 Supabase Storage를 provider로 사용합니다.
+이미지 메타데이터는 D1 image_assets에 provider/bucket/object_key/public_url 형태로 저장합니다.
+나중에 R2로 이전할 때 feature table 구조를 바꾸지 않고 provider/object_key/public_url만 갱신할 수 있게 유지합니다.
 정적 export 환경 때문에 새 데이터 상세는 query string 기반 정적 shell 방식을 우선 사용합니다.
 ```
 
@@ -136,6 +141,28 @@ npm run pages:deploy
 
 ---
 
+## 환경변수
+
+이미지 업로드를 사용하려면 Cloudflare Pages 환경변수에 아래 값을 설정합니다.
+
+```txt
+SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...
+SUPABASE_STORAGE_BUCKET=maniac-images
+SUPABASE_PUBLIC_STORAGE_BASE_URL=선택값
+```
+
+주의:
+
+```txt
+SUPABASE_SERVICE_ROLE_KEY는 브라우저에 노출하지 않습니다.
+현재 구현은 Cloudflare Pages Function에서 service role key로 Supabase Storage에 서버 경유 업로드합니다.
+Storage bucket은 public bucket으로 두는 것을 전제로 public_url을 저장합니다.
+private bucket으로 전환하려면 signed URL 발급 전략을 별도 구현해야 합니다.
+```
+
+---
+
 ## D1 migration
 
 새 D1 데이터베이스에는 아래 순서로 migration을 적용합니다.
@@ -147,6 +174,7 @@ migrations/0003_add_boards_posts_comments.sql
 migrations/0004_add_board_metadata.sql
 migrations/0005_add_auth_tables.sql
 migrations/0007_add_user_profile_fields.sql
+migrations/0008_create_image_assets.sql
 ```
 
 `0006_seed_real_equipment_posts.sql`는 필수 schema migration이 아니라 선택 seed입니다.
@@ -177,6 +205,45 @@ npm run d1:seed:samples:local
 npm run d1:tables:remote
 # 또는
 npm run d1:tables:local
+```
+
+---
+
+## 이미지 저장 구조
+
+이미지 파일은 현재 Supabase Storage에 저장하고, Maniac D1에는 provider 중립 메타데이터만 저장합니다.
+
+```txt
+image_assets
+- id
+- owner_user_id
+- provider       // supabase, later r2
+- bucket
+- object_key
+- public_url
+- purpose        // profile_image, equipment_main_image, part_image, post_image 등
+- mime_type
+- size_bytes
+- width / height
+- deleted_at
+```
+
+현재 구현:
+
+```txt
+POST /api/uploads/profile-image
+→ 로그인 확인
+→ Supabase Storage 업로드
+→ image_assets insert
+→ users.profile_image_url / users.profile_image_asset_id 갱신
+```
+
+나중에 R2로 옮길 때 유지할 원칙:
+
+```txt
+feature table은 image URL만 직접 의존하거나 image_asset_id를 참조합니다.
+업로드 provider 변경은 functions/_shared/image-storage.ts에서 처리합니다.
+기존 Supabase object는 migration script로 R2에 복사한 뒤 image_assets.provider/bucket/object_key/public_url을 갱신합니다.
 ```
 
 ---
@@ -225,6 +292,7 @@ GET    /api/auth/me
 
 GET    /api/me/profile
 PATCH  /api/me/profile
+POST   /api/uploads/profile-image
 GET    /api/me/summary
 GET    /api/me/posts
 GET    /api/me/posts/:id
@@ -291,8 +359,10 @@ curl -H "x-dev-tools-secret: $DEV_TOOLS_SECRET" https://example.com/api/dev/seed
 ## 아직 미완성인 부분
 
 ```txt
-R2 이미지 업로드
-프로필 이미지
+장비 대표 이미지 업로드
+부품 이미지 업로드
+게시글 본문 이미지 업로드
+R2 직접 업로드 provider
 공개 사용자 프로필 페이지
 어드민 UI
 결제/구독
@@ -310,7 +380,9 @@ MFA
 ## 다음 개발 추천 순서
 
 1. 배포 후 회귀 테스트
-2. 이미지 업로드 구조 정리
-3. 신고/모더레이션 워크플로우
-4. 관리자 UI
-5. 결제/구독
+2. 장비 대표 이미지 업로드
+3. 부품 이미지 업로드
+4. 게시글 본문 이미지 data URL 제거 및 업로드 전환
+5. 신고/모더레이션 워크플로우
+6. 관리자 UI
+7. 결제/구독
