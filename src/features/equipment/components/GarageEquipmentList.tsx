@@ -34,6 +34,7 @@ type EquipmentListResponse = {
 type ListState =
   | { status: "loading" }
   | { status: "success"; equipments: EquipmentListItem[] }
+  | { status: "login-required"; message: string }
   | { status: "error"; message: string };
 
 function formatSpec(equipment: EquipmentListItem) {
@@ -59,6 +60,21 @@ function publicViewHref(slug: string) {
   return `/garage/view/?slug=${encodeURIComponent(slug)}`;
 }
 
+function LoginPrompt({ message }: { message: string }) {
+  return (
+    <Card className="space-y-4 p-6 text-center">
+      <div className="space-y-2">
+        <h3 className="text-xl font-bold">로그인이 필요합니다</h3>
+        <p className="text-sm leading-6 text-text-secondary">{message || "내 차고를 보려면 먼저 로그인해 주세요."}</p>
+      </div>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Link href="/login/"><Button>로그인</Button></Link>
+        <Link href="/signup/"><Button variant="secondary">회원가입</Button></Link>
+      </div>
+    </Card>
+  );
+}
+
 export function GarageEquipmentList() {
   const [state, setState] = useState<ListState>({ status: "loading" });
 
@@ -69,6 +85,11 @@ export function GarageEquipmentList() {
       try {
         const response = await fetch("/api/equipments", { cache: "no-store" });
         const data = (await response.json()) as EquipmentListResponse;
+
+        if (response.status === 401) {
+          if (isMounted) setState({ status: "login-required", message: data.error ?? "내 차고를 보려면 먼저 로그인해 주세요." });
+          return;
+        }
 
         if (!response.ok || !data.ok) throw new Error(data.error ?? "장비 목록을 불러오지 못했습니다.");
         if (isMounted) setState({ status: "success", equipments: data.equipments ?? [] });
@@ -100,6 +121,10 @@ export function GarageEquipmentList() {
         ))}
       </div>
     );
+  }
+
+  if (state.status === "login-required") {
+    return <LoginPrompt message={state.message} />;
   }
 
   if (state.status === "error") {
