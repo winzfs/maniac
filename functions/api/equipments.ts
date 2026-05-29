@@ -3,7 +3,8 @@
 import { createEquipment } from "../../src/features/equipment/actions/mutations";
 import { createEquipmentSchema } from "../../src/features/equipment/schemas";
 import { createDb } from "../../src/server/db/client";
-import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../_shared/dev-user";
+import { requireWritableMockUser } from "../_shared/auth";
+import { MOCK_USER_ID } from "../_shared/dev-user";
 import { ensureDevUser } from "../_shared/db-users";
 import { allowMethods, errorResponse, getErrorMessage, jsonResponse, readJsonObject, statusFromError, zodDetails } from "../_shared/http";
 
@@ -72,7 +73,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
+  const authError = requireWritableMockUser(env);
+  if (authError) return authError;
 
   try {
     const body = await readJsonObject(request);
