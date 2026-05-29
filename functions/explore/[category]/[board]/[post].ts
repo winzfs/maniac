@@ -14,12 +14,18 @@ function decodePathParam(value: string) {
   }
 }
 
-export const onRequestGet: PagesFunction = async ({ params }) => {
+export const onRequestGet: PagesFunction = async ({ request, params }) => {
   const post = decodePathParam(firstParam(params.post));
+  const url = new URL(request.url);
 
   if (!post) {
-    return Response.redirect("/explore/", 302);
+    url.pathname = "/explore/";
+    url.search = "";
+    return Response.redirect(url.toString(), 302);
   }
 
-  return Response.redirect(`/explore/post/?id=${encodeURIComponent(post)}`, 302);
+  url.pathname = "/explore/post/";
+  url.search = `?id=${encodeURIComponent(post)}`;
+
+  return Response.redirect(url.toString(), 302);
 };
