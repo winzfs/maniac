@@ -65,26 +65,6 @@ function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   return "Unexpected error.";
 }
-async function ensureTable(env: Env) {
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS maintenance_logs (
-    id TEXT PRIMARY KEY NOT NULL,
-    equipment_id TEXT NOT NULL REFERENCES equipments(id) ON DELETE CASCADE,
-    type TEXT NOT NULL DEFAULT 'custom',
-    title TEXT NOT NULL,
-    description TEXT,
-    performed_at INTEGER NOT NULL,
-    usage_metric_value INTEGER,
-    cost INTEGER,
-    shop_name TEXT,
-    is_public INTEGER NOT NULL DEFAULT 1,
-    visibility TEXT NOT NULL DEFAULT 'public',
-    moderation_status TEXT NOT NULL DEFAULT 'normal',
-    created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
-    deleted_at INTEGER
-  )`).run();
-  await env.DB.prepare("CREATE INDEX IF NOT EXISTS maintenance_logs_equipment_performed_idx ON maintenance_logs (equipment_id, performed_at)").run();
-}
 async function hasEquipment(env: Env, equipmentId: string) {
   const row = await env.DB.prepare("SELECT id FROM equipments WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1").bind(equipmentId, MOCK_USER_ID).first<{ id: string }>();
   return Boolean(row);
@@ -103,7 +83,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
-  await ensureTable(env);
   if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
   return jsonResponse({ ok: true, logs: await listLogs(env, equipmentId) });
 };
@@ -113,7 +92,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
   try {
-    await ensureTable(env);
     if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
     const input = createLogSchema.parse(await readJsonObject(request));
     const id = `log_${crypto.randomUUID()}`;
@@ -135,7 +113,6 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
 
   try {
-    await ensureTable(env);
     if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
 
     const logId = getLogId(request);
@@ -174,7 +151,6 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
 
-  await ensureTable(env);
   if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
 
   const logId = getLogId(request);
