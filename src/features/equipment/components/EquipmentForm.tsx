@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { ZodError } from "zod";
 import { Button } from "@/shared/components/ui/Button";
@@ -24,6 +25,7 @@ type SubmitState =
   | { status: "idle" }
   | { status: "submitting" }
   | { status: "success"; message: string; nextPath?: string }
+  | { status: "login-required"; message: string }
   | { status: "error"; message: string };
 
 type CreateEquipmentResponse = {
@@ -67,11 +69,15 @@ async function createEquipmentRequest(input: unknown) {
   });
   const data = (await response.json()) as CreateEquipmentResponse;
 
+  if (response.status === 401) {
+    return { data, loginRequired: true };
+  }
+
   if (!response.ok || !data.ok) {
     throw new Error(data.error ?? "장비 저장에 실패했습니다.");
   }
 
-  return data;
+  return { data, loginRequired: false };
 }
 
 export function EquipmentForm() {
@@ -84,10 +90,14 @@ export function EquipmentForm() {
     try {
       const input = formDataToCreateEquipmentInput(new FormData(event.currentTarget));
       const result = await createEquipmentRequest(input);
+      if (result.loginRequired) {
+        setSubmitState({ status: "login-required", message: result.data.error ?? "장비를 등록하려면 먼저 로그인해 주세요." });
+        return;
+      }
       setSubmitState({
         status: "success",
         message: `${input.nickname} 장비가 저장되었습니다.`,
-        nextPath: result.nextPath,
+        nextPath: result.data.nextPath,
       });
     } catch (error) {
       setSubmitState({ status: "error", message: getErrorMessage(error) });
@@ -154,7 +164,7 @@ export function EquipmentForm() {
           </div>
 
           <div className="space-y-2 sm:col-span-2">
-            <FieldLabel label="공개 URL slug" description="비워두면 장비 이름으로 자동 생성됩니다. 실제 저장 연결 후 중복 시 자동 보정됩니다." />
+            <FieldLabel label="공개 URL slug" description="비워두면 장비 이름으로 자동 생성됩니다. 중복 시 자동 보정됩니다." />
             <input className={inputClassName()} name="slug" placeholder="ninja-400" />
           </div>
 
@@ -170,7 +180,7 @@ export function EquipmentForm() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-lime-200">DB Create</p>
             <h2 className="mt-2 text-xl font-bold">장비 저장</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-300">현재는 임시 mock userId로 Pages Functions API에 저장합니다. 로그인 연결 후 실제 사용자 ID로 교체합니다.</p>
+            <p className="mt-2 text-sm leading-6 text-zinc-300">로그인한 계정의 내 차고에 장비를 저장합니다.</p>
           </div>
           <Button className="w-full" type="submit" disabled={submitState.status === "submitting"}>
             {submitState.status === "submitting" ? "저장 중..." : "장비 저장하기"}
@@ -179,6 +189,15 @@ export function EquipmentForm() {
             <div className="space-y-3 rounded-2xl bg-white/10 p-3 text-sm leading-6 text-lime-100">
               <p>{submitState.message}</p>
               {submitState.nextPath ? <a className="font-semibold underline underline-offset-4" href={submitState.nextPath}>공개 페이지 확인하기</a> : null}
+            </div>
+          ) : null}
+          {submitState.status === "login-required" ? (
+            <div className="space-y-3 rounded-2xl bg-white/10 p-3 text-sm leading-6 text-lime-100">
+              <p>{submitState.message}</p>
+              <div className="flex flex-wrap gap-2">
+                <Link className="font-semibold underline underline-offset-4" href="/login/">로그인</Link>
+                <Link className="font-semibold underline underline-offset-4" href="/signup/">회원가입</Link>
+              </div>
             </div>
           ) : null}
           {submitState.status === "error" ? (
@@ -191,14 +210,14 @@ export function EquipmentForm() {
           <ol className="space-y-2 text-sm leading-6 text-text-secondary">
             <li>1. form 값을 Zod schema로 검증</li>
             <li>2. /api/equipments POST 호출</li>
-            <li>3. createEquipment 실행</li>
+            <li>3. 현재 로그인 유저 ID로 장비 저장</li>
             <li>4. 생성된 slug 경로 반환</li>
           </ol>
         </Card>
 
         <Card className="space-y-3 p-5">
           <h3 className="font-bold">남은 연결</h3>
-          <p className="text-sm leading-6 text-text-secondary">실제 로그인 userId, DB migration 적용, R2 이미지 업로드, /garage/ 목록 DB 조회를 순서대로 연결합니다.</p>
+          <p className="text-sm leading-6 text-text-secondary">R2 이미지 업로드와 공개 프로필 확장을 이후 단계에서 연결합니다.</p>
         </Card>
       </aside>
     </form>
