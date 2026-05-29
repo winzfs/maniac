@@ -52,6 +52,10 @@ function excerpt(body: string) {
   return body.length > 120 ? `${body.slice(0, 120)}...` : body;
 }
 
+function postDetailHref(id: string) {
+  return `/explore/post/?id=${encodeURIComponent(id)}`;
+}
+
 export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: string; boardSlug: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
 
@@ -122,7 +126,7 @@ export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: 
         {state.posts.length === 0 ? <Card className="mt-4 p-5 text-sm text-text-secondary">아직 공개된 게시글이 없습니다.</Card> : null}
         <div className="mt-4 space-y-3">
           {state.posts.map((post) => (
-            <Link key={post.id} href={`/explore/${categorySlug}/${boardSlug}/${post.id}/`}>
+            <Link key={post.id} href={postDetailHref(post.id)}>
               <Card className="p-4 transition hover:-translate-y-0.5 hover:shadow-sm sm:p-5">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
