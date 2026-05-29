@@ -48,6 +48,7 @@ type PanelState =
   | { status: "ready"; equipment: EquipmentDetail; message?: string }
   | { status: "saving"; equipment: EquipmentDetail }
   | { status: "deleting"; equipment: EquipmentDetail }
+  | { status: "login-required"; message: string }
   | { status: "error"; message: string };
 
 function inputClassName(className = "") {
@@ -74,8 +75,28 @@ function numberValue(formData: FormData, key: string) {
 
 async function readApi(response: Response) {
   const data = (await response.json()) as ApiResponse;
+  if (response.status === 401) {
+    const error = new Error(data.error ?? "로그인이 필요합니다.");
+    error.name = "AuthRequiredError";
+    throw error;
+  }
   if (!response.ok || !data.ok) throw new Error(data.error ?? "요청에 실패했습니다.");
   return data;
+}
+
+function LoginPrompt({ message }: { message: string }) {
+  return (
+    <Card className="space-y-4 p-6 text-center">
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold">로그인이 필요합니다</h2>
+        <p className="text-sm leading-6 text-text-secondary">{message || "장비를 수정하려면 먼저 로그인해 주세요."}</p>
+      </div>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Link href="/login/"><Button>로그인</Button></Link>
+        <Link href="/signup/"><Button variant="secondary">회원가입</Button></Link>
+      </div>
+    </Card>
+  );
 }
 
 export function EquipmentEditPanel() {
@@ -99,6 +120,10 @@ export function EquipmentEditPanel() {
         if (isMounted) setState({ status: "ready", equipment: data.equipment });
       } catch (error) {
         if (!isMounted) return;
+        if (error instanceof Error && error.name === "AuthRequiredError") {
+          setState({ status: "login-required", message: error.message });
+          return;
+        }
         setState({ status: "error", message: error instanceof Error ? error.message : "장비를 불러오지 못했습니다." });
       }
     }
@@ -141,6 +166,10 @@ export function EquipmentEditPanel() {
       if (!data.equipment) throw new Error("수정 결과를 불러오지 못했습니다.");
       setState({ status: "ready", equipment: data.equipment, message: "장비 정보가 수정되었습니다." });
     } catch (error) {
+      if (error instanceof Error && error.name === "AuthRequiredError") {
+        setState({ status: "login-required", message: error.message });
+        return;
+      }
       setState({ status: "ready", equipment: current, message: error instanceof Error ? error.message : "수정에 실패했습니다." });
     }
   }
@@ -157,12 +186,20 @@ export function EquipmentEditPanel() {
       await readApi(await fetch(`/api/equipments/${current.id}`, { method: "DELETE" }));
       router.push("/garage/");
     } catch (error) {
+      if (error instanceof Error && error.name === "AuthRequiredError") {
+        setState({ status: "login-required", message: error.message });
+        return;
+      }
       setState({ status: "ready", equipment: current, message: error instanceof Error ? error.message : "삭제에 실패했습니다." });
     }
   }
 
   if (state.status === "loading") {
     return <Card className="p-6 text-sm text-text-secondary">장비 정보를 불러오는 중입니다...</Card>;
+  }
+
+  if (state.status === "login-required") {
+    return <LoginPrompt message={state.message} />;
   }
 
   if (state.status === "error") {
