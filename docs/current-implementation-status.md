@@ -6,7 +6,7 @@
 
 ## 1. 현재 한 줄 상태
 
-Cloudflare Pages + Pages Functions + D1 기반으로 장비 기록, 공개 장비 페이지, 커뮤니티 게시판, 이메일/비밀번호 로그인, 내 정보/내 콘텐츠 관리까지 1차 MVP가 구현되어 있다.
+Cloudflare Pages + Pages Functions + D1 기반으로 장비 기록, 공개 장비 페이지, 커뮤니티 게시판, 이메일/비밀번호 로그인, 내 정보/내 콘텐츠 관리, 홈 콘텐츠 피드까지 1차 MVP가 구현되어 있다.
 
 ```txt
 이메일 회원가입/로그인/로그아웃 ✅
@@ -26,6 +26,11 @@ HttpOnly 쿠키 기반 세션 ✅
 내 작성글 관리 ✅
 내 댓글 관리 ✅
 관리 페이지 레이아웃 1차 정리 ✅
+홈 콘텐츠 피드화 ✅
+홈 히어로 내 장비 카드 ✅
+홈 히어로 대표 장비 선택 ✅
+샘플 콘텐츠 seed endpoint ✅
+Dev Maniac 초기 콘텐츠 cleanup endpoint ✅
 D1 migration 정리 ✅
 R2 업로드 ❌ 보류
 결제/구독 ❌ 미구현
@@ -108,7 +113,7 @@ credential_hash만 users 테이블에 저장
 
 Cloudflare Workers Web Crypto는 PBKDF2 100,000회 초과 iteration을 지원하지 않으므로 100,000으로 고정한다.
 
-현재 권한 처리:
+권한 처리:
 
 ```txt
 functions/_shared/auth.ts
@@ -172,6 +177,47 @@ functions/_shared/auth-session.ts
 ```
 
 회원가입/로그인 화면은 `credentials: same-origin`을 명시하고, 메뉴는 `/api/auth/me`를 호출해 로그인 상태에 따라 `로그인/회원가입` 또는 `내 정보/로그아웃`을 표시한다.
+
+### 홈
+
+홈은 단순 소개형 페이지에서 실제 콘텐츠 피드형 페이지로 전환했다.
+
+```txt
+히어로
+- 왼쪽: 서비스 메시지 + 검색
+- 오른쪽: 로그인 사용자 내 장비 카드
+
+콘텐츠 피드
+- 최근 게시글
+- 댓글 많은 글
+- 인기 공개 장비
+- 정비 타임라인 + 카테고리 게시판
+- CTA
+```
+
+히어로 내 장비 카드 동작:
+
+```txt
+로그인 전: 로그인/회원가입 CTA 표시
+로그인 후 + 장비 없음: 장비 등록 CTA 표시
+로그인 후 + 장비 있음: 내 장비 1개 표시
+내 장비 2개 이상: 대표 장비 선택 드롭다운 표시
+대표 장비 선택값: localStorage(maniac.heroEquipmentId)에 저장
+공개 장비: /garage/view/?slug=...로 이동
+비공개 장비: /garage/edit/?id=...로 이동
+```
+
+홈 콘텐츠 API:
+
+```txt
+GET /api/public/posts?limit=6&sort=latest
+GET /api/public/posts?limit=6&sort=popular
+GET /api/public/equipments?limit=6
+GET /api/public/boards
+GET /api/equipments  // 히어로 내 장비 카드용, 로그인 필요
+```
+
+`sort=popular`는 댓글 수 많은 순으로 공개 게시글을 정렬한다.
 
 ### 장비 관리
 
@@ -283,6 +329,40 @@ GET    /api/me/comments
 DELETE /api/me/comments/:id
 ```
 
+### 샘플/개발용 콘텐츠 관리
+
+배포된 브라우저에서 직접 실행할 수 있는 개발용 endpoint를 추가했다.
+
+```txt
+GET/POST /api/dev/seed-lite
+GET/POST /api/dev/seed-samples
+GET/POST /api/dev/cleanup-dev-maniac
+```
+
+용도:
+
+```txt
+/api/dev/seed-lite
+- 적은 수의 실제 장비 기반 샘플 유저/게시판/장비/게시글/댓글 생성
+- 브라우저에서 실행 가능
+- 홈 콘텐츠가 비어 있을 때 빠르게 채우는 용도
+
+/api/dev/seed-samples
+- 더 많은 실제 장비 기반 샘플 데이터 seed
+- DB 상태나 migration 누락이 있으면 실패 가능성이 있으므로 lite seed 우선 권장
+
+/api/dev/cleanup-dev-maniac
+- 초기 Dev Maniac / Dev Manic 작성글과 댓글을 soft delete
+- users는 삭제하지 않음
+```
+
+주의:
+
+```txt
+이 endpoint들은 개발/샘플 데이터용이다.
+운영 공개 전에 관리자 인증 또는 제거가 필요하다.
+```
+
 ---
 
 ## 6. D1/Drizzle schema 상태
@@ -308,6 +388,7 @@ migrations/0002_add_maintenance_logs_and_parts.sql
 migrations/0003_add_boards_posts_comments.sql
 migrations/0004_add_board_metadata.sql
 migrations/0005_add_auth_tables.sql
+migrations/0006_seed_real_equipment_posts.sql  // 선택 seed
 ```
 
 추가된 package scripts:
@@ -318,6 +399,7 @@ npm run d1:migrate:local
 npm run d1:migrate:community:local
 npm run d1:migrate:board-meta:local
 npm run d1:migrate:auth:local
+npm run d1:seed:samples:local
 npm run d1:migrate:all:local
 npm run d1:tables:local
 
@@ -326,6 +408,7 @@ npm run d1:migrate:remote
 npm run d1:migrate:community:remote
 npm run d1:migrate:board-meta:remote
 npm run d1:migrate:auth:remote
+npm run d1:seed:samples:remote
 npm run d1:migrate:all:remote
 npm run d1:tables:remote
 ```
@@ -335,6 +418,7 @@ npm run d1:tables:remote
 ```txt
 새 D1 DB는 0001 → 0002 → 0003 → 0004 → 0005 순서로 적용한다.
 0005는 users.credential_hash 컬럼과 auth_sessions 테이블을 추가한다.
+0006은 필수 schema migration이 아니라 선택 seed다.
 ALTER TABLE users ADD COLUMN credential_hash TEXT; 는 같은 DB에 두 번 실행하면 중복 컬럼 오류가 난다.
 앞으로 테이블 생성/변경은 migration에서 관리한다.
 Drizzle schema와 SQL migration이 어긋나지 않게 변경 시 둘 다 확인해야 한다.
@@ -376,17 +460,27 @@ POST   /api/equipments/:id/parts
 PATCH  /api/equipments/:id/parts?partId=...
 DELETE /api/equipments/:id/parts?partId=...
 
+GET    /api/public/equipments
 GET    /api/public/equipments/:slug
 GET    /garage/:slug → redirect to /garage/view/?slug=...
 
 GET    /api/public/boards
 GET    /api/public/posts?category=...
 GET    /api/public/posts?board=...
+GET    /api/public/posts?sort=latest
+GET    /api/public/posts?sort=popular
 GET    /api/public/posts/:id
 POST   /api/posts
 POST   /api/public/posts/:id/comments
 DELETE /api/public/posts/:id/comments?commentId=...
 GET    /explore/:category/:board/:post → redirect to /explore/post/?id=...
+
+GET    /api/dev/seed-lite
+POST   /api/dev/seed-lite
+GET    /api/dev/seed-samples
+POST   /api/dev/seed-samples
+GET    /api/dev/cleanup-dev-maniac
+POST   /api/dev/cleanup-dev-maniac
 ```
 
 ---
@@ -406,77 +500,6 @@ functions/_shared/db-public-equipment.ts
 functions/_shared/db-boards.ts
 ```
 
-`http.ts` 주요 함수:
-
-```txt
-jsonResponse
-errorResponse
-getErrorMessage
-zodDetails
-statusFromError
-isRecord
-readJsonObject
-paramValue
-allowMethods
-```
-
-`auth.ts` 주요 함수:
-
-```txt
-requireCurrentUser
-```
-
-`auth-crypto.ts` 주요 함수:
-
-```txt
-hashPassword
-verifyPassword
-sha256Base64
-randomToken
-```
-
-`auth-session.ts` 주요 함수:
-
-```txt
-createAuthSession
-revokeAuthSession
-getCurrentUser
-getSessionToken
-setSessionCookieHeader
-clearSessionCookieHeader
-```
-
-`db-equipment.ts` 주요 함수:
-
-```txt
-hasEquipment
-hasMaintenanceLog
-hasPart
-```
-
-`db-posts.ts` 주요 함수:
-
-```txt
-getPublicPost
-getPublicPostDetail
-listPublicPosts
-listPublicComments
-```
-
-`db-public-equipment.ts` 주요 함수:
-
-```txt
-findPublicEquipment
-listPublicEquipmentLogs
-listPublicEquipmentParts
-```
-
-`db-boards.ts` 주요 함수:
-
-```txt
-listPublicBoards
-```
-
 현재 공통화 상태:
 
 ```txt
@@ -487,7 +510,9 @@ listPublicBoards
 공개 게시글 상세 API 상세 조회 ✅
 공개 게시글 상세 API 댓글 목록 조회 ✅
 공개 게시글 목록 API 목록 조회 ✅
+공개 게시글 sort=popular 지원 ✅
 공개 게시판 목록 API 목록 조회 ✅
+공개 장비 목록 API 인기 공개 장비 조회 ✅
 공개 장비 API 장비 조회 ✅
 공개 장비 API 정비 기록 조회 ✅
 공개 장비 API 부품 조회 ✅
@@ -523,6 +548,13 @@ D1 credential_hash 누락 대응 문서화 ✅
 내 작성글 목록 API 누락 수정 ✅
 /me/posts/edit useSearchParams Suspense 빌드 오류 해결 ✅
 내 정보/내 작성글/내 댓글 관리 레이아웃 정리 ✅
+홈을 콘텐츠 피드형으로 전환 ✅
+인기 공개 장비 API 추가 ✅
+공개 게시글 sort=popular 추가 ✅
+홈 히어로를 로그인 사용자 내 장비 카드로 전환 ✅
+홈 히어로 대표 장비 선택/localStorage 저장 추가 ✅
+샘플 seed endpoint 추가 ✅
+Dev Maniac 초기 글 cleanup endpoint 추가 ✅
 ```
 
 ---
@@ -537,6 +569,7 @@ R2 이미지 업로드
 어드민 UI
 결제/구독
 신고/모더레이션 워크플로우
+개발용 seed/cleanup endpoint 보호 또는 제거
 OpenNext 또는 Workers 런타임 전환 검토
 D1 local migration 흐름 고도화
 migration 적용 이력 관리 방식 검토
@@ -571,6 +604,8 @@ MFA
 /garage/new/
 /garage/edit/?id=...
 /garage/view/?slug=...
+/api/dev/seed-lite
+/api/dev/cleanup-dev-maniac
 ```
 
 확인 항목:
@@ -579,6 +614,12 @@ MFA
 회원가입 → /me 이동 정상
 로그아웃 → 로그인 요구 표시 정상
 로그인 → 홈 이동 후 메뉴에 내 정보/로그아웃 표시
+홈 히어로 내 장비 카드 표시
+내 장비 2개 이상일 때 대표 장비 선택 드롭다운 표시
+대표 장비 선택 후 새로고침해도 선택 유지
+홈 최근 게시글 표시
+홈 댓글 많은 글 표시
+홈 인기 공개 장비 표시
 /me 활동 요약 숫자 표시
 /me/posts 내 작성글 표시
 /me/posts/edit 게시글 수정/삭제
@@ -596,6 +637,8 @@ private 장비 공개 API 404 확인
 기존 게시글 URL redirect 정상 동작
 정비/부품 PATCH 시 누락 필드 보존 확인
 새 D1 DB에 npm run d1:migrate:all:remote 적용 확인
+샘플 콘텐츠가 필요하면 /api/dev/seed-lite 실행
+초기 Dev Maniac 글이 보이면 /api/dev/cleanup-dev-maniac 실행
 ```
 
 ### 2순위: 프로필 설정
