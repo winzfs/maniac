@@ -1,11 +1,12 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { eq } from "drizzle-orm";
-import { ZodError } from "zod";
 import { createEquipment } from "../../src/features/equipment/actions/mutations";
 import { createEquipmentSchema } from "../../src/features/equipment/schemas";
 import { createDb, type ManiacDatabase } from "../../src/server/db/client";
 import { users } from "../../src/server/db/schema";
+import { allowMethods, errorResponse, getErrorMessage, jsonResponse, readJsonObject, statusFromError, zodDetails } from "../_shared/http";
+import { MOCK_USER_ID } from "../_shared/dev-user";
 
 type Env = {
   DB: D1Database;
@@ -29,38 +30,6 @@ type EquipmentListRow = {
   latest_maintenance_at: number | null;
   total_maintenance_cost: number | null;
 };
-
-const MOCK_USER_ID = "dev_user_maniac";
-
-function jsonResponse(body: unknown, init?: ResponseInit) {
-  return new Response(JSON.stringify(body), {
-    ...init,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-      ...init?.headers,
-    },
-  });
-}
-
-function errorResponse(message: string, status = 400, details?: unknown) {
-  return jsonResponse({ ok: false, error: message, details }, { status });
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof ZodError) return error.issues[0]?.message ?? "Invalid equipment input.";
-  if (error instanceof Error) return error.message;
-  return "Unexpected error.";
-}
-
-async function readJson(request: Request) {
-  const contentType = request.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) {
-    throw new Error("Content-Type must be application/json.");
-  }
-
-  return request.json();
-}
 
 async function ensureDevUser(db: ManiacDatabase) {
   const existingRows = await db.select({ id: users.id }).from(users).where(eq(users.id, MOCK_USER_ID)).limit(1);
@@ -115,7 +84,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
 
   try {
-    const body = await readJson(request);
+    const body = await readJsonObject(request);
     const input = createEquipmentSchema.parse(body);
     const db = createDb(env.DB);
 
@@ -129,20 +98,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       authMode: "mock-user",
     }, { status: 201 });
   } catch (error) {
-    const status = error instanceof ZodError ? 422 : 400;
-    return errorResponse(getErrorMessage(error), status, error instanceof ZodError ? error.flatten() : undefined);
+    return errorResponse(getErrorMessage(error, "Invalid equipment input."), statusFromError(error), zodDetails(error));
   }
 };
 
 export const onRequest: PagesFunction<Env> = async ({ request }) => {
-  if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        allow: "GET, POST, OPTIONS",
-      },
-    });
-  }
-
+  if (request.method === "OPTIONS") return allowMethods(["GET", "POST", "OPTIONS"]);
   return errorResponse("Method not allowed.", 405);
 };
