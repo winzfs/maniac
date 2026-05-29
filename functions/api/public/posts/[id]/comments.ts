@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../../../../_shared/dev-user";
+import { requireWritableMockUser } from "../../../../_shared/auth";
+import { MOCK_USER_ID } from "../../../../_shared/dev-user";
 import { getPublicPost } from "../../../../_shared/db-posts";
 import { ensureDevUser } from "../../../../_shared/db-users";
 import { allowMethods, errorResponse, getErrorMessage, isRecord, jsonResponse, paramValue, readJsonObject } from "../../../../_shared/http";
@@ -24,7 +25,8 @@ function textField(body: Record<string, unknown>, key: string) {
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
+  const authError = requireWritableMockUser(env);
+  if (authError) return authError;
 
   try {
     const postId = paramValue(params, "id");
@@ -81,7 +83,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
 
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
+  const authError = requireWritableMockUser(env);
+  if (authError) return authError;
 
   try {
     const postId = paramValue(params, "id");
