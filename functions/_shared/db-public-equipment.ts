@@ -1,5 +1,3 @@
-import { MOCK_USER_ID } from "./dev-user";
-
 export type PublicEquipmentRow = {
   id: string;
   category: string;
@@ -46,13 +44,13 @@ export async function findPublicEquipment(db: D1Database, slug: string) {
   return db.prepare(
     `SELECT id, category, brand, model, nickname, slug, year, description, main_image_url, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at
      FROM equipments
-     WHERE user_id = ?
-       AND slug = ?
+     WHERE slug = ?
        AND deleted_at IS NULL
        AND visibility = 'public'
        AND moderation_status = 'normal'
+     ORDER BY created_at DESC
      LIMIT 1`,
-  ).bind(MOCK_USER_ID, slug).first<PublicEquipmentRow>();
+  ).bind(slug).first<PublicEquipmentRow>();
 }
 
 export async function listPublicEquipmentLogs(db: D1Database, equipmentId: string) {
