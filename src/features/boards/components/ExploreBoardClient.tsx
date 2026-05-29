@@ -58,6 +58,7 @@ function postDetailHref(id: string) {
 
 export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: string; boardSlug: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
+  const writeHref = `/explore/${categorySlug}/${boardSlug}/write/`;
 
   useEffect(() => {
     let mounted = true;
@@ -122,15 +123,32 @@ export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: 
           <h2 className="mt-1 text-2xl font-bold">{state.posts.length} posts</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-300">{state.board.description ?? "게시판 설명이 없습니다."}</p>
         </div>
-        <Link href={`/explore/${categorySlug}/${boardSlug}/write/`}>
+        <Link href={writeHref}>
           <Button className="w-full sm:w-auto">글쓰기</Button>
         </Link>
       </Card>
 
       <section>
         <SectionHeader title="게시글" description="D1 posts 테이블의 공개 게시글을 표시합니다." />
-        {state.postsError ? <Card className="mt-4 p-5 text-sm text-text-secondary">게시글 목록을 불러오지 못했습니다. 글쓰기는 계속 사용할 수 있습니다.</Card> : null}
-        {!state.postsError && state.posts.length === 0 ? <Card className="mt-4 p-5 text-sm text-text-secondary">아직 공개된 게시글이 없습니다.</Card> : null}
+        {state.postsError ? (
+          <Card className="mt-4 space-y-4 p-5">
+            <p className="text-sm leading-6 text-text-secondary">게시글 목록을 불러오지 못했습니다. 글쓰기는 계속 사용할 수 있습니다.</p>
+            <Link href={writeHref}>
+              <Button>글쓰기</Button>
+            </Link>
+          </Card>
+        ) : null}
+        {!state.postsError && state.posts.length === 0 ? (
+          <Card className="mt-4 space-y-4 p-5">
+            <div>
+              <h3 className="text-lg font-bold">아직 공개된 게시글이 없습니다.</h3>
+              <p className="mt-2 text-sm leading-6 text-text-secondary">이 게시판의 첫 글을 작성해 보세요.</p>
+            </div>
+            <Link href={writeHref}>
+              <Button>첫 글 작성하기</Button>
+            </Link>
+          </Card>
+        ) : null}
         <div className="mt-4 space-y-3">
           {state.posts.map((post) => (
             <Link key={post.id} href={postDetailHref(post.id)}>
