@@ -1,8 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { z } from "zod";
+import { isMockUserWriteBlocked, MOCK_USER_PRODUCTION_ERROR } from "../../../_shared/dev-user";
+import { hasEquipment, hasMaintenanceLog } from "../../../_shared/db-equipment";
 import { allowMethods, errorResponse, getErrorMessage, jsonResponse, paramValue, readJsonObject, statusFromError, zodDetails } from "../../../_shared/http";
-import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../../../_shared/dev-user";
 
 type Env = { DB: D1Database; APP_ENV?: string };
 type LogRow = {
@@ -43,14 +44,6 @@ function getLogId(request: Request) {
   const url = new URL(request.url);
   return url.searchParams.get("logId") ?? "";
 }
-async function hasEquipment(env: Env, equipmentId: string) {
-  const row = await env.DB.prepare("SELECT id FROM equipments WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1").bind(equipmentId, MOCK_USER_ID).first<{ id: string }>();
-  return Boolean(row);
-}
-async function hasLog(env: Env, equipmentId: string, logId: string) {
-  const row = await env.DB.prepare("SELECT id FROM maintenance_logs WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL LIMIT 1").bind(logId, equipmentId).first<{ id: string }>();
-  return Boolean(row);
-}
 async function listLogs(env: Env, equipmentId: string) {
   const rows = await env.DB.prepare(`SELECT id, equipment_id, type, title, description, performed_at, usage_metric_value, cost, shop_name, is_public, visibility, moderation_status, created_at, updated_at
     FROM maintenance_logs WHERE equipment_id = ? AND deleted_at IS NULL ORDER BY performed_at DESC, created_at DESC LIMIT 100`).bind(equipmentId).all<LogRow>();
@@ -90,7 +83,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
-  if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
+  if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
   return jsonResponse({ ok: true, logs: await listLogs(env, equipmentId) });
 };
 
@@ -100,7 +93,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
   try {
-    if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
+    if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
     const input = createLogSchema.parse(await readJsonObject(request));
     const id = `log_${crypto.randomUUID()}`;
     const now = Date.now();
@@ -121,11 +114,11 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
 
   try {
-    if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
+    if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
 
     const logId = getLogId(request);
     if (!logId) return errorResponse("Maintenance log id is required.", 400);
-    if (!(await hasLog(env, equipmentId, logId))) return errorResponse("Maintenance log not found.", 404);
+    if (!(await hasMaintenanceLog(env.DB, equipmentId, logId))) return errorResponse("Maintenance log not found.", 404);
 
     const input = updateLogSchema.parse(await readJsonObject(request));
     const now = Date.now();
@@ -145,11 +138,11 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
 
-  if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
+  if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
 
   const logId = getLogId(request);
   if (!logId) return errorResponse("Maintenance log id is required.", 400);
-  if (!(await hasLog(env, equipmentId, logId))) return errorResponse("Maintenance log not found.", 404);
+  if (!(await hasMaintenanceLog(env.DB, equipmentId, logId))) return errorResponse("Maintenance log not found.", 404);
 
   const now = Date.now();
   await env.DB.prepare("UPDATE maintenance_logs SET deleted_at = ?, updated_at = ? WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL").bind(now, now, logId, equipmentId).run();
