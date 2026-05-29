@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { sanitizePostHtml } from "@/features/boards/utils/html";
 
@@ -32,6 +33,10 @@ type PostDetailResponse =
   | { ok: true; post: PublicPost; comments: PublicComment[] }
   | { ok: false; error?: string };
 
+type CreateCommentResponse =
+  | { ok: true; comment: PublicComment }
+  | { ok: false; error?: string };
+
 type State =
   | { status: "loading" }
   | { status: "ready"; post: PublicPost; comments: PublicComment[] }
@@ -48,12 +53,30 @@ async function readPost(id: string) {
   return data;
 }
 
+async function createComment(postId: string, body: string) {
+  const response = await fetch(`/api/public/posts/${encodeURIComponent(postId)}/comments`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ body }),
+  });
+  const data = (await response.json()) as CreateCommentResponse;
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.ok === false ? data.error ?? "댓글 저장에 실패했습니다." : "댓글 저장에 실패했습니다.");
+  }
+
+  return data.comment;
+}
+
 function formatDate(value: number) {
   return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
 }
 
 export function PublicPostDetailClient({ id }: { id: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
+  const [commentBody, setCommentBody] = useState("");
+  const [commentStatus, setCommentStatus] = useState("");
+  const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -78,6 +101,31 @@ export function PublicPostDetailClient({ id }: { id: string }) {
       mounted = false;
     };
   }, [id]);
+
+  async function handleCommentSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (state.status !== "ready") return;
+
+    const body = commentBody.trim();
+    if (body.length < 2) {
+      setCommentStatus("댓글은 2자 이상 입력해 주세요.");
+      return;
+    }
+
+    setIsCommentSubmitting(true);
+    setCommentStatus("댓글을 저장하는 중입니다...");
+
+    try {
+      const comment = await createComment(state.post.id, body);
+      setState({ ...state, comments: [...state.comments, comment] });
+      setCommentBody("");
+      setCommentStatus("댓글이 저장되었습니다.");
+    } catch (error) {
+      setCommentStatus(error instanceof Error ? error.message : "댓글 저장에 실패했습니다.");
+    } finally {
+      setIsCommentSubmitting(false);
+    }
+  }
 
   if (state.status === "loading") {
     return <Card className="p-6 text-sm text-text-secondary">게시글을 불러오는 중입니다...</Card>;
@@ -117,8 +165,26 @@ export function PublicPostDetailClient({ id }: { id: string }) {
           />
         </Card>
 
-        <Card className="space-y-4 p-5 sm:p-6">
-          <h2 className="text-xl font-black tracking-[-0.04em]">댓글</h2>
+        <Card className="space-y-5 p-5 sm:p-6">
+          <div>
+            <h2 className="text-xl font-black tracking-[-0.04em]">댓글</h2>
+            <p className="mt-1 text-sm leading-6 text-text-secondary">현재는 개발용 mock user로 댓글을 저장합니다.</p>
+          </div>
+
+          <form onSubmit={handleCommentSubmit} className="space-y-3">
+            <textarea
+              value={commentBody}
+              onChange={(event) => setCommentBody(event.target.value)}
+              className="min-h-28 w-full rounded-2xl border border-border bg-background p-4 text-sm leading-6 outline-none focus:border-graphite"
+              placeholder="댓글을 입력하세요"
+              maxLength={1000}
+            />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-5 text-text-secondary">{commentStatus || `${commentBody.length}/1000`}</p>
+              <Button type="submit" disabled={isCommentSubmitting}>{isCommentSubmitting ? "저장 중..." : "댓글 저장"}</Button>
+            </div>
+          </form>
+
           {comments.length === 0 ? <p className="text-sm text-text-secondary">아직 공개된 댓글이 없습니다.</p> : null}
           <div className="space-y-3">
             {comments.map((comment) => (
