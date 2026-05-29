@@ -3,9 +3,7 @@
 import { createEquipment } from "../../src/features/equipment/actions/mutations";
 import { createEquipmentSchema } from "../../src/features/equipment/schemas";
 import { createDb } from "../../src/server/db/client";
-import { requireWritableMockUser } from "../_shared/auth";
-import { MOCK_USER_ID } from "../_shared/dev-user";
-import { ensureDevUser } from "../_shared/db-users";
+import { requireCurrentUser } from "../_shared/auth";
 import { allowMethods, errorResponse, getErrorMessage, jsonResponse, readJsonObject, statusFromError, zodDetails } from "../_shared/http";
 
 type Env = {
@@ -36,8 +34,10 @@ function publicViewPath(slug: string) {
   return `/garage/view/?slug=${encodeURIComponent(slug)}`;
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
+  const auth = await requireCurrentUser(request, env);
+  if (auth.response) return auth.response;
 
   const rows = await env.DB.prepare(
     `SELECT
@@ -66,29 +66,28 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
      GROUP BY equipments.id
      ORDER BY equipments.created_at DESC
      LIMIT 50`,
-  ).bind(MOCK_USER_ID).all<EquipmentListRow>();
+  ).bind(auth.user.id).all<EquipmentListRow>();
 
   return jsonResponse({ ok: true, equipments: rows.results ?? [] });
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  const authError = requireWritableMockUser(env);
-  if (authError) return authError;
+  const auth = await requireCurrentUser(request, env);
+  if (auth.response) return auth.response;
 
   try {
     const body = await readJsonObject(request);
     const input = createEquipmentSchema.parse(body);
     const db = createDb(env.DB);
 
-    await ensureDevUser(env.DB);
-    const result = await createEquipment(db, MOCK_USER_ID, input);
+    const result = await createEquipment(db, auth.user.id, input);
 
     return jsonResponse({
       ok: true,
       equipment: result,
       nextPath: publicViewPath(result.slug),
-      authMode: "mock-user",
+      authMode: "session",
     }, { status: 201 });
   } catch (error) {
     return errorResponse(getErrorMessage(error, "Invalid equipment input."), statusFromError(error), zodDetails(error));
