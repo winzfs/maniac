@@ -20,6 +20,9 @@ type EquipmentListItem = {
   visibility: string;
   moderation_status: string;
   created_at: number;
+  maintenance_log_count: number;
+  latest_maintenance_at: number | null;
+  total_maintenance_cost: number | null;
 };
 
 type EquipmentListResponse = {
@@ -40,6 +43,16 @@ function formatSpec(equipment: EquipmentListItem) {
 function formatUsage(equipment: EquipmentListItem) {
   if (equipment.usage_metric_value == null) return "사용량 미입력";
   return `${equipment.usage_metric_value.toLocaleString()} ${equipment.usage_metric_type}`;
+}
+
+function formatDate(value: number | null) {
+  if (value == null) return "기록 없음";
+  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+}
+
+function formatCost(value: number | null) {
+  if (!value) return "0원";
+  return `${value.toLocaleString()}원`;
 }
 
 export function GarageEquipmentList() {
@@ -117,6 +130,20 @@ export function GarageEquipmentList() {
             <p className="text-sm text-text-secondary">{formatSpec(equipment)}</p>
             <p className="text-sm text-text-secondary">{formatUsage(equipment)}</p>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{equipment.visibility}</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 rounded-2xl bg-background p-2 text-center text-xs">
+            <div className="rounded-xl bg-surface p-2">
+              <b className="block text-sm text-text-primary">{equipment.maintenance_log_count}</b>
+              <span className="text-text-secondary">기록</span>
+            </div>
+            <div className="rounded-xl bg-surface p-2">
+              <b className="block text-sm text-text-primary">{formatDate(equipment.latest_maintenance_at).replace(/\. /g, ".")}</b>
+              <span className="text-text-secondary">최근</span>
+            </div>
+            <div className="rounded-xl bg-surface p-2">
+              <b className="block text-sm text-text-primary">{formatCost(equipment.total_maintenance_cost)}</b>
+              <span className="text-text-secondary">비용</span>
+            </div>
           </div>
           <div className="mt-auto grid grid-cols-2 gap-2">
             <Link href={`/garage/${equipment.slug}/`}>
