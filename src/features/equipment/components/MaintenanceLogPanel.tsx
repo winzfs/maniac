@@ -39,6 +39,13 @@ function dateToMs(value?: string) {
   const parsed = new Date(`${value}T00:00:00`).getTime();
   return Number.isFinite(parsed) ? parsed : Date.now();
 }
+function msToDateInput(ms: number) {
+  const date = new Date(ms);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 function formatDate(ms: number) {
   return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 }
@@ -50,6 +57,7 @@ async function readApi(response: Response) {
 
 export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -91,6 +99,40 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
     }
   }
 
+  async function handleUpdate(event: FormEvent<HTMLFormElement>, logId: string) {
+    event.preventDefault();
+    if (state.status !== "ready") return;
+
+    const previous = state.logs;
+    setState({ status: "saving", logs: previous });
+
+    try {
+      const formData = new FormData(event.currentTarget);
+      const payload = {
+        type: textValue(formData, "type"),
+        title: textValue(formData, "title"),
+        description: textValue(formData, "description"),
+        performedAt: dateToMs(textValue(formData, "performedAt")),
+        usageMetricValue: numberValue(formData, "usageMetricValue"),
+        cost: numberValue(formData, "cost"),
+        shopName: textValue(formData, "shopName"),
+        isPublic: textValue(formData, "visibility") === "public",
+        visibility: textValue(formData, "visibility") ?? "public",
+      };
+
+      const data = await readApi(await fetch(`/api/equipments/${equipmentId}/logs?logId=${encodeURIComponent(logId)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      }));
+
+      setEditingLogId(null);
+      setState({ status: "ready", logs: data.logs ?? [], message: "정비 기록이 수정되었습니다." });
+    } catch (error) {
+      setState({ status: "ready", logs: previous, message: error instanceof Error ? error.message : "정비 기록 수정에 실패했습니다." });
+    }
+  }
+
   async function handleDelete(logId: string) {
     if (state.status !== "ready") return;
     const confirmed = window.confirm("이 정비 기록을 삭제할까요? 공개 페이지에서도 사라집니다.");
@@ -101,6 +143,7 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
 
     try {
       const data = await readApi(await fetch(`/api/equipments/${equipmentId}/logs?logId=${encodeURIComponent(logId)}`, { method: "DELETE" }));
+      setEditingLogId(null);
       setState({ status: "ready", logs: data.logs ?? [], message: "정비 기록이 삭제되었습니다." });
     } catch (error) {
       setState({ status: "ready", logs: previous, message: error instanceof Error ? error.message : "정비 기록 삭제에 실패했습니다." });
@@ -122,19 +165,45 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
         </div>
         {logs.length === 0 ? <div className="rounded-2xl border border-dashed border-border p-5 text-sm text-text-secondary">아직 정비 기록이 없습니다.</div> : null}
         <div className="space-y-3">
-          {logs.map((log) => (
-            <article key={log.id} className="rounded-2xl border border-border bg-surface p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{log.type} · {formatDate(log.performed_at)}</p>
-                  <h3 className="mt-1 text-lg font-bold">{log.title}</h3>
-                </div>
-                <Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => handleDelete(log.id)}>삭제</Button>
-              </div>
-              {log.description ? <p className="mt-2 text-sm leading-6 text-text-secondary">{log.description}</p> : null}
-              <p className="mt-3 text-xs font-semibold text-text-secondary">{log.usage_metric_value != null ? `${log.usage_metric_value.toLocaleString()} km` : ""} {log.cost != null ? `· ${log.cost.toLocaleString()}원` : ""} {log.shop_name ? `· ${log.shop_name}` : ""}</p>
-            </article>
-          ))}
+          {logs.map((log) => {
+            const isEditing = editingLogId === log.id;
+
+            return (
+              <article key={log.id} className="rounded-2xl border border-border bg-surface p-4">
+                {isEditing ? (
+                  <form className="space-y-3" onSubmit={(event) => handleUpdate(event, log.id)}>
+                    <input className={fieldClass} name="title" defaultValue={log.title} required />
+                    <select className={fieldClass} name="type" defaultValue={log.type}><option value="oil">오일</option><option value="tire">타이어</option><option value="inspection">점검</option><option value="custom">기타</option></select>
+                    <input className={fieldClass} name="performedAt" type="date" defaultValue={msToDateInput(log.performed_at)} />
+                    <input className={fieldClass} name="usageMetricValue" inputMode="numeric" defaultValue={log.usage_metric_value ?? ""} placeholder="주행거리 km" />
+                    <input className={fieldClass} name="cost" inputMode="numeric" defaultValue={log.cost ?? ""} placeholder="비용" />
+                    <input className={fieldClass} name="shopName" defaultValue={log.shop_name ?? ""} placeholder="정비소명" />
+                    <textarea className={areaClass} name="description" defaultValue={log.description ?? ""} placeholder="메모" />
+                    <select className={fieldClass} name="visibility" defaultValue={log.visibility}><option value="public">전체 공개</option><option value="unlisted">링크 공개</option><option value="private">비공개</option></select>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button type="submit" disabled={isSaving}>{isSaving ? "저장 중..." : "저장"}</Button>
+                      <Button type="button" variant="secondary" disabled={isSaving} onClick={() => setEditingLogId(null)}>취소</Button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{log.type} · {formatDate(log.performed_at)}</p>
+                        <h3 className="mt-1 text-lg font-bold">{log.title}</h3>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => setEditingLogId(log.id)}>수정</Button>
+                        <Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => handleDelete(log.id)}>삭제</Button>
+                      </div>
+                    </div>
+                    {log.description ? <p className="mt-2 text-sm leading-6 text-text-secondary">{log.description}</p> : null}
+                    <p className="mt-3 text-xs font-semibold text-text-secondary">{log.usage_metric_value != null ? `${log.usage_metric_value.toLocaleString()} km` : ""} {log.cost != null ? `· ${log.cost.toLocaleString()}원` : ""} {log.shop_name ? `· ${log.shop_name}` : ""} · {log.visibility}</p>
+                  </>
+                )}
+              </article>
+            );
+          })}
         </div>
       </Card>
       <Card className="space-y-4 p-5">
