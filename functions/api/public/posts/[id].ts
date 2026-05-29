@@ -15,7 +15,7 @@ type PostRow = {
   title: string;
   body: string;
   author_id: string;
-  author_nickname: string | null;
+  author_nickname: string;
   status: string;
   visibility: string;
   moderation_status: string;
@@ -28,7 +28,7 @@ type CommentRow = {
   post_id: string;
   body: string;
   author_id: string;
-  author_nickname: string | null;
+  author_nickname: string;
   created_at: number;
   updated_at: number;
 };
@@ -39,6 +39,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
   const id = paramValue(params, "id");
   if (!id) return errorResponse("Post id is required.", 400);
 
+  const derivedCategory = "COALESCE(NULLIF(boards.category, ''), substr(boards.slug, 1, instr(boards.slug || '-', '-') - 1))";
+
   const post = await env.DB.prepare(
     `SELECT
        posts.id,
@@ -47,11 +49,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
        boards.title AS board_title,
        boards.description AS board_description,
        boards.type AS board_type,
-       boards.category,
+       ${derivedCategory} AS category,
        posts.title,
        posts.body,
        posts.author_id,
-       users.nickname AS author_nickname,
+       posts.author_id AS author_nickname,
        posts.status,
        posts.visibility,
        posts.moderation_status,
@@ -59,7 +61,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
        posts.updated_at
      FROM posts
      INNER JOIN boards ON boards.id = posts.board_id
-     LEFT JOIN users ON users.id = posts.author_id
      WHERE posts.id = ?
        AND posts.deleted_at IS NULL
        AND posts.status = 'published'
@@ -78,11 +79,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
        comments.post_id,
        comments.body,
        comments.author_id,
-       users.nickname AS author_nickname,
+       comments.author_id AS author_nickname,
        comments.created_at,
        comments.updated_at
      FROM comments
-     LEFT JOIN users ON users.id = comments.author_id
      WHERE comments.post_id = ?
        AND comments.deleted_at IS NULL
        AND comments.status = 'published'
