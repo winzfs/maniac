@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { z } from "zod";
-import { requireWritableMockUser } from "../../../_shared/auth";
+import { requireCurrentUser } from "../../../_shared/auth";
 import { hasEquipment, hasPart } from "../../../_shared/db-equipment";
 import { allowMethods, errorResponse, getErrorMessage, jsonResponse, paramValue, readJsonObject, statusFromError, zodDetails } from "../../../_shared/http";
 
@@ -79,22 +79,29 @@ function buildUpdatePartQuery(input: UpdatePartInput, now: number, partId: strin
   };
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
+async function requireOwnedEquipment(request: Request, env: Env, equipmentId: string) {
+  const auth = await requireCurrentUser(request, env);
+  if (auth.response) return { userId: "", response: auth.response };
+  if (!(await hasEquipment(env.DB, equipmentId, auth.user.id))) return { userId: auth.user.id, response: errorResponse("Equipment not found.", 404) };
+  return { userId: auth.user.id, response: null };
+}
+
+export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
-  if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
+  const owned = await requireOwnedEquipment(request, env, equipmentId);
+  if (owned.response) return owned.response;
   return jsonResponse({ ok: true, parts: await listParts(env, equipmentId) });
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  const authError = requireWritableMockUser(env);
-  if (authError) return authError;
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
   try {
-    if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
+    const owned = await requireOwnedEquipment(request, env, equipmentId);
+    if (owned.response) return owned.response;
     const input = createPartSchema.parse(await readJsonObject(request));
     const id = `part_${crypto.randomUUID()}`;
     const now = Date.now();
@@ -110,12 +117,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
 
 export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  const authError = requireWritableMockUser(env);
-  if (authError) return authError;
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
   try {
-    if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
+    const owned = await requireOwnedEquipment(request, env, equipmentId);
+    if (owned.response) return owned.response;
     const partId = getPartId(request);
     if (!partId) return errorResponse("Part id is required.", 400);
     if (!(await hasPart(env.DB, equipmentId, partId))) return errorResponse("Part not found.", 404);
@@ -133,11 +139,10 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
 
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  const authError = requireWritableMockUser(env);
-  if (authError) return authError;
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
-  if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
+  const owned = await requireOwnedEquipment(request, env, equipmentId);
+  if (owned.response) return owned.response;
   const partId = getPartId(request);
   if (!partId) return errorResponse("Part id is required.", 400);
   if (!(await hasPart(env.DB, equipmentId, partId))) return errorResponse("Part not found.", 404);
