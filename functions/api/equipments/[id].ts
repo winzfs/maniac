@@ -1,8 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { updateEquipmentSchema } from "../../../src/features/equipment/schemas";
+import { requireWritableMockUser } from "../../_shared/auth";
+import { MOCK_USER_ID } from "../../_shared/dev-user";
 import { allowMethods, errorResponse, getErrorMessage, jsonResponse, paramValue, readJsonObject, statusFromError, zodDetails } from "../../_shared/http";
-import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../../_shared/dev-user";
 
 type Env = {
   DB: D1Database;
@@ -59,7 +60,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
 
 export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
+  const authError = requireWritableMockUser(env);
+  if (authError) return authError;
 
   const id = getEquipmentId(params);
   if (!id) return errorResponse("Equipment id is required.", 400);
@@ -103,7 +105,8 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
 
 export const onRequestDelete: PagesFunction<Env> = async ({ env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
+  const authError = requireWritableMockUser(env);
+  if (authError) return authError;
 
   const id = getEquipmentId(params);
   if (!id) return errorResponse("Equipment id is required.", 400);
