@@ -30,6 +30,7 @@ D1 migration 정리 ✅
 API 공통 HTTP 유틸 1차 적용 ✅
 API DB 헬퍼 공통화 5차 적용 ✅
 mock user 보장 로직 공통화 ✅
+권한 검증 레이어 공통화 ✅
 운영 환경 mock user 쓰기 차단 가드 ✅
 R2 업로드 ❌ 보류
 실제 로그인 ❌ mock user 사용
@@ -91,6 +92,8 @@ APP_ENV=production 일 때 mock user 기반 쓰기 API는 401로 차단한다.
 읽기 API는 기존 개발/공개 조회 흐름을 유지한다.
 ```
 
+쓰기 API는 `functions/_shared/auth.ts`의 `requireWritableMockUser(env)`를 통해 운영 환경 차단을 공통 처리한다.
+
 보호 대상:
 
 ```txt
@@ -115,7 +118,7 @@ DELETE /api/public/posts/:id/comments?commentId=...
 세션에서 userId 추출
 mock user 제거
 사용자별 데이터 격리
-권한 검증 공통화
+권한 검증 공통화 고도화
 ```
 
 ---
@@ -326,6 +329,7 @@ GET    /explore/:category/:board/:post → redirect to /explore/post/?id=...
 
 ```txt
 functions/_shared/http.ts
+functions/_shared/auth.ts
 functions/_shared/dev-user.ts
 functions/_shared/db-users.ts
 functions/_shared/db-equipment.ts
@@ -346,6 +350,12 @@ isRecord
 readJsonObject
 paramValue
 allowMethods
+```
+
+`auth.ts` 주요 함수:
+
+```txt
+requireWritableMockUser
 ```
 
 `dev-user.ts` 주요 값/함수:
@@ -396,6 +406,7 @@ listPublicBoards
 공통화 적용 완료:
 
 ```txt
+쓰기 API 운영 환경 mock user 차단
 정비 기록 API 장비/정비 기록 존재 확인
 부품 API 장비/부품 존재 확인
 장비 생성 API dev user 보장
@@ -414,7 +425,7 @@ listPublicBoards
 아직 공통화하지 못한 부분:
 
 ```txt
-권한 검증 레이어
+실제 로그인/세션 기반 권한 검증 레이어
 ```
 
 ---
@@ -444,6 +455,7 @@ API DB 헬퍼 공통화 1차 적용 ✅
 공개 장비 DB 헬퍼 공통화 적용 ✅
 게시판/게시글 목록 DB 헬퍼 공통화 적용 ✅
 mock user 보장 로직 공통화 적용 ✅
+권한 검증 레이어 공통화 적용 ✅
 ```
 
 ---
@@ -458,7 +470,7 @@ R2 이미지 업로드
 결제/구독
 신고/모더레이션 워크플로우
 OpenNext 또는 Workers 런타임 전환 검토
-권한 검증 레이어 공통화
+실제 로그인/세션 기반 권한 검증 레이어
 D1 local migration 흐름 고도화
 migration 적용 이력 관리 방식 검토
 ```
@@ -504,6 +516,7 @@ APP_ENV=production에서 mock 쓰기 API 401 확인
 공개 장비 상세/정비/부품 API 회귀 확인
 공개 게시판/게시글 목록 API 회귀 확인
 장비 생성/게시글 작성 mock user 보장 확인
+공통 auth guard 기반 mock write 차단 확인
 ```
 
 ### 2순위: 실제 로그인/세션 연결
@@ -514,9 +527,9 @@ mock user를 제거하고 실제 사용자별 데이터로 분리한다.
 
 R2 사용이 가능해지면 장비 대표 이미지, 부품 이미지, 정비 기록 사진, 게시글 이미지를 업로드 방식으로 전환한다.
 
-### 4순위: 권한 검증 레이어 공통화
+### 4순위: 실제 로그인/세션 기반 권한 검증 레이어
 
-현재는 `APP_ENV=production` mock write guard를 각 쓰기 API에서 직접 호출한다. 다음 단계에서는 공통 `requireWritableMockUser` 같은 헬퍼로 통일한다.
+현재는 `APP_ENV=production` mock write guard만 공통화되어 있다. 다음 단계에서는 세션 userId를 추출하고 사용자별 소유권/작성자 검증을 공통화한다.
 
 ### 5순위: local D1 migration 흐름 정리
 
