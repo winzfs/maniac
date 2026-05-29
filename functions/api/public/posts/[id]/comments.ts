@@ -1,9 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { allowMethods, errorResponse, getErrorMessage, isRecord, jsonResponse, paramValue, readJsonObject } from "../../../../_shared/http";
-import { MOCK_USER_ID } from "../../../../_shared/dev-user";
+import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../../../../_shared/dev-user";
 
-type Env = { DB: D1Database };
+type Env = { DB: D1Database; APP_ENV?: string };
 
 type PostRow = { id: string };
 
@@ -47,6 +47,7 @@ async function getPublicPost(db: D1Database, id: string) {
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
+  if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
 
   try {
     const postId = paramValue(params, "id");
@@ -103,6 +104,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
 
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
+  if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
 
   try {
     const postId = paramValue(params, "id");
