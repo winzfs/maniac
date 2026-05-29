@@ -1,8 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { z } from "zod";
+import { isMockUserWriteBlocked, MOCK_USER_PRODUCTION_ERROR } from "../../../_shared/dev-user";
+import { hasEquipment, hasPart } from "../../../_shared/db-equipment";
 import { allowMethods, errorResponse, getErrorMessage, jsonResponse, paramValue, readJsonObject, statusFromError, zodDetails } from "../../../_shared/http";
-import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../../../_shared/dev-user";
 
 type Env = { DB: D1Database; APP_ENV?: string };
 type PartRow = {
@@ -43,14 +44,6 @@ function getPartId(request: Request) {
   const url = new URL(request.url);
   return url.searchParams.get("partId") ?? "";
 }
-async function hasEquipment(env: Env, equipmentId: string) {
-  const row = await env.DB.prepare("SELECT id FROM equipments WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1").bind(equipmentId, MOCK_USER_ID).first<{ id: string }>();
-  return Boolean(row);
-}
-async function hasPart(env: Env, equipmentId: string, partId: string) {
-  const row = await env.DB.prepare("SELECT id FROM parts WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL LIMIT 1").bind(partId, equipmentId).first<{ id: string }>();
-  return Boolean(row);
-}
 async function listParts(env: Env, equipmentId: string) {
   const rows = await env.DB.prepare(`SELECT id, equipment_id, category, brand, name, price, installed_at, purchase_url, image_url, memo, visibility, moderation_status, created_at, updated_at
     FROM parts WHERE equipment_id = ? AND deleted_at IS NULL ORDER BY installed_at DESC, created_at DESC LIMIT 100`).bind(equipmentId).all<PartRow>();
@@ -90,7 +83,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
-  if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
+  if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
   return jsonResponse({ ok: true, parts: await listParts(env, equipmentId) });
 };
 
@@ -100,7 +93,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
   try {
-    if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
+    if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
     const input = createPartSchema.parse(await readJsonObject(request));
     const id = `part_${crypto.randomUUID()}`;
     const now = Date.now();
@@ -120,10 +113,10 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
   try {
-    if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
+    if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
     const partId = getPartId(request);
     if (!partId) return errorResponse("Part id is required.", 400);
-    if (!(await hasPart(env, equipmentId, partId))) return errorResponse("Part not found.", 404);
+    if (!(await hasPart(env.DB, equipmentId, partId))) return errorResponse("Part not found.", 404);
     const input = updatePartSchema.parse(await readJsonObject(request));
     const now = Date.now();
     const update = buildUpdatePartQuery(input, now, partId, equipmentId);
@@ -141,10 +134,10 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
-  if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
+  if (!(await hasEquipment(env.DB, equipmentId))) return errorResponse("Equipment not found.", 404);
   const partId = getPartId(request);
   if (!partId) return errorResponse("Part id is required.", 400);
-  if (!(await hasPart(env, equipmentId, partId))) return errorResponse("Part not found.", 404);
+  if (!(await hasPart(env.DB, equipmentId, partId))) return errorResponse("Part not found.", 404);
   const now = Date.now();
   await env.DB.prepare("UPDATE parts SET deleted_at = ?, updated_at = ? WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL").bind(now, now, partId, equipmentId).run();
   return jsonResponse({ ok: true, id: partId, parts: await listParts(env, equipmentId) });
