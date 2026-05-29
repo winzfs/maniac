@@ -24,6 +24,7 @@ HttpOnly 쿠키 기반 세션 ✅
 게시글 작성/상세/수정/삭제 ✅
 댓글 작성/삭제 ✅
 내 정보 페이지 ✅
+프로필 설정 페이지 ✅
 내 활동 요약 ✅
 내 작성글 관리 ✅
 내 댓글 관리 ✅
@@ -145,6 +146,7 @@ migrations/0002_add_maintenance_logs_and_parts.sql
 migrations/0003_add_boards_posts_comments.sql
 migrations/0004_add_board_metadata.sql
 migrations/0005_add_auth_tables.sql
+migrations/0007_add_user_profile_fields.sql
 ```
 
 `0006_seed_real_equipment_posts.sql`는 필수 schema migration이 아니라 선택 seed입니다.
@@ -192,6 +194,7 @@ npm run d1:tables:local
 /login/
 /signup/
 /me/
+/me/settings/
 /me/posts/
 /me/posts/edit/?id=게시글ID
 /me/comments/
@@ -220,6 +223,8 @@ POST   /api/auth/login
 POST   /api/auth/logout
 GET    /api/auth/me
 
+GET    /api/me/profile
+PATCH  /api/me/profile
 GET    /api/me/summary
 GET    /api/me/posts
 GET    /api/me/posts/:id
@@ -287,7 +292,6 @@ curl -H "x-dev-tools-secret: $DEV_TOOLS_SECRET" https://example.com/api/dev/seed
 
 ```txt
 R2 이미지 업로드
-프로필 설정
 프로필 이미지
 공개 사용자 프로필 페이지
 어드민 UI
@@ -306,8 +310,7 @@ MFA
 ## 다음 개발 추천 순서
 
 1. 배포 후 회귀 테스트
-2. 프로필 설정 페이지
-3. 이미지 업로드 구조 정리
-4. 신고/모더레이션 워크플로우
-5. 관리자 UI
-6. 결제/구독
+2. 이미지 업로드 구조 정리
+3. 신고/모더레이션 워크플로우
+4. 관리자 UI
+5. 결제/구독
