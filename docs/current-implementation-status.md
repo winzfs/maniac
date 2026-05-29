@@ -28,6 +28,7 @@ D1 저장 ✅
 D1 migration 정리 ✅
 초기 D1 schema migration ✅
 API 공통 HTTP 유틸 1차 적용 ✅
+API DB 헬퍼 공통화 1차 적용 ✅
 운영 환경 mock user 쓰기 차단 가드 ✅
 R2 업로드 ❌ 보류
 실제 로그인 ❌ mock user 사용
@@ -331,6 +332,8 @@ GET    /explore/:category/:board/:post → redirect to /explore/post/?id=...
 ```txt
 functions/_shared/http.ts
 functions/_shared/dev-user.ts
+functions/_shared/db-users.ts
+functions/_shared/db-equipment.ts
 ```
 
 `http.ts` 주요 함수:
@@ -355,10 +358,33 @@ MOCK_USER_PRODUCTION_ERROR
 isMockUserWriteBlocked
 ```
 
+`db-users.ts` 주요 함수:
+
+```txt
+ensureDevUser
+```
+
+`db-equipment.ts` 주요 함수:
+
+```txt
+hasEquipment
+hasMaintenanceLog
+hasPart
+```
+
+공통화 적용 완료:
+
+```txt
+정비 기록 API 장비/정비 기록 존재 확인
+부품 API 장비/부품 존재 확인
+댓글 API dev user 보장
+```
+
 아직 공통화하지 못한 부분:
 
 ```txt
-장비 소유 확인 DB 헬퍼
+장비 생성 API의 Drizzle 기반 ensureDevUser
+게시글 작성 API의 dev user 보장
 공개 장비 조회 DB 헬퍼
 게시판/게시글 DB 헬퍼
 권한 검증 레이어
@@ -386,6 +412,7 @@ Cloudflare Error 1101 redirect 문제 해결 ✅
 APP_ENV=production에서 mock user 쓰기 차단 추가 ✅
 초기 D1 schema migration 추가 ✅
 전체 remote migration script 추가 ✅
+API DB 헬퍼 공통화 1차 적용 ✅
 ```
 
 ---
@@ -400,7 +427,7 @@ R2 이미지 업로드
 결제/구독
 신고/모더레이션 워크플로우
 OpenNext 또는 Workers 런타임 전환 검토
-API DB 헬퍼 공통화
+API DB 헬퍼 공통화 후속 작업
 D1 local migration 흐름 고도화
 migration 적용 이력 관리 방식 검토
 ```
@@ -441,6 +468,7 @@ private 장비 공개 API 404 확인
 정비/부품 PATCH 시 누락 필드 보존 확인
 APP_ENV=production에서 mock 쓰기 API 401 확인
 새 D1 DB에 npm run d1:migrate:all:remote 적용 확인
+정비/부품/댓글 API 회귀 확인
 ```
 
 ### 2순위: 실제 로그인/세션 연결
@@ -451,9 +479,9 @@ mock user를 제거하고 실제 사용자별 데이터로 분리한다.
 
 R2 사용이 가능해지면 장비 대표 이미지, 부품 이미지, 정비 기록 사진, 게시글 이미지를 업로드 방식으로 전환한다.
 
-### 4순위: API DB 헬퍼 공통화
+### 4순위: API DB 헬퍼 공통화 후속 작업
 
-현재 HTTP 유틸과 mock user 가드는 공통화했지만 DB 접근 함수는 아직 각 API에 남아있다.
+게시글/게시판 조회와 공개 장비 조회도 공통 헬퍼로 분리한다.
 
 ### 5순위: local D1 migration 흐름 정리
 
