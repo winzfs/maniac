@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/shared/components/ui/Button";
@@ -17,10 +18,16 @@ type BoardWriteFormProps = {
   boardDescription?: string;
 };
 
+type SubmitState =
+  | { status: "idle"; message: string }
+  | { status: "submitting"; message: string }
+  | { status: "login-required"; message: string }
+  | { status: "error"; message: string };
+
 export function BoardWriteForm({ categorySlug, boardSlug, boardTitle, boardDescription }: BoardWriteFormProps) {
   const router = useRouter();
-  const [status, setStatus] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitState, setSubmitState] = useState<SubmitState>({ status: "idle", message: "" });
+  const isSubmitting = submitState.status === "submitting";
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,17 +38,16 @@ export function BoardWriteForm({ categorySlug, boardSlug, boardTitle, boardDescr
     const bodyHtml = String(formData.get("bodyHtml") ?? "").trim();
 
     if (title.length < 2) {
-      setStatus("제목은 2자 이상 입력해 주세요.");
+      setSubmitState({ status: "error", message: "제목은 2자 이상 입력해 주세요." });
       return;
     }
 
     if (bodyHtml.length < 5) {
-      setStatus("본문은 5자 이상 입력해 주세요.");
+      setSubmitState({ status: "error", message: "본문은 5자 이상 입력해 주세요." });
       return;
     }
 
-    setIsSubmitting(true);
-    setStatus("게시글을 저장하는 중입니다...");
+    setSubmitState({ status: "submitting", message: "게시글을 저장하는 중입니다..." });
 
     try {
       const response = await fetch("/api/posts", {
@@ -51,17 +57,20 @@ export function BoardWriteForm({ categorySlug, boardSlug, boardTitle, boardDescr
       });
       const data = (await response.json()) as CreatePostResponse;
 
+      if (response.status === 401) {
+        setSubmitState({ status: "login-required", message: data.ok === false ? data.error ?? "게시글을 작성하려면 먼저 로그인해 주세요." : "게시글을 작성하려면 먼저 로그인해 주세요." });
+        return;
+      }
+
       if (!response.ok || !data.ok) {
         throw new Error(data.ok === false ? data.error ?? "게시글 저장에 실패했습니다." : "게시글 저장에 실패했습니다.");
       }
 
-      setStatus("저장 완료. 게시글로 이동합니다.");
+      setSubmitState({ status: "submitting", message: "저장 완료. 게시글로 이동합니다." });
       router.push(data.nextPath);
       router.refresh();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "게시글 저장에 실패했습니다.");
-    } finally {
-      setIsSubmitting(false);
+      setSubmitState({ status: "error", message: error instanceof Error ? error.message : "게시글 저장에 실패했습니다." });
     }
   }
 
@@ -75,7 +84,7 @@ export function BoardWriteForm({ categorySlug, boardSlug, boardTitle, boardDescr
           <label htmlFor="title" className="font-semibold">제목</label>
           <input id="title" name="title" className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-base outline-none focus:border-graphite sm:text-sm" placeholder="제목을 입력하세요" />
         </Card>
-        <SimpleHtmlEditor helperText="작성한 내용은 D1 posts 테이블에 저장됩니다. 이미지 업로드는 아직 R2 연결 전이므로 본문 내 data URL 삽입 방식입니다." />
+        <SimpleHtmlEditor helperText="작성한 내용은 현재 로그인 계정의 게시글로 저장됩니다. 이미지 업로드는 아직 R2 연결 전이므로 본문 내 data URL 삽입 방식입니다." />
       </div>
 
       <aside className="min-w-0 space-y-3">
@@ -87,8 +96,14 @@ export function BoardWriteForm({ categorySlug, boardSlug, boardTitle, boardDescr
         <Card className="space-y-3 p-5">
           <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? "저장 중..." : "게시글 저장"}</Button>
           <Button type="button" variant="secondary" className="w-full" onClick={() => router.push(`/explore/${categorySlug}/${boardSlug}/`)}>취소</Button>
-          {status ? <p className="text-xs leading-5 text-text-secondary">{status}</p> : null}
-          <p className="text-xs leading-5 text-text-secondary">현재는 개발용 mock user로 저장합니다. 로그인 연결 후 실제 사용자 ID로 대체합니다.</p>
+          {submitState.message ? <p className="text-xs leading-5 text-text-secondary">{submitState.message}</p> : null}
+          {submitState.status === "login-required" ? (
+            <div className="flex flex-wrap gap-2 text-xs font-semibold">
+              <Link className="text-garage-orange underline underline-offset-4" href="/login/">로그인</Link>
+              <Link className="text-garage-orange underline underline-offset-4" href="/signup/">회원가입</Link>
+            </div>
+          ) : null}
+          <p className="text-xs leading-5 text-text-secondary">로그인한 계정의 작성자로 게시글이 저장됩니다.</p>
         </Card>
       </aside>
     </form>
