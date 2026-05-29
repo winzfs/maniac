@@ -69,13 +69,14 @@ export function MeProfileClient() {
             <p className="mt-1 text-sm text-zinc-300">{user.email}</p>
           </div>
         </div>
-        <p className="max-w-2xl text-sm leading-6 text-zinc-300">내 장비, 작성 글, 알림, 공개 프로필, 프리미엄 스킨 설정을 관리하는 페이지로 확장됩니다.</p>
+        <p className="max-w-2xl text-sm leading-6 text-zinc-300">내 장비, 작성 글, 댓글, 알림, 공개 프로필, 프리미엄 스킨 설정을 관리하는 페이지로 확장됩니다.</p>
       </Card>
 
       <Card className="space-y-3 p-5">
         <h2 className="font-bold">빠른 이동</h2>
         <Link href="/garage/"><Button className="w-full">내 차고 보기</Button></Link>
         <Link href="/me/posts/"><Button variant="secondary" className="w-full">내 작성글 관리</Button></Link>
+        <Link href="/me/comments/"><Button variant="secondary" className="w-full">내 댓글 관리</Button></Link>
         <Button variant="secondary" className="w-full">프로필 설정 준비중</Button>
         <Button variant="ghost" className="w-full" onClick={logout} disabled={loggingOut}>{loggingOut ? "로그아웃 중..." : "로그아웃"}</Button>
       </Card>
