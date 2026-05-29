@@ -20,6 +20,18 @@ type EquipmentRow = {
   created_at: number;
 };
 
+type MaintenanceLogRow = {
+  id: string;
+  type: string;
+  title: string;
+  description: string | null;
+  performed_at: number;
+  usage_metric_value: number | null;
+  cost: number | null;
+  shop_name: string | null;
+  visibility: string;
+};
+
 const MOCK_USER_ID = "dev_user_maniac";
 
 function escapeHtml(value: unknown) {
@@ -37,6 +49,10 @@ function decodeSlug(slug: string) {
   } catch {
     return slug;
   }
+}
+
+function formatDate(ms: number) {
+  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 }
 
 function htmlResponse(body: string, status = 200) {
@@ -72,7 +88,29 @@ function renderNotFound(slug: string) {
 </html>`, 404);
 }
 
-function renderEquipment(row: EquipmentRow) {
+function renderLogs(logs: MaintenanceLogRow[]) {
+  if (logs.length === 0) {
+    return `<p>아직 공개된 정비 기록이 없습니다.</p>`;
+  }
+
+  return `<div class="timeline">
+    ${logs.map((log) => {
+      const usage = log.usage_metric_value != null ? `${log.usage_metric_value.toLocaleString()} km` : "";
+      const cost = log.cost != null ? `${log.cost.toLocaleString()}원` : "";
+      const shop = log.shop_name ? escapeHtml(log.shop_name) : "";
+      const meta = [usage, cost, shop].filter(Boolean).join(" · ");
+
+      return `<article class="log-card">
+        <p class="log-meta">${escapeHtml(log.type)} · ${escapeHtml(formatDate(log.performed_at))}</p>
+        <h3>${escapeHtml(log.title)}</h3>
+        ${log.description ? `<p class="log-desc">${escapeHtml(log.description)}</p>` : ""}
+        ${meta ? `<p class="log-sub">${meta}</p>` : ""}
+      </article>`;
+    }).join("")}
+  </div>`;
+}
+
+function renderEquipment(row: EquipmentRow, logs: MaintenanceLogRow[]) {
   const spec = [row.brand, row.model, row.year].filter(Boolean).join(" · ");
   const usage = row.usage_metric_value ? `${row.usage_metric_value.toLocaleString()} ${row.usage_metric_type}` : "사용량 미입력";
 
@@ -86,7 +124,7 @@ function renderEquipment(row: EquipmentRow) {
     :root{color-scheme:light;--bg:#f7f4ef;--surface:#fffaf2;--text:#171717;--muted:#6f6a62;--border:#ddd3c4;--orange:#e6531f;--graphite:#171717}
     *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
     main{width:min(960px,100%);margin:0 auto;padding:24px 20px 56px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:28px}.brand{font-weight:900;letter-spacing:-.03em}.pill{border:1px solid var(--border);border-radius:999px;padding:10px 14px;text-decoration:none;color:var(--text);font-weight:800;background:rgba(255,255,255,.56)}
-    .hero{border:1px solid var(--border);border-radius:36px;background:linear-gradient(135deg,#fffaf2,#f0e7d8);padding:28px;overflow:hidden}.eyebrow{display:inline-flex;border-radius:999px;background:var(--graphite);color:white;padding:8px 12px;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.title{font-size:clamp(38px,10vw,80px);line-height:.92;letter-spacing:-.07em;margin:20px 0 14px}.desc{max-width:720px;color:var(--muted);font-size:16px;line-height:1.75}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:22px}.card{border:1px solid var(--border);background:rgba(255,255,255,.68);border-radius:24px;padding:18px}.label{font-size:12px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.12em}.value{margin-top:8px;font-size:18px;font-weight:900}.banner{height:240px;border-radius:30px;background:radial-gradient(circle at 20% 20%,#ff8a4c,transparent 30%),linear-gradient(135deg,#28221f,#5f554a);margin-top:22px;display:grid;place-items:center;color:white;font-size:64px;font-weight:1000;letter-spacing:-.08em}.section{margin-top:22px;border:1px solid var(--border);border-radius:28px;background:var(--surface);padding:22px}.section h2{margin:0 0 8px}.section p{margin:0;color:var(--muted);line-height:1.7}@media(max-width:640px){.grid{grid-template-columns:1fr}.hero{padding:22px}.banner{height:180px;font-size:44px}}
+    .hero{border:1px solid var(--border);border-radius:36px;background:linear-gradient(135deg,#fffaf2,#f0e7d8);padding:28px;overflow:hidden}.eyebrow{display:inline-flex;border-radius:999px;background:var(--graphite);color:white;padding:8px 12px;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.title{font-size:clamp(38px,10vw,80px);line-height:.92;letter-spacing:-.07em;margin:20px 0 14px}.desc{max-width:720px;color:var(--muted);font-size:16px;line-height:1.75}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:22px}.card{border:1px solid var(--border);background:rgba(255,255,255,.68);border-radius:24px;padding:18px}.label{font-size:12px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.12em}.value{margin-top:8px;font-size:18px;font-weight:900}.banner{height:240px;border-radius:30px;background:radial-gradient(circle at 20% 20%,#ff8a4c,transparent 30%),linear-gradient(135deg,#28221f,#5f554a);margin-top:22px;display:grid;place-items:center;color:white;font-size:64px;font-weight:1000;letter-spacing:-.08em}.section{margin-top:22px;border:1px solid var(--border);border-radius:28px;background:var(--surface);padding:22px}.section h2{margin:0 0 8px}.section p{margin:0;color:var(--muted);line-height:1.7}.timeline{display:grid;gap:12px;margin-top:16px}.log-card{border:1px solid var(--border);border-radius:22px;background:rgba(255,255,255,.7);padding:16px}.log-card h3{margin:4px 0 0;font-size:18px}.log-meta{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}.log-desc{margin-top:8px!important}.log-sub{margin-top:10px!important;font-size:13px;font-weight:800}@media(max-width:640px){.grid{grid-template-columns:1fr}.hero{padding:22px}.banner{height:180px;font-size:44px}}
   </style>
 </head>
 <body>
@@ -109,11 +147,27 @@ function renderEquipment(row: EquipmentRow) {
     </section>
     <section class="section">
       <h2>정비 타임라인</h2>
-      <p>정비 기록, 부품, 사진 갤러리는 다음 단계에서 DB와 연결됩니다.</p>
+      ${renderLogs(logs)}
     </section>
   </main>
 </body>
 </html>`);
+}
+
+async function listPublicLogs(env: Env, equipmentId: string) {
+  try {
+    const rows = await env.DB.prepare(
+      `SELECT id, type, title, description, performed_at, usage_metric_value, cost, shop_name, visibility
+       FROM maintenance_logs
+       WHERE equipment_id = ? AND deleted_at IS NULL AND visibility = 'public'
+       ORDER BY performed_at DESC, created_at DESC
+       LIMIT 20`,
+    ).bind(equipmentId).all<MaintenanceLogRow>();
+
+    return rows.results ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
@@ -131,5 +185,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
   ).bind(MOCK_USER_ID, slug).first<EquipmentRow>();
 
   if (!result) return renderNotFound(slug);
-  return renderEquipment(result);
+
+  const logs = await listPublicLogs(env, result.id);
+  return renderEquipment(result, logs);
 };
