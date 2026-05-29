@@ -19,6 +19,16 @@ export type PublicPostDetailRow = {
   updated_at: number;
 };
 
+export type PublicCommentRow = {
+  id: string;
+  post_id: string;
+  body: string;
+  author_id: string;
+  author_nickname: string;
+  created_at: number;
+  updated_at: number;
+};
+
 const derivedCategory = "COALESCE(NULLIF(boards.category, ''), substr(boards.slug, 1, instr(boards.slug || '-', '-') - 1))";
 
 const publicPostWhereClause = `posts.id = ?
@@ -63,4 +73,26 @@ export async function getPublicPostDetail(db: D1Database, id: string) {
      WHERE ${publicPostWhereClause}
      LIMIT 1`,
   ).bind(id).first<PublicPostDetailRow>();
+}
+
+export async function listPublicComments(db: D1Database, postId: string) {
+  const rows = await db.prepare(
+    `SELECT
+       comments.id,
+       comments.post_id,
+       comments.body,
+       comments.author_id,
+       comments.author_id AS author_nickname,
+       comments.created_at,
+       comments.updated_at
+     FROM comments
+     WHERE comments.post_id = ?
+       AND comments.deleted_at IS NULL
+       AND comments.status = 'published'
+       AND comments.moderation_status = 'normal'
+     ORDER BY comments.created_at ASC
+     LIMIT 100`,
+  ).bind(postId).all<PublicCommentRow>();
+
+  return rows.results ?? [];
 }
