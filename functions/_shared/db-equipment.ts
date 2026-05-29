@@ -1,9 +1,7 @@
-import { MOCK_USER_ID } from "./dev-user";
-
-export async function hasEquipment(db: D1Database, equipmentId: string) {
+export async function hasEquipment(db: D1Database, equipmentId: string, userId: string) {
   const row = await db
     .prepare("SELECT id FROM equipments WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1")
-    .bind(equipmentId, MOCK_USER_ID)
+    .bind(equipmentId, userId)
     .first<{ id: string }>();
 
   return Boolean(row);
