@@ -96,8 +96,8 @@ export function MyPostsClient() {
 
   if (state.status === "loading") {
     return (
-      <div className="grid gap-3">
-        {[0, 1, 2].map((item) => <Card key={item} className="h-28 animate-pulse p-5" />)}
+      <div className="grid gap-4">
+        {[0, 1, 2].map((item) => <Card key={item} className="h-32 animate-pulse p-5" />)}
       </div>
     );
   }
@@ -119,23 +119,25 @@ export function MyPostsClient() {
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       {state.posts.map((post) => (
-        <Card key={post.id} className="space-y-3 p-5">
+        <Card key={post.id} className="space-y-4 p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-2">
             <Badge label={post.board_title} tone="muted" />
             <Badge label={post.visibility} tone="graphite" />
-            <span className="text-xs text-text-secondary">{formatDate(post.created_at)}</span>
+            <span className="text-xs font-medium text-text-secondary">{formatDate(post.created_at)}</span>
           </div>
-          <div className="space-y-1">
-            <Link href={postHref(post)} className="text-xl font-bold hover:text-garage-orange">{post.title}</Link>
+
+          <div className="space-y-2">
+            <Link href={postHref(post)} className="block text-xl font-black leading-tight tracking-tight hover:text-garage-orange sm:text-2xl">{post.title}</Link>
             <p className="line-clamp-2 text-sm leading-6 text-text-secondary">{stripHtml(post.body) || "본문 미리보기가 없습니다."}</p>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-text-secondary">
-            <span>댓글 {post.comment_count} · 상태 {post.status} · 검수 {post.moderation_status}</span>
-            <div className="flex gap-2">
-              <Link href={editHref(post)}><Button variant="secondary">수정</Button></Link>
-              <Link href={postHref(post)}><Button variant="ghost">상세 보기</Button></Link>
+
+          <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-xs text-text-secondary">댓글 {post.comment_count} · 상태 {post.status} · 검수 {post.moderation_status}</span>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+              <Link href={editHref(post)}><Button className="w-full sm:w-auto" variant="secondary">수정</Button></Link>
+              <Link href={postHref(post)}><Button className="w-full sm:w-auto" variant="ghost">상세 보기</Button></Link>
             </div>
           </div>
         </Card>
