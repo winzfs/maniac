@@ -1,9 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { requireWritableMockUser } from "../../../../_shared/auth";
-import { MOCK_USER_ID } from "../../../../_shared/dev-user";
+import { requireCurrentUser } from "../../../../_shared/auth";
 import { getPublicPost } from "../../../../_shared/db-posts";
-import { ensureDevUser } from "../../../../_shared/db-users";
 import { allowMethods, errorResponse, getErrorMessage, isRecord, jsonResponse, paramValue, readJsonObject } from "../../../../_shared/http";
 
 type Env = { DB: D1Database; APP_ENV?: string };
@@ -25,8 +23,8 @@ function textField(body: Record<string, unknown>, key: string) {
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  const authError = requireWritableMockUser(env);
-  if (authError) return authError;
+  const auth = await requireCurrentUser(request, env);
+  if (auth.response) return auth.response;
 
   try {
     const postId = paramValue(params, "id");
@@ -42,8 +40,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     if (commentBody.length < 2) return errorResponse("댓글은 2자 이상 입력해 주세요.", 422);
     if (commentBody.length > 1000) return errorResponse("댓글은 1000자 이하로 입력해 주세요.", 422);
 
-    await ensureDevUser(env.DB);
-
     const id = crypto.randomUUID();
     const now = Date.now();
 
@@ -58,7 +54,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
          created_at,
          updated_at
        ) VALUES (?, ?, ?, ?, 'published', 'normal', ?, ?)`,
-    ).bind(id, postId, MOCK_USER_ID, commentBody, now, now).run();
+    ).bind(id, postId, auth.user.id, commentBody, now, now).run();
 
     const comment = await env.DB.prepare(
       `SELECT
@@ -75,7 +71,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
        LIMIT 1`,
     ).bind(id).first<CommentRow>();
 
-    return jsonResponse({ ok: true, comment, authMode: "mock-user" }, { status: 201 });
+    return jsonResponse({ ok: true, comment, authMode: "session" }, { status: 201 });
   } catch (error) {
     return errorResponse(getErrorMessage(error, "댓글 저장에 실패했습니다."), 400);
   }
@@ -83,8 +79,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
 
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
-  const authError = requireWritableMockUser(env);
-  if (authError) return authError;
+  const auth = await requireCurrentUser(request, env);
+  if (auth.response) return auth.response;
 
   try {
     const postId = paramValue(params, "id");
@@ -107,7 +103,7 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
     ).bind(commentId, postId).first<{ id: string; author_id: string }>();
 
     if (!comment) return errorResponse("Comment not found.", 404);
-    if (comment.author_id !== MOCK_USER_ID) return errorResponse("댓글을 삭제할 권한이 없습니다.", 403);
+    if (comment.author_id !== auth.user.id) return errorResponse("댓글을 삭제할 권한이 없습니다.", 403);
 
     await env.DB.prepare(
       `UPDATE comments
@@ -116,7 +112,7 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
          AND post_id = ?
          AND author_id = ?
          AND deleted_at IS NULL`,
-    ).bind(Date.now(), Date.now(), commentId, postId, MOCK_USER_ID).run();
+    ).bind(Date.now(), Date.now(), commentId, postId, auth.user.id).run();
 
     return jsonResponse({ ok: true, deletedId: commentId });
   } catch (error) {
