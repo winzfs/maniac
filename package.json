@@ -12,6 +12,7 @@
     "db:migrate": "drizzle-kit migrate",
     "d1:migrate:remote": "wrangler d1 execute maniac-garage-dev --remote --file migrations/0002_add_maintenance_logs_and_parts.sql",
     "d1:migrate:community:remote": "wrangler d1 execute maniac-garage-dev --remote --file migrations/0003_add_boards_posts_comments.sql",
+    "d1:migrate:board-meta:remote": "wrangler d1 execute maniac-garage-dev --remote --file migrations/0004_add_board_metadata.sql",
     "d1:tables:remote": "wrangler d1 execute maniac-garage-dev --remote --command \"SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;\"",
     "pages:build": "next build",
     "pages:deploy": "npm run pages:build && wrangler pages deploy out --project-name maniac-garage",
