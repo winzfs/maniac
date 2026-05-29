@@ -150,9 +150,52 @@ export const siteSections = sqliteTable("site_sections", { id: text("id").primar
 export const banners = sqliteTable("banners", { id: text("id").primaryKey(), title: text("title").notNull(), description: text("description"), ctaLabel: text("cta_label"), linkUrl: text("link_url"), sortOrder: integer("sort_order").notNull().default(0), isVisible: integer("is_visible", { mode: "boolean" }).notNull().default(true), ...timestamps });
 export const notices = sqliteTable("notices", { id: text("id").primaryKey(), title: text("title").notNull(), body: text("body").notNull(), status: text("status").notNull().default("draft"), isPinned: integer("is_pinned", { mode: "boolean" }).notNull().default(false), publishedAt: integer("published_at", { mode: "timestamp_ms" }), ...timestamps });
 export const faqItems = sqliteTable("faq_items", { id: text("id").primaryKey(), question: text("question").notNull(), answer: text("answer").notNull(), sortOrder: integer("sort_order").notNull().default(0), isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false), ...timestamps });
-export const boards = sqliteTable("boards", { id: text("id").primaryKey(), slug: text("slug").notNull(), title: text("title").notNull(), status: text("status").notNull().default("active"), permission: text("permission").notNull().default("public"), ...timestamps }, (table) => ({ slugUnique: uniqueIndex("boards_slug_unique").on(table.slug) }));
-export const posts = sqliteTable("posts", { id: text("id").primaryKey(), boardId: text("board_id").notNull().references(() => boards.id, { onDelete: "cascade" }), authorId: text("author_id").notNull().references(() => users.id, { onDelete: "cascade" }), title: text("title").notNull(), body: text("body").notNull(), status: text("status").notNull().default("published"), visibility: text("visibility").notNull().default("public"), moderationStatus: text("moderation_status").notNull().default("normal"), ...timestamps, ...softDelete });
-export const comments = sqliteTable("comments", { id: text("id").primaryKey(), postId: text("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }), authorId: text("author_id").notNull().references(() => users.id, { onDelete: "cascade" }), body: text("body").notNull(), status: text("status").notNull().default("published"), moderationStatus: text("moderation_status").notNull().default("normal"), ...timestamps, ...softDelete });
+
+export const boards = sqliteTable("boards", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull(),
+  title: text("title").notNull(),
+  category: text("category"),
+  type: text("type"),
+  description: text("description"),
+  status: text("status").notNull().default("active"),
+  permission: text("permission").notNull().default("public"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  ...timestamps,
+}, (table) => ({
+  slugUnique: uniqueIndex("boards_slug_unique").on(table.slug),
+  categorySortIdx: index("boards_category_sort_idx").on(table.category, table.sortOrder),
+}));
+
+export const posts = sqliteTable("posts", {
+  id: text("id").primaryKey(),
+  boardId: text("board_id").notNull().references(() => boards.id, { onDelete: "cascade" }),
+  authorId: text("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("published"),
+  visibility: text("visibility").notNull().default("public"),
+  moderationStatus: text("moderation_status").notNull().default("normal"),
+  ...timestamps,
+  ...softDelete,
+}, (table) => ({
+  boardCreatedIdx: index("posts_board_created_idx").on(table.boardId, table.createdAt),
+  visibilityIdx: index("posts_visibility_idx").on(table.visibility, table.moderationStatus),
+}));
+
+export const comments = sqliteTable("comments", {
+  id: text("id").primaryKey(),
+  postId: text("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  authorId: text("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("published"),
+  moderationStatus: text("moderation_status").notNull().default("normal"),
+  ...timestamps,
+  ...softDelete,
+}, (table) => ({
+  postCreatedIdx: index("comments_post_created_idx").on(table.postId, table.createdAt),
+}));
+
 export const reports = sqliteTable("reports", { id: text("id").primaryKey(), resourceType: text("resource_type").notNull(), resourceId: text("resource_id").notNull(), reporterId: text("reporter_id").references(() => users.id, { onDelete: "set null" }), reason: text("reason").notNull(), status: text("status").notNull().default("pending"), ...timestamps });
 export const moderationActions = sqliteTable("moderation_actions", { id: text("id").primaryKey(), reportId: text("report_id").references(() => reports.id, { onDelete: "set null" }), moderatorId: text("moderator_id").notNull().references(() => users.id, { onDelete: "cascade" }), action: text("action").notNull(), note: text("note"), ...timestamps });
 export const adminAuditLogs = sqliteTable("admin_audit_logs", { id: text("id").primaryKey(), adminUserId: text("admin_user_id").notNull().references(() => users.id, { onDelete: "cascade" }), action: text("action").notNull(), resourceType: text("resource_type").notNull(), resourceId: text("resource_id").notNull(), beforeValueJson: text("before_value_json"), afterValueJson: text("after_value_json"), reason: text("reason"), ipAddress: text("ip_address"), userAgent: text("user_agent"), createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(now) });
