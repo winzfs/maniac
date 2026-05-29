@@ -10,6 +10,7 @@ type User = {
   id: string;
   email: string;
   nickname: string;
+  bio: string | null;
   profile_image_url: string | null;
   provider: string | null;
 };
@@ -70,7 +71,7 @@ export function MeProfileClient() {
           </div>
         </div>
         <div className="border-t border-white/10 pt-5">
-          <p className="max-w-2xl text-sm leading-6 text-zinc-300">내 장비, 작성 글, 댓글, 알림, 공개 프로필, 프리미엄 스킨 설정을 관리하는 공간입니다.</p>
+          <p className="max-w-2xl text-sm leading-6 text-zinc-300">{user.bio || "내 장비, 작성 글, 댓글, 알림, 공개 프로필 설정을 관리하는 공간입니다."}</p>
         </div>
       </Card>
 
@@ -83,7 +84,7 @@ export function MeProfileClient() {
           <Link href="/garage/"><Button className="w-full">내 차고 보기</Button></Link>
           <Link href="/me/posts/"><Button variant="secondary" className="w-full">내 작성글 관리</Button></Link>
           <Link href="/me/comments/"><Button variant="secondary" className="w-full">내 댓글 관리</Button></Link>
-          <Button variant="secondary" className="w-full">프로필 설정 준비중</Button>
+          <Link href="/me/settings/"><Button variant="secondary" className="w-full">프로필 설정</Button></Link>
         </div>
         <div className="border-t border-border pt-3">
           <Button variant="ghost" className="w-full" onClick={logout} disabled={loggingOut}>{loggingOut ? "로그아웃 중..." : "로그아웃"}</Button>
