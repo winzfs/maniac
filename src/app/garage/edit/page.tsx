@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { EquipmentEditPanel } from "@/features/equipment/components/EquipmentEditPanel";
-import { MaintenanceLogPanel } from "@/features/equipment/components/MaintenanceLogPanel";
+import { EquipmentMaintenanceSection } from "@/features/equipment/components/EquipmentMaintenanceSection";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
@@ -12,13 +12,7 @@ const breadcrumbs = [
   { label: "장비 수정" },
 ];
 
-function MaintenanceLogSection({ searchParams }: { searchParams?: { id?: string } }) {
-  const id = searchParams?.id ?? "";
-  if (!id) return null;
-  return <MaintenanceLogPanel equipmentId={id} />;
-}
-
-export default function EditEquipmentPage({ searchParams }: { searchParams?: { id?: string } }) {
+export default function EditEquipmentPage() {
   return (
     <main className="container-shell space-y-8 py-5 sm:py-8 lg:space-y-10">
       <PageHeader
@@ -37,7 +31,7 @@ export default function EditEquipmentPage({ searchParams }: { searchParams?: { i
       </Suspense>
 
       <Suspense fallback={<Card className="p-6 text-sm text-text-secondary">정비 기록을 불러오는 중입니다...</Card>}>
-        <MaintenanceLogSection searchParams={searchParams} />
+        <EquipmentMaintenanceSection />
       </Suspense>
     </main>
   );
