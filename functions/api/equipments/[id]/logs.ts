@@ -120,7 +120,28 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   }
 };
 
+export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
+  if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
+  const equipmentId = getEquipmentId(params);
+  if (!equipmentId) return errorResponse("Equipment id is required.", 400);
+
+  await ensureTable(env);
+  if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
+
+  const url = new URL(request.url);
+  const logId = url.searchParams.get("logId") ?? "";
+  if (!logId) return errorResponse("Maintenance log id is required.", 400);
+
+  const existing = await env.DB.prepare("SELECT id FROM maintenance_logs WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL LIMIT 1").bind(logId, equipmentId).first<{ id: string }>();
+  if (!existing) return errorResponse("Maintenance log not found.", 404);
+
+  const now = Date.now();
+  await env.DB.prepare("UPDATE maintenance_logs SET deleted_at = ?, updated_at = ? WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL").bind(now, now, logId, equipmentId).run();
+
+  return jsonResponse({ ok: true, id: logId, logs: await listLogs(env, equipmentId) });
+};
+
 export const onRequest: PagesFunction<Env> = async ({ request }) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { allow: "GET, POST, OPTIONS" } });
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { allow: "GET, POST, DELETE, OPTIONS" } });
   return errorResponse("Method not allowed.", 405);
 };
