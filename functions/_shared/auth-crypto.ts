@@ -1,5 +1,5 @@
 const encoder = new TextEncoder();
-const passwordIterations = 210_000;
+const passwordIterations = 100_000;
 const passwordKeyLength = 32;
 
 function bytesToBase64(bytes: Uint8Array) {
@@ -57,7 +57,7 @@ export async function verifyPassword(password: string, storedHash: string) {
   const [algorithm, iterationsValue, saltValue, expectedHash] = storedHash.split("$");
   const iterations = Number(iterationsValue);
 
-  if (algorithm !== "pbkdf2-sha256" || !Number.isSafeInteger(iterations) || iterations < 100_000 || !saltValue || !expectedHash) {
+  if (algorithm !== "pbkdf2-sha256" || !Number.isSafeInteger(iterations) || iterations < 100_000 || iterations > 100_000 || !saltValue || !expectedHash) {
     return false;
   }
 
