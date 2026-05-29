@@ -30,6 +30,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       const response = await fetch(isSignup ? "/api/auth/signup" : "/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify(isSignup ? { email, nickname, password } : { email, password }),
       });
       const result = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
@@ -38,7 +39,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         throw new Error(result?.error ?? "요청에 실패했습니다.");
       }
 
-      router.push("/me/");
+      router.replace("/me/");
       router.refresh();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "요청에 실패했습니다.");
