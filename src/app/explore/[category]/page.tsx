@@ -1,17 +1,21 @@
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
-import { equipmentCategories, getEquipmentCategory } from "@/shared/data/equipment-categories";
+import { getEquipmentCategory } from "@/shared/data/equipment-categories";
 import { mockBoardPosts } from "@/shared/data/mock-board-posts";
 import { CategoryBoardPostFilter } from "@/features/boards/components/CategoryBoardPostFilter";
 import { notFound } from "next/navigation";
 
+const enabledCategorySlugs = ["motorcycle"];
+
 export function generateStaticParams() {
-  return equipmentCategories.map((category) => ({ category: category.slug }));
+  return enabledCategorySlugs.map((category) => ({ category }));
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
   const { category: slug } = await params;
+  if (!enabledCategorySlugs.includes(slug)) notFound();
+
   const category = getEquipmentCategory(slug);
   if (!category) notFound();
 
