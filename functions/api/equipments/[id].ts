@@ -31,6 +31,10 @@ function getEquipmentId(params: EventContext<Env, string, unknown>["params"]) {
   return paramValue(params, "id");
 }
 
+function publicViewPath(slug: string) {
+  return `/garage/view/?slug=${encodeURIComponent(slug)}`;
+}
+
 async function findEquipment(env: Env, id: string) {
   return env.DB.prepare(
     `SELECT id, user_id, category, brand, model, nickname, slug, year, description, main_image_url, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at, updated_at
@@ -89,7 +93,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
     ).run();
 
     const equipment = await findEquipment(env, id);
-    return jsonResponse({ ok: true, equipment, nextPath: equipment ? `/garage/${equipment.slug}/` : undefined });
+    return jsonResponse({ ok: true, equipment, nextPath: equipment ? publicViewPath(equipment.slug) : undefined });
   } catch (error) {
     return errorResponse(getErrorMessage(error, "Invalid equipment input."), statusFromError(error), zodDetails(error));
   }
