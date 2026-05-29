@@ -25,6 +25,9 @@ type EquipmentListRow = {
   visibility: string;
   moderation_status: string;
   created_at: number;
+  maintenance_log_count: number;
+  latest_maintenance_at: number | null;
+  total_maintenance_cost: number | null;
 };
 
 const MOCK_USER_ID = "dev_user_maniac";
@@ -77,10 +80,31 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
 
   const rows = await env.DB.prepare(
-    `SELECT id, category, brand, model, nickname, slug, year, description, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at
+    `SELECT
+       equipments.id,
+       equipments.category,
+       equipments.brand,
+       equipments.model,
+       equipments.nickname,
+       equipments.slug,
+       equipments.year,
+       equipments.description,
+       equipments.usage_metric_type,
+       equipments.usage_metric_value,
+       equipments.visibility,
+       equipments.moderation_status,
+       equipments.created_at,
+       COUNT(maintenance_logs.id) AS maintenance_log_count,
+       MAX(maintenance_logs.performed_at) AS latest_maintenance_at,
+       COALESCE(SUM(maintenance_logs.cost), 0) AS total_maintenance_cost
      FROM equipments
-     WHERE user_id = ? AND deleted_at IS NULL
-     ORDER BY created_at DESC
+     LEFT JOIN maintenance_logs
+       ON maintenance_logs.equipment_id = equipments.id
+      AND maintenance_logs.deleted_at IS NULL
+     WHERE equipments.user_id = ?
+       AND equipments.deleted_at IS NULL
+     GROUP BY equipments.id
+     ORDER BY equipments.created_at DESC
      LIMIT 50`,
   ).bind(MOCK_USER_ID).all<EquipmentListRow>();
 
