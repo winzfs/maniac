@@ -49,6 +49,19 @@ function msToDateInput(ms: number) {
 function formatDate(ms: number) {
   return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 }
+function makePayload(formData: FormData, fallbackToNow = true) {
+  return {
+    type: textValue(formData, "type") ?? "custom",
+    title: textValue(formData, "title"),
+    description: textValue(formData, "description"),
+    performedAt: fallbackToNow ? dateToMs(textValue(formData, "performedAt")) : dateToMs(textValue(formData, "performedAt")),
+    usageMetricValue: numberValue(formData, "usageMetricValue"),
+    cost: numberValue(formData, "cost"),
+    shopName: textValue(formData, "shopName"),
+    isPublic: textValue(formData, "visibility") === "public",
+    visibility: textValue(formData, "visibility") ?? "public",
+  };
+}
 async function readApi(response: Response) {
   const data = (await response.json()) as LogResponse;
   if (!response.ok || !data.ok) throw new Error(data.error ?? "정비 기록 요청에 실패했습니다.");
@@ -76,23 +89,15 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (state.status !== "ready") return;
+
+    const form = event.currentTarget;
+    const payload = makePayload(new FormData(form));
     const previous = state.logs;
     setState({ status: "saving", logs: previous });
+
     try {
-      const formData = new FormData(event.currentTarget);
-      const payload = {
-        type: textValue(formData, "type") ?? "custom",
-        title: textValue(formData, "title"),
-        description: textValue(formData, "description"),
-        performedAt: dateToMs(textValue(formData, "performedAt")),
-        usageMetricValue: numberValue(formData, "usageMetricValue"),
-        cost: numberValue(formData, "cost"),
-        shopName: textValue(formData, "shopName"),
-        isPublic: true,
-        visibility: textValue(formData, "visibility") ?? "public",
-      };
       const data = await readApi(await fetch(`/api/equipments/${equipmentId}/logs`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }));
-      event.currentTarget.reset();
+      form.reset();
       setState({ status: "ready", logs: data.logs ?? [], message: "정비 기록이 추가되었습니다." });
     } catch (error) {
       setState({ status: "ready", logs: previous, message: error instanceof Error ? error.message : "정비 기록 추가에 실패했습니다." });
@@ -103,23 +108,12 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
     event.preventDefault();
     if (state.status !== "ready") return;
 
+    const form = event.currentTarget;
+    const payload = makePayload(new FormData(form), false);
     const previous = state.logs;
     setState({ status: "saving", logs: previous });
 
     try {
-      const formData = new FormData(event.currentTarget);
-      const payload = {
-        type: textValue(formData, "type"),
-        title: textValue(formData, "title"),
-        description: textValue(formData, "description"),
-        performedAt: dateToMs(textValue(formData, "performedAt")),
-        usageMetricValue: numberValue(formData, "usageMetricValue"),
-        cost: numberValue(formData, "cost"),
-        shopName: textValue(formData, "shopName"),
-        isPublic: textValue(formData, "visibility") === "public",
-        visibility: textValue(formData, "visibility") ?? "public",
-      };
-
       const data = await readApi(await fetch(`/api/equipments/${equipmentId}/logs?logId=${encodeURIComponent(logId)}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
