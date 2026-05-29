@@ -14,6 +14,8 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
           <Link href="/explore/" className="rounded-2xl px-3 py-2 font-semibold hover:bg-background">장비 둘러보기</Link>
           <Link href="/garage/" className="rounded-2xl px-3 py-2 font-semibold hover:bg-background">내 차고</Link>
           <Link href="/me/" className="rounded-2xl px-3 py-2 font-semibold hover:bg-background">내 정보</Link>
+          <Link href="/login/" className="rounded-2xl px-3 py-2 font-semibold hover:bg-background">로그인</Link>
+          <Link href="/signup/" className="rounded-2xl px-3 py-2 font-semibold hover:bg-background">회원가입</Link>
         </div>
         <div className="my-2 h-px bg-border" />
         <div className="grid max-h-72 gap-1 overflow-y-auto text-sm">
