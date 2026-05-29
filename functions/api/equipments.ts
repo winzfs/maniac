@@ -31,6 +31,10 @@ type EquipmentListRow = {
   total_maintenance_cost: number | null;
 };
 
+function publicViewPath(slug: string) {
+  return `/garage/view/?slug=${encodeURIComponent(slug)}`;
+}
+
 async function ensureDevUser(db: ManiacDatabase) {
   const existingRows = await db.select({ id: users.id }).from(users).where(eq(users.id, MOCK_USER_ID)).limit(1);
   if (existingRows[0]) return existingRows[0];
@@ -94,7 +98,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return jsonResponse({
       ok: true,
       equipment: result,
-      nextPath: `/garage/${result.slug}/`,
+      nextPath: publicViewPath(result.slug),
       authMode: "mock-user",
     }, { status: 201 });
   } catch (error) {
