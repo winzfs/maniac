@@ -1,6 +1,10 @@
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
 import { ExploreCategoryClient } from "@/features/boards/components/ExploreCategoryClient";
-import { getEquipmentCategory } from "@/shared/data/equipment-categories";
+import { equipmentCategories, getEquipmentCategory } from "@/shared/data/equipment-categories";
+
+export function generateStaticParams() {
+  return equipmentCategories.map((category) => ({ category: category.slug }));
+}
 
 export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
   const { category: slug } = await params;
