@@ -29,7 +29,9 @@ type State =
   | { status: "ready"; boards: PublicBoard[] }
   | { status: "error"; message: string };
 
-const categoryLabelBySlug = new Map(equipmentCategories.map((category) => [category.slug, category]));
+const categoryLabelBySlug = new Map<string, (typeof equipmentCategories)[number]>(
+  equipmentCategories.map((category) => [category.slug, category]),
+);
 
 async function readBoards() {
   const response = await fetch("/api/public/boards", { cache: "no-store" });
