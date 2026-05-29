@@ -1,12 +1,11 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { eq } from "drizzle-orm";
 import { createEquipment } from "../../src/features/equipment/actions/mutations";
 import { createEquipmentSchema } from "../../src/features/equipment/schemas";
-import { createDb, type ManiacDatabase } from "../../src/server/db/client";
-import { users } from "../../src/server/db/schema";
-import { allowMethods, errorResponse, getErrorMessage, jsonResponse, readJsonObject, statusFromError, zodDetails } from "../_shared/http";
+import { createDb } from "../../src/server/db/client";
 import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../_shared/dev-user";
+import { ensureDevUser } from "../_shared/db-users";
+import { allowMethods, errorResponse, getErrorMessage, jsonResponse, readJsonObject, statusFromError, zodDetails } from "../_shared/http";
 
 type Env = {
   DB: D1Database;
@@ -34,20 +33,6 @@ type EquipmentListRow = {
 
 function publicViewPath(slug: string) {
   return `/garage/view/?slug=${encodeURIComponent(slug)}`;
-}
-
-async function ensureDevUser(db: ManiacDatabase) {
-  const existingRows = await db.select({ id: users.id }).from(users).where(eq(users.id, MOCK_USER_ID)).limit(1);
-  if (existingRows[0]) return existingRows[0];
-
-  await db.insert(users).values({
-    id: MOCK_USER_ID,
-    email: "dev@maniac-garage.local",
-    nickname: "Dev Maniac",
-    provider: "mock",
-  });
-
-  return { id: MOCK_USER_ID };
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
@@ -94,7 +79,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     const input = createEquipmentSchema.parse(body);
     const db = createDb(env.DB);
 
-    await ensureDevUser(db);
+    await ensureDevUser(env.DB);
     const result = await createEquipment(db, MOCK_USER_ID, input);
 
     return jsonResponse({
