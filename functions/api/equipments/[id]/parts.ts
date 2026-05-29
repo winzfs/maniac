@@ -65,27 +65,6 @@ function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
   return "Unexpected error.";
 }
-async function ensureTable(env: Env) {
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS parts (
-    id TEXT PRIMARY KEY NOT NULL,
-    equipment_id TEXT NOT NULL REFERENCES equipments(id) ON DELETE CASCADE,
-    category TEXT NOT NULL DEFAULT 'custom',
-    brand TEXT,
-    name TEXT NOT NULL,
-    price INTEGER,
-    installed_at INTEGER,
-    purchase_url TEXT,
-    image_url TEXT,
-    memo TEXT,
-    visibility TEXT NOT NULL DEFAULT 'public',
-    moderation_status TEXT NOT NULL DEFAULT 'normal',
-    created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
-    updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
-    deleted_at INTEGER
-  )`).run();
-  await env.DB.prepare("CREATE INDEX IF NOT EXISTS parts_equipment_idx ON parts (equipment_id)").run();
-  await env.DB.prepare("CREATE INDEX IF NOT EXISTS parts_category_idx ON parts (category)").run();
-}
 async function hasEquipment(env: Env, equipmentId: string) {
   const row = await env.DB.prepare("SELECT id FROM equipments WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1").bind(equipmentId, MOCK_USER_ID).first<{ id: string }>();
   return Boolean(row);
@@ -104,7 +83,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
-  await ensureTable(env);
   if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
   return jsonResponse({ ok: true, parts: await listParts(env, equipmentId) });
 };
@@ -114,7 +92,6 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
   try {
-    await ensureTable(env);
     if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
     const input = createPartSchema.parse(await readJsonObject(request));
     const id = `part_${crypto.randomUUID()}`;
@@ -135,7 +112,6 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
   try {
-    await ensureTable(env);
     if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
     const partId = getPartId(request);
     if (!partId) return errorResponse("Part id is required.", 400);
@@ -169,7 +145,6 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
-  await ensureTable(env);
   if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
   const partId = getPartId(request);
   if (!partId) return errorResponse("Part id is required.", 400);
