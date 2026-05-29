@@ -24,6 +24,7 @@ React 기반 공개 장비 페이지 ✅
 댓글 작성/삭제 ✅
 게시글 저장 전 서버 sanitize ✅
 운영 환경 mock user 쓰기 차단 ✅
+초기 D1 schema migration ✅
 ```
 
 아직 로그인은 실제 인증이 아니라 개발용 mock user를 사용합니다.
@@ -77,6 +78,33 @@ wrangler.toml
 ```
 
 D1 binding은 `wrangler.toml`에서 관리합니다. Cloudflare 대시보드에서 바인딩을 직접 수정해도 `wrangler.toml`이 우선 적용될 수 있습니다.
+
+## D1 migration
+
+새 D1 데이터베이스에는 아래 순서로 migration을 적용합니다.
+
+```txt
+migrations/0001_initial.sql
+migrations/0002_add_maintenance_logs_and_parts.sql
+migrations/0003_add_boards_posts_comments.sql
+migrations/0004_add_board_metadata.sql
+```
+
+remote D1에 순서대로 적용하려면 다음 명령을 사용합니다.
+
+```bash
+npm run d1:migrate:all:remote
+```
+
+개별 실행 스크립트:
+
+```bash
+npm run d1:migrate:initial:remote
+npm run d1:migrate:remote
+npm run d1:migrate:community:remote
+npm run d1:migrate:board-meta:remote
+npm run d1:tables:remote
+```
 
 ## 현재 확인 가능한 주요 페이지
 
@@ -290,14 +318,6 @@ DELETE /api/public/posts/:id/comments?commentId=...
 GET    /explore/:category/:board/:post → redirect to /explore/post/?id=...
 ```
 
-`maintenance_logs`, `parts`, `boards`, `posts`, `comments` 테이블은 D1 SQL migration으로 관리합니다.
-
-```txt
-migrations/0002_add_maintenance_logs_and_parts.sql
-migrations/0003_add_boards_posts_comments.sql
-migrations/0004_add_board_metadata.sql
-```
-
 현재 API 내부의 런타임 `CREATE TABLE IF NOT EXISTS` 안전장치는 제거되어 있습니다.
 
 ## 주요 코드 위치
@@ -363,8 +383,8 @@ R2 이미지 업로드
 결제/구독
 신고/모더레이션 워크플로우
 API DB 헬퍼 공통화
-D1 local/remote migration 흐름 고도화
-migrations/0001_initial.sql 추가
+D1 local migration 흐름 고도화
+migration 적용 이력 관리 방식 검토
 기존 HTML 공개 페이지 fallback 정리
 OpenNext 또는 Workers 런타임 전환 검토
 ```
@@ -375,6 +395,6 @@ OpenNext 또는 Workers 런타임 전환 검토
 2. 로그인/세션 연결
 3. R2 사용 가능 시 이미지 업로드 추가
 4. API DB 헬퍼 공통화
-5. `migrations/0001_initial.sql` 추가
+5. local D1 migration 흐름 정리
 6. 기존 `/garage/[slug]/` fallback 정리
 7. OpenNext 또는 Workers 런타임 전환 검토
