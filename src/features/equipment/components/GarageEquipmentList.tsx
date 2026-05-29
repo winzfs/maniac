@@ -83,7 +83,7 @@ export function GarageEquipmentList() {
 
     async function loadEquipments() {
       try {
-        const response = await fetch("/api/equipments", { cache: "no-store" });
+        const response = await fetch("/api/equipments", { cache: "no-store", credentials: "same-origin" });
         const data = (await response.json()) as EquipmentListResponse;
 
         if (response.status === 401) {
