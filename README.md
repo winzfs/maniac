@@ -30,6 +30,7 @@ HttpOnly 쿠키 기반 세션 ✅
 홈 콘텐츠 피드화 ✅
 홈 히어로 내 장비 카드 ✅
 샘플 콘텐츠 seed endpoint ✅
+개발용 /api/dev/* endpoint 보호 ✅
 D1 migration 정리 ✅
 R2 업로드 ❌ 보류
 결제/구독 ❌ 미구현
@@ -264,7 +265,21 @@ GET/POST /api/dev/seed-samples
 GET/POST /api/dev/cleanup-dev-maniac
 ```
 
-운영 공개 전에는 개발용 endpoint를 관리자 인증으로 보호하거나 제거해야 합니다.
+`/api/dev/*` endpoint는 `functions/api/dev/_middleware.ts`에서 기본 차단합니다.
+
+```txt
+DEV_TOOLS_ENABLED=true 일 때만 접근 가능
+APP_ENV=production 에서는 DEV_TOOLS_SECRET 필수
+DEV_TOOLS_SECRET이 설정된 경우 x-dev-tools-secret header 또는 token query string 값이 일치해야 함
+```
+
+예시:
+
+```bash
+curl -H "x-dev-tools-secret: $DEV_TOOLS_SECRET" https://example.com/api/dev/seed-lite
+```
+
+운영 환경에서는 샘플 데이터가 꼭 필요한 순간에만 임시로 켜고, 실행 후 다시 `DEV_TOOLS_ENABLED`를 끕니다.
 
 ---
 
@@ -278,7 +293,6 @@ R2 이미지 업로드
 어드민 UI
 결제/구독
 신고/모더레이션 워크플로우
-개발용 seed/cleanup endpoint 보호 또는 제거
 D1 local migration 흐름 고도화
 migration 적용 이력 관리 방식 검토
 이메일 인증
@@ -292,9 +306,8 @@ MFA
 ## 다음 개발 추천 순서
 
 1. 배포 후 회귀 테스트
-2. 개발용 seed/cleanup endpoint 보호 또는 제거
-3. 프로필 설정 페이지
-4. 이미지 업로드 구조 정리
-5. 신고/모더레이션 워크플로우
-6. 관리자 UI
-7. 결제/구독
+2. 프로필 설정 페이지
+3. 이미지 업로드 구조 정리
+4. 신고/모더레이션 워크플로우
+5. 관리자 UI
+6. 결제/구독
