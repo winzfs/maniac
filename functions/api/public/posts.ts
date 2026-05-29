@@ -11,6 +11,10 @@ function safeLimit(value: string | null) {
   return Math.min(Math.max(Math.trunc(parsed), 1), 50);
 }
 
+function safeSort(value: string | null) {
+  return value === "popular" ? "popular" : "latest";
+}
+
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
 
@@ -19,6 +23,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     board: url.searchParams.get("board"),
     category: url.searchParams.get("category"),
     limit: safeLimit(url.searchParams.get("limit")),
+    sort: safeSort(url.searchParams.get("sort")),
   });
 
   return jsonResponse({ ok: true, posts });
