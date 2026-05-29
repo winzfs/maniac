@@ -1,7 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { allowMethods, errorResponse, getErrorMessage, isRecord, jsonResponse, paramValue, readJsonObject } from "../../../../_shared/http";
 import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../../../../_shared/dev-user";
+import { ensureDevUser } from "../../../../_shared/db-users";
+import { allowMethods, errorResponse, getErrorMessage, isRecord, jsonResponse, paramValue, readJsonObject } from "../../../../_shared/http";
 
 type Env = { DB: D1Database; APP_ENV?: string };
 
@@ -20,13 +21,6 @@ type CommentRow = {
 function textField(body: Record<string, unknown>, key: string) {
   const value = body[key];
   return typeof value === "string" ? value.trim() : "";
-}
-
-async function ensureDevUser(db: D1Database) {
-  await db.prepare(
-    `INSERT OR IGNORE INTO users (id, email, nickname, provider)
-     VALUES (?, ?, ?, ?)`,
-  ).bind(MOCK_USER_ID, "dev@maniac-garage.local", "Dev Maniac", "mock").run();
 }
 
 async function getPublicPost(db: D1Database, id: string) {
