@@ -1,5 +1,7 @@
 import { MyPostEditClient } from "@/features/auth/MyPostEditClient";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
+import { Card } from "@/shared/components/ui/Card";
+import { Suspense } from "react";
 
 export default function MyPostEditPage() {
   return (
@@ -9,7 +11,9 @@ export default function MyPostEditPage() {
         title="게시글 수정"
         description="내가 작성한 게시글을 수정하거나 삭제합니다."
       />
-      <MyPostEditClient />
+      <Suspense fallback={<Card className="p-6 text-sm text-text-secondary">게시글 수정 화면을 준비하는 중입니다...</Card>}>
+        <MyPostEditClient />
+      </Suspense>
     </main>
   );
 }
