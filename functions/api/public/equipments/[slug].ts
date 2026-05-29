@@ -59,7 +59,11 @@ async function findPublicEquipment(env: Env, slug: string) {
   return env.DB.prepare(
     `SELECT id, category, brand, model, nickname, slug, year, description, main_image_url, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at
      FROM equipments
-     WHERE user_id = ? AND slug = ? AND deleted_at IS NULL
+     WHERE user_id = ?
+       AND slug = ?
+       AND deleted_at IS NULL
+       AND visibility = 'public'
+       AND moderation_status = 'normal'
      LIMIT 1`,
   ).bind(MOCK_USER_ID, slug).first<EquipmentRow>();
 }
