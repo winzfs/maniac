@@ -32,6 +32,7 @@ const createLogSchema = z.object({
   isPublic: z.boolean().default(true),
   visibility: z.enum(["public", "private", "unlisted"]).default("public"),
 });
+const updateLogSchema = createLogSchema.partial();
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
   return new Response(JSON.stringify(body), {
@@ -45,6 +46,10 @@ function errorResponse(message: string, status = 400, details?: unknown) {
 function getEquipmentId(params: EventContext<Env, string, unknown>["params"]) {
   const value = params.id;
   return typeof value === "string" ? value : Array.isArray(value) ? value[0] : "";
+}
+function getLogId(request: Request) {
+  const url = new URL(request.url);
+  return url.searchParams.get("logId") ?? "";
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -84,6 +89,10 @@ async function hasEquipment(env: Env, equipmentId: string) {
   const row = await env.DB.prepare("SELECT id FROM equipments WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1").bind(equipmentId, MOCK_USER_ID).first<{ id: string }>();
   return Boolean(row);
 }
+async function hasLog(env: Env, equipmentId: string, logId: string) {
+  const row = await env.DB.prepare("SELECT id FROM maintenance_logs WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL LIMIT 1").bind(logId, equipmentId).first<{ id: string }>();
+  return Boolean(row);
+}
 async function listLogs(env: Env, equipmentId: string) {
   const rows = await env.DB.prepare(`SELECT id, equipment_id, type, title, description, performed_at, usage_metric_value, cost, shop_name, is_public, visibility, moderation_status, created_at, updated_at
     FROM maintenance_logs WHERE equipment_id = ? AND deleted_at IS NULL ORDER BY performed_at DESC, created_at DESC LIMIT 100`).bind(equipmentId).all<LogRow>();
@@ -120,6 +129,46 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   }
 };
 
+export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params }) => {
+  if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
+  const equipmentId = getEquipmentId(params);
+  if (!equipmentId) return errorResponse("Equipment id is required.", 400);
+
+  try {
+    await ensureTable(env);
+    if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
+
+    const logId = getLogId(request);
+    if (!logId) return errorResponse("Maintenance log id is required.", 400);
+    if (!(await hasLog(env, equipmentId, logId))) return errorResponse("Maintenance log not found.", 404);
+
+    const input = updateLogSchema.parse(await readJsonObject(request));
+    const now = Date.now();
+
+    await env.DB.prepare(`UPDATE maintenance_logs
+      SET type = COALESCE(?, type), title = COALESCE(?, title), description = ?, performed_at = COALESCE(?, performed_at), usage_metric_value = ?, cost = ?, shop_name = ?, is_public = COALESCE(?, is_public), visibility = COALESCE(?, visibility), updated_at = ?
+      WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL`).bind(
+      input.type ?? null,
+      input.title ?? null,
+      input.description ?? null,
+      input.performedAt ?? null,
+      input.usageMetricValue ?? null,
+      input.cost ?? null,
+      input.shopName ?? null,
+      typeof input.isPublic === "boolean" ? (input.isPublic ? 1 : 0) : null,
+      input.visibility ?? null,
+      now,
+      logId,
+      equipmentId,
+    ).run();
+
+    return jsonResponse({ ok: true, id: logId, logs: await listLogs(env, equipmentId) });
+  } catch (error) {
+    const status = error instanceof ZodError ? 422 : 400;
+    return errorResponse(getErrorMessage(error), status, error instanceof ZodError ? error.flatten() : undefined);
+  }
+};
+
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
   const equipmentId = getEquipmentId(params);
@@ -128,12 +177,9 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   await ensureTable(env);
   if (!(await hasEquipment(env, equipmentId))) return errorResponse("Equipment not found.", 404);
 
-  const url = new URL(request.url);
-  const logId = url.searchParams.get("logId") ?? "";
+  const logId = getLogId(request);
   if (!logId) return errorResponse("Maintenance log id is required.", 400);
-
-  const existing = await env.DB.prepare("SELECT id FROM maintenance_logs WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL LIMIT 1").bind(logId, equipmentId).first<{ id: string }>();
-  if (!existing) return errorResponse("Maintenance log not found.", 404);
+  if (!(await hasLog(env, equipmentId, logId))) return errorResponse("Maintenance log not found.", 404);
 
   const now = Date.now();
   await env.DB.prepare("UPDATE maintenance_logs SET deleted_at = ?, updated_at = ? WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL").bind(now, now, logId, equipmentId).run();
@@ -142,6 +188,6 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
 };
 
 export const onRequest: PagesFunction<Env> = async ({ request }) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { allow: "GET, POST, DELETE, OPTIONS" } });
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { allow: "GET, POST, PATCH, DELETE, OPTIONS" } });
   return errorResponse("Method not allowed.", 405);
 };
