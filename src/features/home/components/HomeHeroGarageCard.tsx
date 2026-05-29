@@ -3,7 +3,7 @@
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 
 type Equipment = {
   id: string;
@@ -28,6 +28,8 @@ type EquipmentResponse = {
   error?: string;
 };
 
+const heroEquipmentStorageKey = "maniac.heroEquipmentId";
+
 function formatSpec(equipment: Equipment) {
   return [equipment.brand, equipment.model, equipment.year].filter(Boolean).join(" · ") || equipment.category;
 }
@@ -42,9 +44,15 @@ function viewHref(equipment: Equipment) {
 }
 
 export function HomeHeroGarageCard() {
-  const [equipment, setEquipment] = useState<Equipment | null>(null);
+  const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState("");
   const [loading, setLoading] = useState(true);
   const [loggedOut, setLoggedOut] = useState(false);
+
+  const equipment = useMemo(() => {
+    if (equipments.length === 0) return null;
+    return equipments.find((item) => item.id === selectedEquipmentId) ?? equipments[0];
+  }, [equipments, selectedEquipmentId]);
 
   useEffect(() => {
     let mounted = true;
@@ -60,7 +68,15 @@ export function HomeHeroGarageCard() {
         }
 
         if (!response.ok || !data?.ok) return;
-        if (mounted) setEquipment((data.equipments ?? [])[0] ?? null);
+
+        const loadedEquipments = data.equipments ?? [];
+        const storedId = window.localStorage.getItem(heroEquipmentStorageKey) ?? "";
+        const nextSelectedId = loadedEquipments.some((item) => item.id === storedId) ? storedId : loadedEquipments[0]?.id ?? "";
+
+        if (mounted) {
+          setEquipments(loadedEquipments);
+          setSelectedEquipmentId(nextSelectedId);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -72,6 +88,12 @@ export function HomeHeroGarageCard() {
       mounted = false;
     };
   }, []);
+
+  function changeHeroEquipment(event: ChangeEvent<HTMLSelectElement>) {
+    const nextId = event.target.value;
+    setSelectedEquipmentId(nextId);
+    window.localStorage.setItem(heroEquipmentStorageKey, nextId);
+  }
 
   if (loading) {
     return (
@@ -114,24 +136,40 @@ export function HomeHeroGarageCard() {
   }
 
   return (
-    <Link href={viewHref(equipment)} className="block">
-      <Card variant="dark" className="min-h-72 overflow-hidden p-5 transition hover:-translate-y-0.5 hover:shadow-lg sm:p-6">
-        {equipment.main_image_url ? (
-          <img src={equipment.main_image_url} alt="" className="h-44 w-full rounded-[1.75rem] object-cover" />
-        ) : (
-          <div className="flex h-44 items-center justify-center rounded-[1.75rem] bg-gradient-to-br from-zinc-700 via-zinc-400 to-garage-orange/80 text-xs font-black uppercase tracking-[0.18em] text-white/80">My Equipment</div>
-        )}
-        <div className="mt-5 space-y-1">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">내 대표 장비</p>
-          <h3 className="text-2xl font-black tracking-tight">{equipment.nickname}</h3>
-          <p className="text-sm text-zinc-300">{formatSpec(equipment)}</p>
+    <Card variant="dark" className="min-h-72 overflow-hidden p-5 sm:p-6">
+      {equipment.main_image_url ? (
+        <img src={equipment.main_image_url} alt="" className="h-44 w-full rounded-[1.75rem] object-cover" />
+      ) : (
+        <div className="flex h-44 items-center justify-center rounded-[1.75rem] bg-gradient-to-br from-zinc-700 via-zinc-400 to-garage-orange/80 text-xs font-black uppercase tracking-[0.18em] text-white/80">My Equipment</div>
+      )}
+
+      <div className="mt-5 space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">내 대표 장비</p>
+            <h3 className="break-words text-2xl font-black tracking-tight">{equipment.nickname}</h3>
+            <p className="text-sm text-zinc-300">{formatSpec(equipment)}</p>
+          </div>
+          {equipments.length > 1 ? (
+            <label className="grid gap-1 text-xs font-bold text-zinc-300 sm:w-40">
+              <span>대표 장비 선택</span>
+              <select value={equipment.id} onChange={changeHeroEquipment} className="h-10 rounded-2xl border border-white/10 bg-white/10 px-3 text-sm font-semibold text-white outline-none">
+                {equipments.map((item) => <option key={item.id} value={item.id} className="text-zinc-950">{item.nickname}</option>)}
+              </select>
+            </label>
+          ) : null}
         </div>
-        <div className="mt-5 grid grid-cols-3 gap-2 text-center text-sm">
+
+        <div className="grid grid-cols-3 gap-2 text-center text-sm">
           <div className="rounded-2xl bg-white/10 p-3"><b>{formatUsage(equipment)}</b><p className="text-xs text-zinc-300">{equipment.usage_metric_type}</p></div>
           <div className="rounded-2xl bg-white/10 p-3"><b>{equipment.maintenance_log_count ?? 0}</b><p className="text-xs text-zinc-300">records</p></div>
           <div className="rounded-2xl bg-white/10 p-3"><b>{equipment.visibility}</b><p className="text-xs text-zinc-300">visibility</p></div>
         </div>
-      </Card>
-    </Link>
+
+        <Link href={viewHref(equipment)}>
+          <Button className="w-full" variant="secondary">장비 페이지 보기</Button>
+        </Link>
+      </div>
+    </Card>
   );
 }
