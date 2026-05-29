@@ -6,6 +6,7 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
 import { getEquipmentCategory } from "@/shared/data/equipment-categories";
+import { excerptFromHtml } from "@/features/boards/utils/html";
 
 type PublicBoard = {
   id: string;
@@ -47,10 +48,6 @@ async function readJson<T>(url: string) {
 
 function formatDate(value: number) {
   return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
-}
-
-function excerpt(body: string) {
-  return body.length > 100 ? `${body.slice(0, 100)}...` : body;
 }
 
 function postDetailHref(id: string) {
@@ -147,8 +144,8 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
             const board = boardsBySlug.get(post.board_slug);
             return (
               <Link key={post.id} href={postDetailHref(post.id)}>
-                <Card className="p-4 transition hover:-translate-y-0.5 hover:shadow-sm sm:p-5">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+                <Card className="space-y-3 p-5 transition hover:-translate-y-0.5 hover:shadow-sm sm:p-6">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
                     <Badge label={post.board_title} tone={board?.type === "trade" ? "orange" : "muted"} />
                     <span>{post.author_nickname ?? "maniac"}</span>
                     <span>·</span>
@@ -156,8 +153,8 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
                     <span>·</span>
                     <span>{post.comment_count} comments</span>
                   </div>
-                  <h2 className="mt-2 text-lg font-bold">{post.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-text-secondary">{excerpt(post.body)}</p>
+                  <h2 className="text-xl font-black tracking-[-0.04em]">{post.title}</h2>
+                  <p className="line-clamp-2 text-sm leading-6 text-text-secondary">{excerptFromHtml(post.body)}</p>
                 </Card>
               </Link>
             );
