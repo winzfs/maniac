@@ -1,8 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { sanitizePostHtml } from "../../src/features/boards/utils/html";
-import { allowMethods, errorResponse, getErrorMessage, isRecord, jsonResponse, readJsonObject } from "../_shared/http";
 import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../_shared/dev-user";
+import { ensureDevUser } from "../_shared/db-users";
+import { allowMethods, errorResponse, getErrorMessage, isRecord, jsonResponse, readJsonObject } from "../_shared/http";
 
 type Env = { DB: D1Database; APP_ENV?: string };
 
@@ -30,13 +31,6 @@ function textField(body: Record<string, unknown>, key: string) {
 
 function postDetailPath(id: string) {
   return `/explore/post/?id=${encodeURIComponent(id)}`;
-}
-
-async function ensureDevUser(db: D1Database) {
-  await db.prepare(
-    `INSERT OR IGNORE INTO users (id, email, nickname, provider)
-     VALUES (?, ?, ?, ?)`,
-  ).bind(MOCK_USER_ID, "dev@maniac-garage.local", "Dev Maniac", "mock").run();
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
