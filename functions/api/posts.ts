@@ -64,6 +64,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     await ensureDevUser(env.DB);
 
     const id = crypto.randomUUID();
+    const now = Date.now();
+
     await env.DB.prepare(
       `INSERT INTO posts (
          id,
@@ -73,9 +75,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
          body,
          status,
          visibility,
-         moderation_status
-       ) VALUES (?, ?, ?, ?, ?, 'published', 'public', 'normal')`,
-    ).bind(id, board.id, MOCK_USER_ID, title, postBody).run();
+         moderation_status,
+         created_at,
+         updated_at
+       ) VALUES (?, ?, ?, ?, ?, 'published', 'public', 'normal', ?, ?)`,
+    ).bind(id, board.id, MOCK_USER_ID, title, postBody, now, now).run();
 
     const post = await env.DB.prepare(
       `SELECT id, board_id, title, body, created_at
@@ -95,7 +99,4 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 };
 
-export const onRequest: PagesFunction<Env> = async ({ request }) => {
-  if (request.method === "OPTIONS") return allowMethods(["POST", "OPTIONS"]);
-  return errorResponse("Method not allowed.", 405);
-};
+export const onRequestOptions = () => allowMethods(["POST", "OPTIONS"]);
