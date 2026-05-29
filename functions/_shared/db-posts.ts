@@ -51,6 +51,7 @@ export type PublicPostListFilters = {
   board?: string | null;
   category?: string | null;
   limit: number;
+  sort?: "latest" | "popular";
 };
 
 const derivedCategory = "COALESCE(NULLIF(boards.category, ''), substr(boards.slug, 1, instr(boards.slug || '-', '-') - 1))";
@@ -107,6 +108,7 @@ export async function getPublicPostDetail(db: D1Database, id: string) {
 export async function listPublicPosts(db: D1Database, filters: PublicPostListFilters) {
   const conditions = [...publicPostConditions];
   const values: unknown[] = [];
+  const orderBy = filters.sort === "popular" ? "comment_count DESC, posts.created_at DESC" : "posts.created_at DESC";
 
   if (filters.board) {
     conditions.push("boards.slug = ?");
@@ -147,7 +149,7 @@ export async function listPublicPosts(db: D1Database, filters: PublicPostListFil
       AND comments.moderation_status = 'normal'
      WHERE ${conditions.join(" AND ")}
      GROUP BY posts.id
-     ORDER BY posts.created_at DESC
+     ORDER BY ${orderBy}
      LIMIT ?`,
   ).bind(...values).all<PublicPostListRow>();
 
