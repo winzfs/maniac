@@ -54,13 +54,19 @@ function getErrorMessage(error: unknown) {
   return "Unexpected error.";
 }
 
-async function readJson(request: Request) {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function readJsonObject(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {
     throw new Error("Content-Type must be application/json.");
   }
 
-  return request.json();
+  const body: unknown = await request.json();
+  if (!isRecord(body)) throw new Error("JSON body must be an object.");
+  return body;
 }
 
 async function findEquipment(env: Env, id: string) {
@@ -94,7 +100,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
     const existing = await findEquipment(env, id);
     if (!existing) return errorResponse("Equipment not found.", 404);
 
-    const body = await readJson(request);
+    const body = await readJsonObject(request);
     const input = updateEquipmentSchema.parse({ ...body, id });
     const now = Date.now();
 
