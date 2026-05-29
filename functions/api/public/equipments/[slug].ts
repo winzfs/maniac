@@ -14,6 +14,7 @@ type EquipmentRow = {
   slug: string;
   year: number | null;
   description: string | null;
+  main_image_url: string | null;
   usage_metric_type: string;
   usage_metric_value: number | null;
   visibility: string;
@@ -56,7 +57,7 @@ function decodeSlug(slug: string) {
 
 async function findPublicEquipment(env: Env, slug: string) {
   return env.DB.prepare(
-    `SELECT id, category, brand, model, nickname, slug, year, description, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at
+    `SELECT id, category, brand, model, nickname, slug, year, description, main_image_url, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at
      FROM equipments
      WHERE user_id = ? AND slug = ? AND deleted_at IS NULL
      LIMIT 1`,
