@@ -1,6 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { z, ZodError } from "zod";
+import { z } from "zod";
+import { allowMethods, errorResponse, getErrorMessage, jsonResponse, paramValue, readJsonObject, statusFromError, zodDetails } from "../../../_shared/http";
+import { MOCK_USER_ID } from "../../../_shared/dev-user";
 
 type Env = { DB: D1Database };
 type PartRow = {
@@ -20,7 +22,6 @@ type PartRow = {
   updated_at: number;
 };
 
-const MOCK_USER_ID = "dev_user_maniac";
 const createPartSchema = z.object({
   category: z.string().trim().min(1).max(60).default("custom"),
   brand: z.string().trim().max(80).optional(),
@@ -34,36 +35,12 @@ const createPartSchema = z.object({
 });
 const updatePartSchema = createPartSchema.partial();
 
-function jsonResponse(body: unknown, init?: ResponseInit) {
-  return new Response(JSON.stringify(body), {
-    ...init,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...init?.headers },
-  });
-}
-function errorResponse(message: string, status = 400, details?: unknown) {
-  return jsonResponse({ ok: false, error: message, details }, { status });
-}
 function getEquipmentId(params: EventContext<Env, string, unknown>["params"]) {
-  const value = params.id;
-  return typeof value === "string" ? value : Array.isArray(value) ? value[0] : "";
+  return paramValue(params, "id");
 }
 function getPartId(request: Request) {
   const url = new URL(request.url);
   return url.searchParams.get("partId") ?? "";
-}
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-async function readJsonObject(request: Request) {
-  if (!(request.headers.get("content-type") ?? "").includes("application/json")) throw new Error("Content-Type must be application/json.");
-  const body: unknown = await request.json();
-  if (!isRecord(body)) throw new Error("JSON body must be an object.");
-  return body;
-}
-function getErrorMessage(error: unknown) {
-  if (error instanceof ZodError) return error.issues[0]?.message ?? "Invalid part input.";
-  if (error instanceof Error) return error.message;
-  return "Unexpected error.";
 }
 async function hasEquipment(env: Env, equipmentId: string) {
   const row = await env.DB.prepare("SELECT id FROM equipments WHERE id = ? AND user_id = ? AND deleted_at IS NULL LIMIT 1").bind(equipmentId, MOCK_USER_ID).first<{ id: string }>();
@@ -102,8 +79,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
     ).run();
     return jsonResponse({ ok: true, id, parts: await listParts(env, equipmentId) }, { status: 201 });
   } catch (error) {
-    const status = error instanceof ZodError ? 422 : 400;
-    return errorResponse(getErrorMessage(error), status, error instanceof ZodError ? error.flatten() : undefined);
+    return errorResponse(getErrorMessage(error, "Invalid part input."), statusFromError(error), zodDetails(error));
   }
 };
 
@@ -136,8 +112,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
     ).run();
     return jsonResponse({ ok: true, id: partId, parts: await listParts(env, equipmentId) });
   } catch (error) {
-    const status = error instanceof ZodError ? 422 : 400;
-    return errorResponse(getErrorMessage(error), status, error instanceof ZodError ? error.flatten() : undefined);
+    return errorResponse(getErrorMessage(error, "Invalid part input."), statusFromError(error), zodDetails(error));
   }
 };
 
@@ -155,6 +130,6 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
 };
 
 export const onRequest: PagesFunction<Env> = async ({ request }) => {
-  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: { allow: "GET, POST, PATCH, DELETE, OPTIONS" } });
+  if (request.method === "OPTIONS") return allowMethods(["GET", "POST", "PATCH", "DELETE", "OPTIONS"]);
   return errorResponse("Method not allowed.", 405);
 };
