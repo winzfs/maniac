@@ -36,6 +36,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const category = url.searchParams.get("category");
   const limit = safeLimit(url.searchParams.get("limit"));
 
+  const derivedCategory = "COALESCE(NULLIF(boards.category, ''), substr(boards.slug, 1, instr(boards.slug || '-', '-') - 1))";
   const conditions = [
     "posts.deleted_at IS NULL",
     "posts.status = 'published'",
@@ -52,7 +53,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   if (category) {
-    conditions.push("boards.category = ?");
+    conditions.push(`${derivedCategory} = ?`);
     values.push(category);
   }
 
@@ -64,7 +65,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
        posts.board_id,
        boards.slug AS board_slug,
        boards.title AS board_title,
-       boards.category,
+       ${derivedCategory} AS category,
        posts.title,
        posts.body,
        posts.author_id,
