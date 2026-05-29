@@ -34,6 +34,7 @@ const createLogSchema = z.object({
   visibility: z.enum(["public", "private", "unlisted"]).default("public"),
 });
 const updateLogSchema = createLogSchema.partial();
+type UpdateLogInput = z.infer<typeof updateLogSchema>;
 
 function getEquipmentId(params: EventContext<Env, string, unknown>["params"]) {
   return paramValue(params, "id");
@@ -54,6 +55,35 @@ async function listLogs(env: Env, equipmentId: string) {
   const rows = await env.DB.prepare(`SELECT id, equipment_id, type, title, description, performed_at, usage_metric_value, cost, shop_name, is_public, visibility, moderation_status, created_at, updated_at
     FROM maintenance_logs WHERE equipment_id = ? AND deleted_at IS NULL ORDER BY performed_at DESC, created_at DESC LIMIT 100`).bind(equipmentId).all<LogRow>();
   return rows.results ?? [];
+}
+
+function buildUpdateLogQuery(input: UpdateLogInput, now: number, logId: string, equipmentId: string) {
+  const updates: string[] = [];
+  const values: unknown[] = [];
+
+  function set(column: string, value: unknown) {
+    updates.push(`${column} = ?`);
+    values.push(value);
+  }
+
+  if ("type" in input) set("type", input.type);
+  if ("title" in input) set("title", input.title);
+  if ("description" in input) set("description", input.description ?? null);
+  if ("performedAt" in input) set("performed_at", input.performedAt);
+  if ("usageMetricValue" in input) set("usage_metric_value", input.usageMetricValue ?? null);
+  if ("cost" in input) set("cost", input.cost ?? null);
+  if ("shopName" in input) set("shop_name", input.shopName ?? null);
+  if ("isPublic" in input) set("is_public", input.isPublic ? 1 : 0);
+  if ("visibility" in input) set("visibility", input.visibility);
+
+  set("updated_at", now);
+
+  return {
+    sql: `UPDATE maintenance_logs
+      SET ${updates.join(", ")}
+      WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL`,
+    values: [...values, logId, equipmentId],
+  };
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
@@ -97,23 +127,9 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
 
     const input = updateLogSchema.parse(await readJsonObject(request));
     const now = Date.now();
+    const update = buildUpdateLogQuery(input, now, logId, equipmentId);
 
-    await env.DB.prepare(`UPDATE maintenance_logs
-      SET type = COALESCE(?, type), title = COALESCE(?, title), description = ?, performed_at = COALESCE(?, performed_at), usage_metric_value = ?, cost = ?, shop_name = ?, is_public = COALESCE(?, is_public), visibility = COALESCE(?, visibility), updated_at = ?
-      WHERE id = ? AND equipment_id = ? AND deleted_at IS NULL`).bind(
-      input.type ?? null,
-      input.title ?? null,
-      input.description ?? null,
-      input.performedAt ?? null,
-      input.usageMetricValue ?? null,
-      input.cost ?? null,
-      input.shopName ?? null,
-      typeof input.isPublic === "boolean" ? (input.isPublic ? 1 : 0) : null,
-      input.visibility ?? null,
-      now,
-      logId,
-      equipmentId,
-    ).run();
+    await env.DB.prepare(update.sql).bind(...update.values).run();
 
     return jsonResponse({ ok: true, id: logId, logs: await listLogs(env, equipmentId) });
   } catch (error) {
