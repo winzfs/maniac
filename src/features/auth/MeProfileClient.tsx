@@ -21,7 +21,7 @@ export function MeProfileClient() {
 
   async function loadMe() {
     setLoading(true);
-    const response = await fetch("/api/auth/me", { cache: "no-store" });
+    const response = await fetch("/api/auth/me", { cache: "no-store", credentials: "same-origin" });
     const result = await response.json().catch(() => null) as { ok?: boolean; user?: User | null } | null;
     setUser(result?.user ?? null);
     setLoading(false);
@@ -29,7 +29,7 @@ export function MeProfileClient() {
 
   async function logout() {
     setLoggingOut(true);
-    await fetch("/api/auth/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     setUser(null);
     setLoggingOut(false);
   }
