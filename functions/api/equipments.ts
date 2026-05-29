@@ -6,10 +6,11 @@ import { createEquipmentSchema } from "../../src/features/equipment/schemas";
 import { createDb, type ManiacDatabase } from "../../src/server/db/client";
 import { users } from "../../src/server/db/schema";
 import { allowMethods, errorResponse, getErrorMessage, jsonResponse, readJsonObject, statusFromError, zodDetails } from "../_shared/http";
-import { MOCK_USER_ID } from "../_shared/dev-user";
+import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../_shared/dev-user";
 
 type Env = {
   DB: D1Database;
+  APP_ENV?: string;
 };
 
 type EquipmentListRow = {
@@ -86,6 +87,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
+  if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
 
   try {
     const body = await readJsonObject(request);
