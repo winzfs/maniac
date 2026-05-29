@@ -13,6 +13,7 @@ export type CurrentUser = {
   id: string;
   email: string;
   nickname: string;
+  bio: string | null;
   profile_image_url: string | null;
   provider: string | null;
 };
@@ -85,7 +86,7 @@ export async function getCurrentUser(request: Request, env: AuthEnv) {
   const now = Date.now();
 
   return env.DB.prepare(
-    `SELECT users.id, users.email, users.nickname, users.profile_image_url, users.provider
+    `SELECT users.id, users.email, users.nickname, users.bio, users.profile_image_url, users.provider
      FROM auth_sessions
      INNER JOIN users ON users.id = auth_sessions.user_id
      WHERE auth_sessions.verifier_hash = ?
