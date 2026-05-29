@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 
@@ -22,6 +22,12 @@ type ProfileResponse = {
   error?: string;
 };
 
+type UploadResponse = {
+  ok?: boolean;
+  image?: { public_url: string };
+  error?: string;
+};
+
 type SaveState =
   | { status: "idle" }
   | { status: "loading" }
@@ -30,8 +36,18 @@ type SaveState =
   | { status: "login-required"; message: string }
   | { status: "error"; message: string };
 
+type UploadState =
+  | { status: "idle" }
+  | { status: "uploading" }
+  | { status: "success"; message: string }
+  | { status: "error"; message: string };
+
 function inputClassName() {
   return "h-12 w-full rounded-2xl border border-border bg-surface px-4 text-base text-text-primary outline-none transition placeholder:text-text-secondary/60 focus:border-graphite";
+}
+
+function fileInputClassName() {
+  return "block w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm text-text-primary file:mr-4 file:rounded-full file:border-0 file:bg-graphite file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white";
 }
 
 function textareaClassName() {
@@ -73,11 +89,30 @@ async function saveProfile(input: { nickname: string; bio: string }) {
   return { user: data.user, loginRequired: false, error: "" };
 }
 
+async function uploadProfileImage(file: File) {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const response = await fetch("/api/uploads/profile-image", {
+    method: "POST",
+    credentials: "same-origin",
+    body: formData,
+  });
+  const data = (await response.json().catch(() => null)) as UploadResponse | null;
+
+  if (!response.ok || !data?.ok || !data.image?.public_url) {
+    throw new Error(data?.error ?? "이미지 업로드에 실패했습니다.");
+  }
+
+  return data.image.public_url;
+}
+
 export function ProfileSettingsClient() {
   const [user, setUser] = useState<User | null>(null);
   const [nickname, setNickname] = useState("");
   const [bio, setBio] = useState("");
   const [saveState, setSaveState] = useState<SaveState>({ status: "loading" });
+  const [uploadState, setUploadState] = useState<UploadState>({ status: "idle" });
 
   useEffect(() => {
     let mounted = true;
@@ -109,6 +144,23 @@ export function ProfileSettingsClient() {
       mounted = false;
     };
   }, []);
+
+  async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadState({ status: "uploading" });
+
+    try {
+      const publicUrl = await uploadProfileImage(file);
+      setUser((current) => current ? { ...current, profile_image_url: publicUrl } : current);
+      setUploadState({ status: "success", message: "프로필 이미지가 업로드되었습니다." });
+    } catch (error) {
+      setUploadState({ status: "error", message: error instanceof Error ? error.message : "이미지 업로드에 실패했습니다." });
+    } finally {
+      event.target.value = "";
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -157,6 +209,22 @@ export function ProfileSettingsClient() {
         <div className="space-y-1">
           <h2 className="text-xl font-bold">기본 프로필</h2>
           <p className="text-sm leading-6 text-text-secondary">서비스 안에서 표시되는 닉네임과 소개글을 관리합니다.</p>
+        </div>
+
+        <div className="space-y-3 rounded-3xl border border-border bg-background p-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full bg-zinc-200 text-sm font-bold text-text-secondary">
+              {user?.profile_image_url ? <img src={user.profile_image_url} alt="프로필 이미지" className="size-full object-cover" /> : "No Image"}
+            </div>
+            <div className="min-w-0 flex-1 space-y-2">
+              <label className="text-sm font-semibold" htmlFor="profile-image">프로필 이미지</label>
+              <input id="profile-image" className={fileInputClassName()} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleImageChange} disabled={uploadState.status === "uploading"} />
+              <p className="text-xs leading-5 text-text-secondary">jpg, png, webp, gif / 최대 5MB. 현재 저장소 provider는 Supabase이며, image_assets 테이블 구조는 R2 이전을 지원합니다.</p>
+            </div>
+          </div>
+          {uploadState.status === "uploading" ? <p className="text-sm text-text-secondary">이미지를 업로드하는 중입니다...</p> : null}
+          {uploadState.status === "success" ? <p className="text-sm font-semibold text-green-700">{uploadState.message}</p> : null}
+          {uploadState.status === "error" ? <p className="text-sm font-semibold text-red-700">{uploadState.message}</p> : null}
         </div>
 
         <div className="grid gap-5">
@@ -217,7 +285,7 @@ export function ProfileSettingsClient() {
 
         <Card className="space-y-3 p-5">
           <h3 className="font-bold">다음 단계</h3>
-          <p className="text-sm leading-6 text-text-secondary">프로필 이미지와 공개 사용자 프로필 페이지는 이미지 업로드 단계에서 연결합니다.</p>
+          <p className="text-sm leading-6 text-text-secondary">장비 대표 이미지와 부품 이미지는 같은 image_assets/provider 구조로 확장합니다.</p>
         </Card>
       </aside>
     </form>
