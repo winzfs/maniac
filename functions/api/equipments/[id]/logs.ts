@@ -2,9 +2,9 @@
 
 import { z } from "zod";
 import { allowMethods, errorResponse, getErrorMessage, jsonResponse, paramValue, readJsonObject, statusFromError, zodDetails } from "../../../_shared/http";
-import { MOCK_USER_ID } from "../../../_shared/dev-user";
+import { isMockUserWriteBlocked, MOCK_USER_ID, MOCK_USER_PRODUCTION_ERROR } from "../../../_shared/dev-user";
 
-type Env = { DB: D1Database };
+type Env = { DB: D1Database; APP_ENV?: string };
 type LogRow = {
   id: string;
   equipment_id: string;
@@ -96,6 +96,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
+  if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
   try {
@@ -115,6 +116,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
 
 export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
+  if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
 
@@ -139,6 +141,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
 
 export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
+  if (isMockUserWriteBlocked(env)) return errorResponse(MOCK_USER_PRODUCTION_ERROR, 401);
   const equipmentId = getEquipmentId(params);
   if (!equipmentId) return errorResponse("Equipment id is required.", 400);
 
