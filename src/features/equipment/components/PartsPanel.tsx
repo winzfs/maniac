@@ -1,0 +1,216 @@
+"use client";
+
+import { useEffect, useState, type FormEvent } from "react";
+import { Button } from "@/shared/components/ui/Button";
+import { Card } from "@/shared/components/ui/Card";
+
+type PartItem = {
+  id: string;
+  category: string;
+  brand: string | null;
+  name: string;
+  price: number | null;
+  installed_at: number | null;
+  purchase_url: string | null;
+  image_url: string | null;
+  memo: string | null;
+  visibility: string;
+};
+
+type PartsResponse = { ok: boolean; parts?: PartItem[]; error?: string };
+type State = { status: "loading" } | { status: "ready"; parts: PartItem[]; message?: string } | { status: "saving"; parts: PartItem[] } | { status: "error"; message: string };
+
+const fieldClass = "h-12 w-full rounded-2xl border border-border bg-surface px-4 text-base text-text-primary outline-none transition placeholder:text-text-secondary/60 focus:border-graphite";
+const areaClass = "min-h-24 w-full resize-y rounded-2xl border border-border bg-surface px-4 py-3 text-base leading-7 text-text-primary outline-none transition placeholder:text-text-secondary/60 focus:border-graphite";
+
+function textValue(formData: FormData, key: string) {
+  const value = formData.get(key);
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+function numberValue(formData: FormData, key: string) {
+  const value = textValue(formData, key);
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+function dateToMs(value?: string) {
+  if (!value) return undefined;
+  const parsed = new Date(`${value}T00:00:00`).getTime();
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+function msToDateInput(ms: number | null) {
+  if (ms == null) return "";
+  const date = new Date(ms);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+function formatDate(ms: number | null) {
+  if (ms == null) return "설치일 미입력";
+  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+}
+function formatPrice(value: number | null) {
+  if (value == null) return "가격 미입력";
+  return `${value.toLocaleString()}원`;
+}
+async function readApi(response: Response) {
+  const data = (await response.json()) as PartsResponse;
+  if (!response.ok || !data.ok) throw new Error(data.error ?? "부품 기록 요청에 실패했습니다.");
+  return data;
+}
+
+export function PartsPanel({ equipmentId }: { equipmentId: string }) {
+  const [state, setState] = useState<State>({ status: "loading" });
+  const [editingPartId, setEditingPartId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        const data = await readApi(await fetch(`/api/equipments/${equipmentId}/parts`, { cache: "no-store" }));
+        if (mounted) setState({ status: "ready", parts: data.parts ?? [] });
+      } catch (error) {
+        if (mounted) setState({ status: "error", message: error instanceof Error ? error.message : "부품 기록을 불러오지 못했습니다." });
+      }
+    }
+    load();
+    return () => { mounted = false; };
+  }, [equipmentId]);
+
+  function makePayload(formData: FormData) {
+    return {
+      category: textValue(formData, "category") ?? "custom",
+      brand: textValue(formData, "brand"),
+      name: textValue(formData, "name"),
+      price: numberValue(formData, "price"),
+      installedAt: dateToMs(textValue(formData, "installedAt")),
+      purchaseUrl: textValue(formData, "purchaseUrl"),
+      imageUrl: textValue(formData, "imageUrl"),
+      memo: textValue(formData, "memo"),
+      visibility: textValue(formData, "visibility") ?? "public",
+    };
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (state.status !== "ready") return;
+    const previous = state.parts;
+    setState({ status: "saving", parts: previous });
+    try {
+      const data = await readApi(await fetch(`/api/equipments/${equipmentId}/parts`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(makePayload(new FormData(event.currentTarget))),
+      }));
+      event.currentTarget.reset();
+      setState({ status: "ready", parts: data.parts ?? [], message: "부품 기록이 추가되었습니다." });
+    } catch (error) {
+      setState({ status: "ready", parts: previous, message: error instanceof Error ? error.message : "부품 기록 추가에 실패했습니다." });
+    }
+  }
+
+  async function handleUpdate(event: FormEvent<HTMLFormElement>, partId: string) {
+    event.preventDefault();
+    if (state.status !== "ready") return;
+    const previous = state.parts;
+    setState({ status: "saving", parts: previous });
+    try {
+      const data = await readApi(await fetch(`/api/equipments/${equipmentId}/parts?partId=${encodeURIComponent(partId)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(makePayload(new FormData(event.currentTarget))),
+      }));
+      setEditingPartId(null);
+      setState({ status: "ready", parts: data.parts ?? [], message: "부품 기록이 수정되었습니다." });
+    } catch (error) {
+      setState({ status: "ready", parts: previous, message: error instanceof Error ? error.message : "부품 기록 수정에 실패했습니다." });
+    }
+  }
+
+  async function handleDelete(partId: string) {
+    if (state.status !== "ready") return;
+    const confirmed = window.confirm("이 부품 기록을 삭제할까요? 공개 페이지에서도 사라집니다.");
+    if (!confirmed) return;
+    const previous = state.parts;
+    setState({ status: "saving", parts: previous });
+    try {
+      const data = await readApi(await fetch(`/api/equipments/${equipmentId}/parts?partId=${encodeURIComponent(partId)}`, { method: "DELETE" }));
+      setEditingPartId(null);
+      setState({ status: "ready", parts: data.parts ?? [], message: "부품 기록이 삭제되었습니다." });
+    } catch (error) {
+      setState({ status: "ready", parts: previous, message: error instanceof Error ? error.message : "부품 기록 삭제에 실패했습니다." });
+    }
+  }
+
+  if (state.status === "loading") return <Card className="p-6 text-sm text-text-secondary">부품 기록을 불러오는 중입니다...</Card>;
+  if (state.status === "error") return <Card className="p-6 text-sm text-red-700">{state.message}</Card>;
+
+  const parts = state.parts;
+  const isSaving = state.status === "saving";
+
+  return (
+    <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      <Card className="space-y-4 p-5 sm:p-6">
+        <div>
+          <h2 className="text-xl font-bold">부품 기록</h2>
+          <p className="mt-1 text-sm leading-6 text-text-secondary">튜닝 부품, 교체 부품, 소모품 정보를 기록합니다.</p>
+        </div>
+        {parts.length === 0 ? <div className="rounded-2xl border border-dashed border-border p-5 text-sm text-text-secondary">아직 부품 기록이 없습니다.</div> : null}
+        <div className="space-y-3">
+          {parts.map((part) => {
+            const isEditing = editingPartId === part.id;
+            return (
+              <article key={part.id} className="rounded-2xl border border-border bg-surface p-4">
+                {isEditing ? (
+                  <form className="space-y-3" onSubmit={(event) => handleUpdate(event, part.id)}>
+                    <input className={fieldClass} name="name" defaultValue={part.name} required />
+                    <input className={fieldClass} name="brand" defaultValue={part.brand ?? ""} placeholder="브랜드" />
+                    <select className={fieldClass} name="category" defaultValue={part.category}><option value="custom">기타</option><option value="performance">성능</option><option value="exterior">외장</option><option value="maintenance">정비</option><option value="consumable">소모품</option></select>
+                    <input className={fieldClass} name="installedAt" type="date" defaultValue={msToDateInput(part.installed_at)} />
+                    <input className={fieldClass} name="price" inputMode="numeric" defaultValue={part.price ?? ""} placeholder="가격" />
+                    <input className={fieldClass} name="purchaseUrl" defaultValue={part.purchase_url ?? ""} placeholder="구매 링크" />
+                    <input className={fieldClass} name="imageUrl" defaultValue={part.image_url ?? ""} placeholder="이미지 URL" />
+                    <textarea className={areaClass} name="memo" defaultValue={part.memo ?? ""} placeholder="메모" />
+                    <select className={fieldClass} name="visibility" defaultValue={part.visibility}><option value="public">전체 공개</option><option value="unlisted">링크 공개</option><option value="private">비공개</option></select>
+                    <div className="grid grid-cols-2 gap-2"><Button type="submit" disabled={isSaving}>{isSaving ? "저장 중..." : "저장"}</Button><Button type="button" variant="secondary" disabled={isSaving} onClick={() => setEditingPartId(null)}>취소</Button></div>
+                  </form>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{part.category} · {formatDate(part.installed_at)}</p>
+                        <h3 className="mt-1 text-lg font-bold">{part.brand ? `${part.brand} ` : ""}{part.name}</h3>
+                      </div>
+                      <div className="flex gap-1"><Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => setEditingPartId(part.id)}>수정</Button><Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => handleDelete(part.id)}>삭제</Button></div>
+                    </div>
+                    {part.memo ? <p className="mt-2 text-sm leading-6 text-text-secondary">{part.memo}</p> : null}
+                    <p className="mt-3 text-xs font-semibold text-text-secondary">{formatPrice(part.price)} · {part.visibility}</p>
+                  </>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </Card>
+      <Card className="space-y-4 p-5">
+        <h3 className="font-bold">부품 추가</h3>
+        <form className="space-y-3" onSubmit={handleSubmit}>
+          <input className={fieldClass} name="name" placeholder="예: 브레이크 패드" required />
+          <input className={fieldClass} name="brand" placeholder="브랜드" />
+          <select className={fieldClass} name="category" defaultValue="custom"><option value="custom">기타</option><option value="performance">성능</option><option value="exterior">외장</option><option value="maintenance">정비</option><option value="consumable">소모품</option></select>
+          <input className={fieldClass} name="installedAt" type="date" />
+          <input className={fieldClass} name="price" inputMode="numeric" placeholder="가격" />
+          <input className={fieldClass} name="purchaseUrl" placeholder="구매 링크" />
+          <input className={fieldClass} name="imageUrl" placeholder="이미지 URL" />
+          <textarea className={areaClass} name="memo" placeholder="메모" />
+          <select className={fieldClass} name="visibility" defaultValue="public"><option value="public">전체 공개</option><option value="unlisted">링크 공개</option><option value="private">비공개</option></select>
+          <Button className="w-full" type="submit" disabled={isSaving}>{isSaving ? "처리 중..." : "부품 기록 추가"}</Button>
+          {state.status === "ready" && state.message ? <p className="rounded-2xl bg-background p-3 text-sm leading-6 text-text-secondary">{state.message}</p> : null}
+        </form>
+      </Card>
+    </section>
+  );
+}
