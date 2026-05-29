@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "d1:migrate:remote": "wrangler d1 execute maniac-garage-dev --remote --file migrations/0002_add_maintenance_logs_and_parts.sql",
+    "d1:tables:remote": "wrangler d1 execute maniac-garage-dev --remote --command \"SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;\"",
     "pages:build": "next build",
     "pages:deploy": "npm run pages:build && wrangler pages deploy out --project-name maniac-garage",
     "pages:preview": "npm run pages:build && wrangler pages dev out",
