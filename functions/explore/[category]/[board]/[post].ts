@@ -14,9 +14,13 @@ function decodePathParam(value: string) {
   }
 }
 
-export const onRequestGet: PagesFunction = async ({ request, params }) => {
+export const onRequestGet: PagesFunction = async ({ request, params, next }) => {
   const post = decodePathParam(firstParam(params.post));
   const url = new URL(request.url);
+
+  if (post === "write") {
+    return next();
+  }
 
   if (!post) {
     url.pathname = "/explore/";
