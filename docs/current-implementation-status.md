@@ -10,14 +10,17 @@
 
 ## 2. 현재 한 줄 상태
 
-Cloudflare Pages + D1 기반으로 장비 등록/목록/상세/수정/삭제와 정비 기록 CRUD, 부품 기록 CRUD까지 동작하는 1차 MVP 상태다.
+Cloudflare Pages + Pages Functions + D1 기반으로 장비 CRUD, 정비 기록 CRUD, 부품 기록 CRUD, React 기반 공개 장비 페이지까지 동작하는 1차 MVP 상태다.
 
 ```txt
 장비 CRUD ✅
 정비 기록 CRUD ✅
 부품 기록 CRUD ✅
-공개 장비 페이지 ✅
+React 공개 장비 페이지 ✅
+공개 조회 JSON API ✅
 D1 저장 ✅
+D1 migration 1차 정리 ✅
+API 공통 HTTP 유틸 1차 적용 ✅
 R2 업로드 ❌ 보류
 실제 로그인 ❌ mock user 사용
 ```
@@ -55,7 +58,8 @@ wrangler.toml
 - Cloudflare 대시보드에서 binding을 추가해도 `wrangler.toml`이 있으면 toml 설정이 우선될 수 있다.
 - 현재 D1 database id는 `wrangler.toml`에 명시되어 있다.
 - R2는 카드 등록 요구로 현재 보류 중이다.
-- R2 대신 부품 `imageUrl`에 외부 이미지 URL을 직접 입력하는 방식으로 임시 대응한다.
+- R2 대신 장비 대표 이미지 URL, 부품 이미지 URL 등 외부 이미지 URL 입력으로 임시 대응한다.
+- 정적 export 환경 때문에 완전한 `/garage/[slug]/` React 동적 라우트 대신 `/garage/view/?slug=...` 방식을 실사용 공개 페이지로 사용한다.
 
 ---
 
@@ -69,13 +73,20 @@ wrangler.toml
 MOCK_USER_ID = dev_user_maniac
 ```
 
-관련 파일:
+공통 상수 파일:
+
+```txt
+functions/_shared/dev-user.ts
+```
+
+관련 API 파일:
 
 ```txt
 functions/api/equipments.ts
 functions/api/equipments/[id].ts
 functions/api/equipments/[id]/logs.ts
 functions/api/equipments/[id]/parts.ts
+functions/api/public/equipments/[slug].ts
 functions/garage/[slug].ts
 ```
 
@@ -104,6 +115,7 @@ mock user 제거
 /garage/
 /garage/new/
 /garage/edit/?id=장비ID
+/garage/view/?slug=장비slug
 /garage/[slug]/
 /garage/ninja-400/
 ```
@@ -116,8 +128,10 @@ mock user 제거
 /garage/
 /garage/new/
 /garage/edit/?id=장비ID
-/garage/[slug]/
+/garage/view/?slug=장비slug
 ```
+
+기존 `/garage/[slug]/`는 HTML Function fallback으로 유지한다.
 
 ---
 
@@ -133,7 +147,7 @@ mock user 제거
 /garage/new/
 → POST /api/equipments
 → D1 equipments insert
-→ nextPath: /garage/[slug]/
+→ nextPath: /garage/view/?slug=장비slug
 ```
 
 관련 파일:
@@ -152,7 +166,7 @@ src/features/equipment/schemas/index.ts
 예: 닌자-400-3
 ```
 
-URL에서 한글 slug는 인코딩되므로 공개 페이지 Function에서 `decodeURIComponent` 처리한다.
+React 공개 페이지 이동 시 slug는 `encodeURIComponent`로 인코딩한다.
 
 ### 6.2 내 차고 `/garage/`
 
@@ -174,6 +188,12 @@ GET /api/equipments
 총 정비 비용
 보기 버튼
 수정 버튼
+```
+
+`보기` 버튼은 실사용 React 공개 페이지로 이동한다.
+
+```txt
+/garage/view/?slug=장비slug
 ```
 
 관련 파일:
@@ -200,6 +220,12 @@ DELETE /api/equipments/:id
 /garage/edit/?id=장비ID
 ```
 
+장비 수정 저장 후 이동 경로도 React 공개 페이지다.
+
+```txt
+/garage/view/?slug=장비slug
+```
+
 관련 파일:
 
 ```txt
@@ -210,12 +236,16 @@ functions/api/equipments/[id].ts
 
 삭제는 hard delete가 아니라 `deleted_at`을 채우는 soft delete 방식이다.
 
-### 6.4 공개 장비 페이지 `/garage/[slug]/`
+### 6.4 React 공개 장비 페이지 `/garage/view/?slug=...`
 
-Cloudflare Pages Function이 `/garage/:slug` 요청을 받아 D1에서 장비를 조회하고 HTML을 직접 반환한다.
+현재 실사용 공개 장비 페이지다.
+
+정적 React 페이지가 query string의 slug를 읽고 공개 JSON API를 호출한 뒤 React 컴포넌트로 렌더링한다.
 
 ```txt
-GET /garage/:slug
+/garage/view/?slug=장비slug
+→ GET /api/public/equipments/:slug
+→ PublicEquipmentDetail 렌더링
 ```
 
 현재 공개 페이지 표시 내용:
@@ -223,6 +253,7 @@ GET /garage/:slug
 ```txt
 장비 기본 정보
 장비 소개
+대표 사진 또는 GARAGE 플레이스홀더
 스펙
 사용량
 공개 상태
@@ -234,10 +265,33 @@ slug
 관련 파일:
 
 ```txt
+src/app/garage/view/page.tsx
+src/features/equipment/components/PublicEquipmentViewSection.tsx
+src/features/equipment/components/PublicEquipmentDetailClient.tsx
+src/features/equipment/components/PublicEquipmentDetail.tsx
+functions/api/public/equipments/[slug].ts
+functions/garage/view.ts
+```
+
+`functions/garage/view.ts`는 `/garage/view/` 요청이 기존 `/garage/[slug]/` Function에 잡히지 않고 정적 React 페이지로 넘어가도록 하기 위한 bypass Function이다.
+
+### 6.5 기존 HTML 공개 페이지 `/garage/[slug]/`
+
+Cloudflare Pages Function이 `/garage/:slug` 요청을 받아 D1에서 장비를 조회하고 HTML을 직접 반환한다.
+
+```txt
+GET /garage/:slug
+```
+
+현재는 fallback 용도로 유지한다.
+
+관련 파일:
+
+```txt
 functions/garage/[slug].ts
 ```
 
-현재는 React 페이지가 아니라 Function에서 HTML 문자열을 직접 생성한다. 장기적으로는 API JSON + React 렌더링 구조로 개선하는 것이 좋다.
+장기적으로는 React 공개 페이지가 안정화된 뒤 redirect 처리하거나 제거할 수 있다.
 
 ---
 
@@ -376,10 +430,9 @@ visibility = public
 deleted_at IS NULL
 ```
 
-표시 내용:
+React 공개 페이지 표시 내용:
 
 ```txt
-이미지 또는 PART 플레이스홀더
 카테고리
 설치일
 브랜드 + 부품명
@@ -387,6 +440,8 @@ deleted_at IS NULL
 가격
 구매 링크
 ```
+
+현재 React 공개 페이지에서는 부품 이미지는 카드에서 제외하고, 장비 대표 사진 영역만 상단에 표시한다.
 
 ---
 
@@ -403,18 +458,19 @@ parts
 
 `users`, `equipments`는 기존 Drizzle 스키마/초기 DB 구조를 사용한다.
 
-`maintenance_logs`, `parts`는 개발 편의를 위해 Pages Function에서 다음 방식으로 보장한다.
+`maintenance_logs`, `parts`는 정식 SQL migration으로 분리했다.
 
-```sql
-CREATE TABLE IF NOT EXISTS maintenance_logs (...)
-CREATE TABLE IF NOT EXISTS parts (...)
+```txt
+migrations/0002_add_maintenance_logs_and_parts.sql
 ```
+
+현재 `functions/api/equipments/[id]/logs.ts`, `functions/api/equipments/[id]/parts.ts` 내부의 런타임 `CREATE TABLE IF NOT EXISTS` 안전장치는 제거되어 있다.
 
 주의:
 
-- 이 방식은 빠른 MVP에는 편하지만 장기 운영에는 적합하지 않다.
-- 다음 단계에서 정식 migration으로 분리해야 한다.
-- 테이블 구조 변경 시 Function 코드와 migration이 어긋날 수 있다.
+- 앞으로 테이블 생성/변경은 migration에서 관리한다.
+- D1 schema와 Drizzle schema는 아직 완전히 동기화하지 않았다.
+- 다음 단계에서 schema 싱크 또는 migration 관리 스크립트를 정리해야 한다.
 
 ---
 
@@ -438,23 +494,74 @@ POST   /api/equipments/:id/parts
 PATCH  /api/equipments/:id/parts?partId=...
 DELETE /api/equipments/:id/parts?partId=...
 
+GET    /api/public/equipments/:slug
 GET    /garage/:slug
 ```
 
 ---
 
-## 11. 주요 코드 위치
+## 11. API 공통 유틸 상태
+
+핵심 API에 공통 HTTP 유틸 1차 적용을 완료했다.
+
+공통 파일:
+
+```txt
+functions/_shared/http.ts
+functions/_shared/dev-user.ts
+```
+
+`http.ts` 주요 함수:
+
+```txt
+jsonResponse
+errorResponse
+getErrorMessage
+zodDetails
+statusFromError
+isRecord
+readJsonObject
+paramValue
+allowMethods
+```
+
+적용된 API:
 
 ```txt
 functions/api/equipments.ts
 functions/api/equipments/[id].ts
 functions/api/equipments/[id]/logs.ts
 functions/api/equipments/[id]/parts.ts
+```
+
+아직 공통화하지 못한 부분:
+
+```txt
+장비 소유 확인 DB 헬퍼
+공개 장비 조회 DB 헬퍼
+권한 검증 레이어
+```
+
+---
+
+## 12. 주요 코드 위치
+
+```txt
+functions/_shared/http.ts
+functions/_shared/dev-user.ts
+
+functions/api/equipments.ts
+functions/api/equipments/[id].ts
+functions/api/equipments/[id]/logs.ts
+functions/api/equipments/[id]/parts.ts
+functions/api/public/equipments/[slug].ts
 functions/garage/[slug].ts
+functions/garage/view.ts
 
 src/app/garage/page.tsx
 src/app/garage/new/page.tsx
 src/app/garage/edit/page.tsx
+src/app/garage/view/page.tsx
 
 src/features/equipment/components/GarageEquipmentList.tsx
 src/features/equipment/components/EquipmentCreateForm.tsx
@@ -462,16 +569,20 @@ src/features/equipment/components/EquipmentEditPanel.tsx
 src/features/equipment/components/EquipmentMaintenanceSection.tsx
 src/features/equipment/components/MaintenanceLogPanel.tsx
 src/features/equipment/components/PartsPanel.tsx
+src/features/equipment/components/PublicEquipmentDetail.tsx
+src/features/equipment/components/PublicEquipmentDetailClient.tsx
+src/features/equipment/components/PublicEquipmentViewSection.tsx
 
 src/features/equipment/schemas/index.ts
 src/features/equipment/actions/mutations.ts
 src/server/db/client.ts
 src/server/db/schema.ts
+migrations/0002_add_maintenance_logs_and_parts.sql
 ```
 
 ---
 
-## 12. 카테고리/게시판 상태
+## 13. 카테고리/게시판 상태
 
 게시판/탐색 영역은 아직 mock UI 중심이다.
 
@@ -503,7 +614,7 @@ src/features/boards/components/PostCommentCard.tsx
 
 ---
 
-## 13. 글쓰기/WYSIWYG 상태
+## 14. 글쓰기/WYSIWYG 상태
 
 글쓰기 mock 화면에는 자체 구현한 가벼운 WYSIWYG 에디터를 사용한다.
 
@@ -530,9 +641,9 @@ H2 적용/해제
 
 ---
 
-## 14. 최근 해결한 이슈
+## 15. 최근 해결한 이슈
 
-### 14.1 D1 binding 문제
+### 15.1 D1 binding 문제
 
 Cloudflare Pages가 대시보드 바인딩보다 `wrangler.toml` 설정을 기준으로 동작하는 상태였다.
 
@@ -543,27 +654,29 @@ wrangler.toml에 D1 database_id 직접 추가
 binding = DB
 ```
 
-### 14.2 한글 slug 조회 문제
+### 15.2 한글 slug 조회 문제
 
 한글 slug가 URL에서 `%EB...` 형태로 인코딩되어 D1 조회가 실패했다.
 
 해결:
 
 ```txt
-functions/garage/[slug].ts에서 decodeURIComponent 처리
+functions/garage/[slug].ts 및 public JSON API에서 decodeURIComponent 처리
+React 이동 경로는 encodeURIComponent 처리
 ```
 
-### 14.3 정적 export 동적 페이지 문제
+### 15.3 정적 export 동적 페이지 문제
 
 `/garage/[slug]/`가 빌드 시점에 생성되지 않아 새 장비 공개 페이지가 404였다.
 
 해결:
 
 ```txt
-functions/garage/[slug].ts에서 동적 slug를 받아 D1 조회 후 HTML 반환
+초기: functions/garage/[slug].ts에서 동적 slug를 받아 D1 조회 후 HTML 반환
+현재: /garage/view/?slug=... 정적 React 페이지 + /api/public/equipments/:slug JSON API 사용
 ```
 
-### 14.4 Next 15 searchParams 타입 문제
+### 15.4 Next 15 searchParams 타입 문제
 
 `src/app/garage/edit/page.tsx`에서 서버 컴포넌트가 `searchParams`를 일반 객체로 받아 빌드 타입 에러가 발생했다.
 
@@ -573,9 +686,9 @@ functions/garage/[slug].ts에서 동적 slug를 받아 D1 조회 후 HTML 반환
 클라이언트 컴포넌트 EquipmentMaintenanceSection에서 useSearchParams() 사용
 ```
 
-### 14.5 부품 추가 후 reset 에러
+### 15.5 부품/정비 추가 후 reset 에러
 
-부품 저장은 성공하지만 `event.currentTarget.reset()`이 비동기 처리 후 null처럼 동작해 에러가 발생했다.
+부품/정비 저장은 성공하지만 `event.currentTarget.reset()`이 비동기 처리 후 null처럼 동작해 에러가 발생했다.
 
 해결:
 
@@ -586,9 +699,20 @@ await fetch(...)
 form.reset()
 ```
 
+### 15.6 `/garage/view/`가 slug Function에 잡히는 문제
+
+`functions/garage/[slug].ts` 때문에 `/garage/view/`가 `slug = view`로 처리됐다.
+
+해결:
+
+```txt
+functions/garage/view.ts 추가
+next()로 정적 React 페이지에 요청 전달
+```
+
 ---
 
-## 15. 아직 mock/stub인 부분
+## 16. 아직 mock/stub인 부분
 
 ```txt
 실제 로그인/세션 연동
@@ -598,63 +722,48 @@ R2 이미지 업로드
 어드민 UI
 결제/구독
 신고/모더레이션 워크플로우
-정식 DB migration 관리
-React 기반 공개 장비 상세 페이지 전환
-API 공통 유틸/에러 처리 정리
+D1 schema와 Drizzle schema 완전 동기화
+기존 HTML 공개 페이지 fallback 정리
+OpenNext 또는 Workers 런타임 전환 검토
+API DB 헬퍼 공통화
 ```
 
 ---
 
-## 16. 다음 개발 추천 순서
+## 17. 다음 개발 추천 순서
 
-### 1순위: 정식 D1 migration 정리
+### 1순위: React 공개 페이지 실사용 안정화
 
-현재 `maintenance_logs`, `parts` 테이블이 Function 내부 `CREATE TABLE IF NOT EXISTS`로 보장된다. 안정성을 위해 migration 파일로 분리해야 한다.
+현재 `/garage/`, 장비 등록, 장비 수정 후 이동이 React 공개 페이지로 연결되어 있다.
 
 할 일:
 
 ```txt
-migrations 추가
-maintenance_logs schema 정리
-parts schema 정리
-Function 내부 ensureTable 제거 또는 최소화
+모바일 UI 확인
+대표 사진 URL 표시 확인
+한글 slug 확인
+비공개/링크공개 표시 정책 확인
 ```
 
-### 2순위: API 공통 유틸 분리
+### 2순위: 기존 HTML fallback 정리
 
-현재 API마다 반복되는 코드가 많다.
+현재 `/garage/[slug]/` HTML Function은 fallback이다.
 
-반복되는 항목:
+선택지:
 
 ```txt
-jsonResponse
-errorResponse
-getEquipmentId
-readJsonObject
-ensureTable
-hasEquipment
-ZodError 처리
+1. 유지
+2. /garage/view/?slug=... 로 redirect
+3. 제거
 ```
 
-공통 유틸로 분리하면 이후 게시글/댓글 API를 붙일 때 안정적이다.
+정적 export 구조에서는 1 또는 2가 안전하다.
 
-### 3순위: 공개 장비 페이지 구조 개선
-
-현재 `/garage/[slug]/`는 Pages Function에서 HTML 문자열을 직접 만든다.
-
-개선 방향:
-
-```txt
-GET /api/public/equipments/:slug JSON API 추가
-React 공개 페이지에서 fetch 후 렌더링
-공개 페이지 디자인 컴포넌트화
-```
-
-### 4순위: 로그인/세션 연결
+### 3순위: 로그인/세션 연결
 
 mock user를 제거하고 실제 사용자별 데이터로 분리한다.
 
-### 5순위: R2 업로드
+### 4순위: R2 업로드
 
 R2 사용이 가능해지면 아래 기능을 붙인다.
 
@@ -664,6 +773,10 @@ R2 사용이 가능해지면 아래 기능을 붙인다.
 정비 기록 사진 첨부
 게시글 이미지 업로드
 ```
+
+### 5순위: D1 schema와 Drizzle schema 싱크
+
+현재 `maintenance_logs`, `parts`는 SQL migration으로 존재하지만 Drizzle schema에는 완전히 반영되어 있지 않다.
 
 ### 6순위: 게시글/댓글 DB 저장 연결
 
