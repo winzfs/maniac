@@ -101,8 +101,8 @@ export function MyCommentsClient() {
 
   if (state.status === "loading") {
     return (
-      <div className="grid gap-3">
-        {[0, 1, 2].map((item) => <Card key={item} className="h-24 animate-pulse p-5" />)}
+      <div className="grid gap-4">
+        {[0, 1, 2].map((item) => <Card key={item} className="h-28 animate-pulse p-5" />)}
       </div>
     );
   }
@@ -121,23 +121,28 @@ export function MyCommentsClient() {
   }
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       {state.message ? <Card className="p-4 text-sm text-text-secondary">{state.message}</Card> : null}
       {state.comments.map((comment) => (
-        <Card key={comment.id} className="space-y-3 p-5">
+        <Card key={comment.id} className="space-y-4 p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
-            <span className="font-semibold text-text-primary">{comment.board_title}</span>
-            <span>·</span>
-            <span>{formatDate(comment.created_at)}</span>
+            <span className="rounded-full bg-background px-3 py-1 font-semibold text-text-primary">{comment.board_title}</span>
+            <span className="font-medium">{formatDate(comment.created_at)}</span>
           </div>
+
           <p className="rounded-2xl bg-background p-4 text-sm leading-6 text-text-primary">{comment.body}</p>
+
           <div className="space-y-1">
             <p className="text-xs text-text-secondary">댓글이 달린 글</p>
-            <Link href={postHref(comment)} className="font-semibold hover:text-garage-orange">{comment.post_title}</Link>
+            <Link href={postHref(comment)} className="block text-lg font-black leading-tight hover:text-garage-orange">{comment.post_title}</Link>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href={postHref(comment)}><Button variant="secondary">게시글 보기</Button></Link>
-            <Button variant="ghost" disabled={deletingId === comment.id} onClick={() => deleteComment(comment)}>{deletingId === comment.id ? "삭제 중..." : "댓글 삭제"}</Button>
+
+          <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-xs text-text-secondary">댓글 ID {comment.id.slice(0, 8)}</span>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+              <Link href={postHref(comment)}><Button className="w-full sm:w-auto" variant="secondary">게시글 보기</Button></Link>
+              <Button className="w-full sm:w-auto" variant="ghost" disabled={deletingId === comment.id} onClick={() => deleteComment(comment)}>{deletingId === comment.id ? "삭제 중..." : "댓글 삭제"}</Button>
+            </div>
           </div>
         </Card>
       ))}
