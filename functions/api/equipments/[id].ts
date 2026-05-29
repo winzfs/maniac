@@ -1,7 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { ZodError } from "zod";
 import { updateEquipmentSchema } from "../../../src/features/equipment/schemas";
+import { allowMethods, errorResponse, getErrorMessage, jsonResponse, paramValue, readJsonObject, statusFromError, zodDetails } from "../../_shared/http";
+import { MOCK_USER_ID } from "../../_shared/dev-user";
 
 type Env = {
   DB: D1Database;
@@ -26,47 +27,8 @@ type EquipmentRow = {
   updated_at: number;
 };
 
-const MOCK_USER_ID = "dev_user_maniac";
-
-function jsonResponse(body: unknown, init?: ResponseInit) {
-  return new Response(JSON.stringify(body), {
-    ...init,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-      ...init?.headers,
-    },
-  });
-}
-
-function errorResponse(message: string, status = 400, details?: unknown) {
-  return jsonResponse({ ok: false, error: message, details }, { status });
-}
-
 function getEquipmentId(params: EventContext<Env, string, unknown>["params"]) {
-  const value = params.id;
-  return typeof value === "string" ? value : Array.isArray(value) ? value[0] : "";
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof ZodError) return error.issues[0]?.message ?? "Invalid equipment input.";
-  if (error instanceof Error) return error.message;
-  return "Unexpected error.";
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-async function readJsonObject(request: Request) {
-  const contentType = request.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) {
-    throw new Error("Content-Type must be application/json.");
-  }
-
-  const body: unknown = await request.json();
-  if (!isRecord(body)) throw new Error("JSON body must be an object.");
-  return body;
+  return paramValue(params, "id");
 }
 
 async function findEquipment(env: Env, id: string) {
@@ -129,8 +91,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
     const equipment = await findEquipment(env, id);
     return jsonResponse({ ok: true, equipment, nextPath: equipment ? `/garage/${equipment.slug}/` : undefined });
   } catch (error) {
-    const status = error instanceof ZodError ? 422 : 400;
-    return errorResponse(getErrorMessage(error), status, error instanceof ZodError ? error.flatten() : undefined);
+    return errorResponse(getErrorMessage(error, "Invalid equipment input."), statusFromError(error), zodDetails(error));
   }
 };
 
@@ -154,12 +115,6 @@ export const onRequestDelete: PagesFunction<Env> = async ({ env, params }) => {
 };
 
 export const onRequest: PagesFunction<Env> = async ({ request }) => {
-  if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: { allow: "GET, PATCH, DELETE, OPTIONS" },
-    });
-  }
-
+  if (request.method === "OPTIONS") return allowMethods(["GET", "PATCH", "DELETE", "OPTIONS"]);
   return errorResponse("Method not allowed.", 405);
 };
