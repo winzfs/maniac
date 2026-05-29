@@ -41,6 +41,10 @@ function postHref(post: MyPost) {
   return `/explore/post/?id=${encodeURIComponent(post.id)}`;
 }
 
+function editHref(post: MyPost) {
+  return `/me/posts/edit/?id=${encodeURIComponent(post.id)}`;
+}
+
 function stripHtml(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -130,7 +134,8 @@ export function MyPostsClient() {
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-text-secondary">
             <span>댓글 {post.comment_count} · 상태 {post.status} · 검수 {post.moderation_status}</span>
             <div className="flex gap-2">
-              <Link href={postHref(post)}><Button variant="secondary">상세 보기</Button></Link>
+              <Link href={editHref(post)}><Button variant="secondary">수정</Button></Link>
+              <Link href={postHref(post)}><Button variant="ghost">상세 보기</Button></Link>
             </div>
           </div>
         </Card>
