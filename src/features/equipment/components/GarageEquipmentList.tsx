@@ -53,6 +53,13 @@ function formatCost(value: number | null) {
   return `${value.toLocaleString()}원`;
 }
 
+function formatVisibility(value: string) {
+  if (value === "public") return "전체 공개";
+  if (value === "unlisted") return "링크 공개";
+  if (value === "private") return "비공개";
+  return value;
+}
+
 function publicViewHref(slug: string) {
   return `/garage/view/?slug=${encodeURIComponent(slug)}`;
 }
@@ -134,7 +141,7 @@ export function GarageEquipmentList() {
             <h3 className="text-xl font-bold">{equipment.nickname}</h3>
             <p className="text-sm text-text-secondary">{formatSpec(equipment)}</p>
             <p className="text-sm text-text-secondary">{formatUsage(equipment)}</p>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{equipment.visibility}</p>
+            <p className="text-xs font-semibold tracking-[0.12em] text-text-secondary">{formatVisibility(equipment.visibility)}</p>
           </div>
           <div className="grid grid-cols-3 gap-2 rounded-2xl bg-background p-2 text-center text-xs">
             <div className="rounded-xl bg-surface p-2"><b className="block text-sm text-text-primary">{equipment.maintenance_log_count}</b><span className="text-text-secondary">기록</span></div>
