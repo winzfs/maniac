@@ -29,10 +29,6 @@ type State =
   | { status: "ready"; boards: PublicBoard[] }
   | { status: "error"; message: string };
 
-const categoryLabelBySlug = new Map<string, (typeof equipmentCategories)[number]>(
-  equipmentCategories.map((category) => [category.slug, category]),
-);
-
 async function readBoards() {
   const response = await fetch("/api/public/boards", { cache: "no-store" });
   const data = (await response.json()) as BoardsResponse;
@@ -138,30 +134,16 @@ export function ExploreBoardsClient() {
           title="장비 카테고리"
           description="특정 장비군만 보고 싶다면 카테고리로 들어가서 모든 주제의 글을 한 번에 확인하세요."
         />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {equipmentCategories.map((category) => {
-            const boards = state.boards.filter((board) => board.category === category.slug);
-            const postCount = boards.reduce((total, board) => total + board.post_count, 0);
-            return (
-              <Link key={category.slug} href={`/explore/${category.slug}/`}>
-                <Card className="h-full space-y-3 p-4 transition hover:-translate-y-0.5 hover:shadow-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <Badge label={category.shortLabel} tone="muted" />
-                    <span className="text-xs text-text-secondary">{postCount} posts</span>
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold">{category.label}</h2>
-                    <p className="mt-1 line-clamp-2 text-sm leading-6 text-text-secondary">{category.description}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {boards.slice(0, 3).map((board) => (
-                      <span key={board.id} className="rounded-full bg-background px-2.5 py-1 text-[0.7rem] font-semibold text-text-secondary">{board.title}</span>
-                    ))}
-                  </div>
-                </Card>
-              </Link>
-            );
-          })}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {equipmentCategories.map((category) => (
+            <Link key={category.slug} href={`/explore/${category.slug}/`}>
+              <Card className="h-full space-y-3 p-5 transition hover:-translate-y-0.5 hover:shadow-sm">
+                <Badge label={category.label} tone="muted" />
+                <h2 className="text-2xl font-black tracking-[-0.04em]">{category.label}</h2>
+                <p className="text-sm leading-6 text-text-secondary">{category.description}</p>
+              </Card>
+            </Link>
+          ))}
         </div>
       </section>
     </div>
