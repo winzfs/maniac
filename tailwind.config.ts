@@ -11,8 +11,11 @@ export default {
         graphite: "#252525",
         garage: { orange: "#FF6A2A", lime: "#C7FF3D" }
       },
-      borderRadius: { card: "1.25rem" },
-      maxWidth: { content: "1120px" }
+      borderRadius: { card: "1rem" },
+      maxWidth: { content: "1360px" },
+      boxShadow: {
+        card: "0 1px 2px rgba(23, 23, 23, 0.04), 0 8px 24px rgba(23, 23, 23, 0.04)",
+      }
     }
   },
   plugins: []
