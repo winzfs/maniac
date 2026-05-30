@@ -8,8 +8,8 @@ import { Card } from "@/shared/components/ui/Card";
 
 const breadcrumbs = [
   { label: "홈", href: "/" },
-  { label: "내 차고", href: "/garage/" },
-  { label: "장비 수정" },
+  { label: "내 기어", href: "/garage/" },
+  { label: "기어 수정" },
 ];
 
 export default function EditEquipmentPage() {
@@ -17,11 +17,11 @@ export default function EditEquipmentPage() {
     <main className="container-shell space-y-8 py-5 sm:py-8 lg:space-y-10">
       <PageHeader
         breadcrumbs={breadcrumbs}
-        title="장비 수정"
-        description="등록한 장비의 기본 정보, 공개 상태, 정비 기록을 관리합니다."
+        title="기어 수정"
+        description="등록한 기어의 기본 정보, 공개 상태, 관리 기록과 덕템 부품을 관리합니다."
         action={
           <Link href="/garage/">
-            <Button variant="secondary">내 차고로 돌아가기</Button>
+            <Button variant="secondary">내 기어로 돌아가기</Button>
           </Link>
         }
       />
@@ -30,7 +30,7 @@ export default function EditEquipmentPage() {
         <EquipmentEditPanel />
       </Suspense>
 
-      <Suspense fallback={<Card className="p-6 text-sm text-text-secondary">정비 기록을 불러오는 중입니다...</Card>}>
+      <Suspense fallback={<Card className="p-6 text-sm text-text-secondary">관리 기록을 불러오는 중입니다...</Card>}>
         <EquipmentMaintenanceSection />
       </Suspense>
     </main>
