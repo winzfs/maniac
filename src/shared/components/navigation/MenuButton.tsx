@@ -15,6 +15,12 @@ type MeResponse = {
   user?: CurrentUser | null;
 };
 
+const menuLinkClassName = "rounded-2xl px-3 py-2 text-left font-semibold hover:bg-background";
+
+function hardNavigate(path: string) {
+  window.location.assign(path);
+}
+
 export function MenuButton({ label = "메뉴" }: { label?: string }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -44,7 +50,7 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     setUser(null);
-    window.location.href = "/";
+    window.location.assign("/");
   }
 
   return (
@@ -55,19 +61,19 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
       </summary>
       <div className="absolute left-0 z-20 mt-2 w-72 overflow-hidden rounded-[1.5rem] border border-border bg-surface p-2 shadow-lg sm:w-80">
         <div className="grid gap-1 text-sm">
-          <Link href="/" className="rounded-2xl px-3 py-2 font-semibold hover:bg-background">홈</Link>
-          <Link href="/explore/" className="rounded-2xl px-3 py-2 font-semibold hover:bg-background">장비 둘러보기</Link>
-          <Link href="/garage/" className="rounded-2xl px-3 py-2 font-semibold hover:bg-background">내 차고</Link>
+          <button type="button" onClick={() => hardNavigate("/")} className={menuLinkClassName}>홈</button>
+          <button type="button" onClick={() => hardNavigate("/explore/")} className={menuLinkClassName}>장비 둘러보기</button>
+          <button type="button" onClick={() => hardNavigate("/garage/")} className={menuLinkClassName}>내 차고</button>
           {loaded && user ? (
             <>
-              <Link href="/me/" className="rounded-2xl px-3 py-2 font-semibold hover:bg-background">내 정보 · {user.nickname}</Link>
-              <button type="button" onClick={logout} className="rounded-2xl px-3 py-2 text-left font-semibold hover:bg-background">로그아웃</button>
+              <button type="button" onClick={() => hardNavigate("/me/")} className={menuLinkClassName}>내 정보 · {user.nickname}</button>
+              <button type="button" onClick={logout} className={menuLinkClassName}>로그아웃</button>
             </>
           ) : null}
           {loaded && !user ? (
             <>
-              <Link href="/login/" className="rounded-2xl px-3 py-2 font-semibold hover:bg-background">로그인</Link>
-              <Link href="/signup/" className="rounded-2xl px-3 py-2 font-semibold hover:bg-background">회원가입</Link>
+              <button type="button" onClick={() => hardNavigate("/login/")} className={menuLinkClassName}>로그인</button>
+              <button type="button" onClick={() => hardNavigate("/signup/")} className={menuLinkClassName}>회원가입</button>
             </>
           ) : null}
         </div>
