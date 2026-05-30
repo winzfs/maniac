@@ -78,7 +78,7 @@ export function ExploreBoardsClient() {
   if (state.status === "loading") {
     return (
       <section>
-        <SectionHeader title="커뮤니티 게시판" description="주제별 게시판과 장비 카테고리를 불러오는 중입니다." />
+        <SectionHeader title="기어 게시판" description="주제별 게시판과 기어 카테고리를 불러오는 중입니다." />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[0, 1, 2, 3, 4, 5].map((item) => <Card key={item} className="h-44 animate-pulse bg-zinc-100" />)}
         </div>
@@ -99,8 +99,8 @@ export function ExploreBoardsClient() {
     <div className="space-y-8 lg:space-y-10">
       <section className="space-y-4">
         <SectionHeader
-          title="통합 게시판"
-          description="먼저 글의 주제를 고르고, 게시판 안에서 바이크·PC·키보드 같은 장비 카테고리로 필터링하세요."
+          title="덕질 게시판"
+          description="먼저 이야기할 주제를 고르고, 바이크·PC·키보드 같은 기어 카테고리로 덕질 기록을 필터링하세요."
         />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           {communityBoardTopics.map((topic) => {
@@ -131,8 +131,8 @@ export function ExploreBoardsClient() {
 
       <section className="space-y-4">
         <SectionHeader
-          title="장비 카테고리"
-          description="특정 장비군만 보고 싶다면 카테고리로 들어가서 모든 주제의 글을 한 번에 확인하세요."
+          title="기어 카테고리"
+          description="특정 장비군만 보고 싶다면 카테고리로 들어가서 모든 덕질 글을 한 번에 확인하세요."
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {equipmentCategories.map((category) => (
