@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://gearduck.mooo.com/sitemap.xml
+Sitemap: https://maniac-c7d.pages.dev/sitemap.xml
