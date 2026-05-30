@@ -24,6 +24,19 @@ function normalizeBio(value: string) {
   return value.length > 0 ? value : null;
 }
 
+async function ignoreDuplicateColumn(operation: Promise<unknown>) {
+  try {
+    await operation;
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    if (!message.includes("duplicate column") && !message.includes("already exists")) throw error;
+  }
+}
+
+async function ensureProfileSchema(db: D1Database) {
+  await ignoreDuplicateColumn(db.prepare("ALTER TABLE users ADD COLUMN bio TEXT").run());
+}
+
 async function getUserProfile(db: D1Database, userId: string) {
   return db.prepare(
     `SELECT id, email, nickname, bio, profile_image_url, provider
@@ -39,10 +52,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const auth = await requireCurrentUser(request, env);
   if (auth.response) return auth.response;
 
-  const user = await getUserProfile(env.DB, auth.user.id);
-  if (!user) return errorResponse("사용자를 찾을 수 없습니다.", 404);
+  try {
+    await ensureProfileSchema(env.DB);
+    const user = await getUserProfile(env.DB, auth.user.id);
+    if (!user) return errorResponse("사용자를 찾을 수 없습니다.", 404);
 
-  return jsonResponse({ ok: true, user });
+    return jsonResponse({ ok: true, user });
+  } catch (error) {
+    return errorResponse(getErrorMessage(error, "프로필을 불러오지 못했습니다."), 500);
+  }
 };
 
 export const onRequestPatch: PagesFunction<Env> = async ({ request, env }) => {
@@ -52,6 +70,8 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env }) => {
   if (auth.response) return auth.response;
 
   try {
+    await ensureProfileSchema(env.DB);
+
     const body = await readJsonObject(request);
     const input = profileSchema.parse(body);
     const bio = normalizeBio(input.bio);
