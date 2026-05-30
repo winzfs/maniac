@@ -94,7 +94,7 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
   }, [activeType, state]);
 
   if (!category) {
-    return <Card className="p-6 text-sm text-text-secondary">존재하지 않는 장비 카테고리입니다.</Card>;
+    return <Card className="p-6 text-sm text-text-secondary">존재하지 않는 기어 카테고리입니다.</Card>;
   }
 
   if (state.status === "loading") {
@@ -131,13 +131,13 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
                 </div>
                 <h2 className="text-xl font-black tracking-[-0.04em]">{post.title}</h2>
                 <p className="line-clamp-2 text-sm leading-6 text-text-secondary">{excerptFromHtml(post.body, 140)}</p>
-                <p className="text-xs font-semibold text-text-secondary">by {post.author_nickname ?? "MANIAC"}</p>
+                <p className="text-xs font-semibold text-text-secondary">by {post.author_nickname ?? "GearDuck"}</p>
               </Card>
             </Link>
           ))}
         </div>
 
-        {filteredPosts.length === 0 ? <Card className="p-6 text-sm text-text-secondary">아직 표시할 게시글이 없습니다.</Card> : null}
+        {filteredPosts.length === 0 ? <Card className="p-6 text-sm text-text-secondary">아직 표시할 덕질 글이 없습니다.</Card> : null}
       </section>
     </div>
   );
