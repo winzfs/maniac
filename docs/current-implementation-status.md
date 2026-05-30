@@ -6,7 +6,7 @@
 
 ## 1. 현재 한 줄 상태
 
-Cloudflare Pages + Pages Functions + D1 기반으로 장비 기록, 장비 대표 이미지 업로드, 공개/상세 장비 페이지, 커뮤니티 게시판, 이메일/비밀번호 로그인, 내 정보/내 콘텐츠 관리, 홈 콘텐츠 피드까지 1차 MVP가 구현되어 있다.
+Cloudflare Pages + Pages Functions + D1 기반으로 장비 기록, 장비 대표 이미지 업로드, 공개/상세 장비 페이지, 커뮤니티 게시판, 외부 뉴스 캐시, 이메일/비밀번호 로그인, 내 정보/내 콘텐츠 관리, 홈 콘텐츠 피드까지 1차 MVP가 구현되어 있다.
 
 ```txt
 이메일 회원가입/로그인/로그아웃 ✅
@@ -33,6 +33,8 @@ D1 garage schema self-healing ✅
 홈 콘텐츠 피드화 ✅
 홈 히어로 내 장비 카드 ✅
 홈 히어로 대표 장비 선택 ✅
+외부 장비 뉴스 표시 ✅
+외부 뉴스 DB 캐시/동기화 ✅
 샘플 콘텐츠 seed endpoint ✅
 Dev Maniac 초기 콘텐츠 cleanup endpoint ✅
 R2 업로드 ❌ 보류
@@ -87,6 +89,13 @@ useSearchParams()를 쓰는 클라이언트 컴포넌트는 static export 빌드
 public/_headers
 - 일반 페이지: Cache-Control no-store
 - /_next/static/*: public, max-age=31536000, immutable
+
+/api/news
+- DB 캐시 뉴스 우선
+- 응답 Cache-Control public, max-age=300
+
+외부 Google News RSS fetch
+- Cloudflare fetch cacheTtl 900초
 ```
 
 ---
@@ -223,6 +232,7 @@ button click → window.location.assign(...)
 - 오른쪽: 로그인 사용자 내 장비 카드
 
 콘텐츠 피드
+- 외부 장비 뉴스
 - 최근 게시글
 - 댓글 많은 글
 - 인기 공개 장비
@@ -245,6 +255,7 @@ button click → window.location.assign(...)
 홈 콘텐츠 API:
 
 ```txt
+GET /api/news?limit=10
 GET /api/public/posts?limit=6&sort=latest
 GET /api/public/posts?limit=6&sort=popular
 GET /api/public/equipments?limit=6
@@ -253,6 +264,57 @@ GET /api/equipments  // 히어로 내 장비 카드용, 로그인 필요
 ```
 
 `sort=popular`는 댓글 수 많은 순으로 공개 게시글을 정렬한다.
+
+### 외부 장비 뉴스
+
+뉴스는 외부 RSS를 즉시 표시하는 구조에서 D1 캐시 기반 구조로 확장했다.
+
+```txt
+functions/_shared/news.ts
+- Google News RSS 검색어 관리
+- RSS fetch
+- XML item parse
+- publishedAtMs 정렬
+
+GET /api/news
+- news_items DB에 저장된 뉴스 우선 조회
+- DB가 비어 있거나 news_items migration 미적용이면 RSS fallback
+- 응답은 홈 장비 뉴스 섹션에서 표시
+
+GET/POST /api/dev/sync-news
+- 외부 RSS에서 최신 뉴스 수집
+- news_items 테이블에 INSERT OR IGNORE
+- link unique index로 중복 방지
+```
+
+뉴스 수집 카테고리:
+
+```txt
+motorcycle / 바이크
+pc / PC
+keyboard / 키보드
+bicycle / 자전거
+camera / 카메라
+camping / 캠핑
+audio / 오디오
+```
+
+운영 흐름:
+
+```txt
+1. npm run d1:migrate:news:remote 로 news_items 테이블 생성
+2. 배포 후 /api/dev/sync-news 실행
+3. /api/news는 DB에 저장된 뉴스를 반환
+4. DB가 비어 있으면 RSS fallback으로 표시
+```
+
+주의:
+
+```txt
+/api/dev/sync-news는 개발용 endpoint다.
+현재 /api/dev/*는 dev middleware 보호 대상이다.
+운영 자동화를 하려면 Cloudflare Cron Trigger 또는 별도 admin action으로 옮긴다.
+```
 
 ### 장비 관리
 
@@ -407,7 +469,67 @@ functions/_shared/image-storage.ts
 
 ---
 
-## 7. D1 schema drift 대응
+## 7. D1 schema / migration 상태
+
+현재 사용 중인 주요 테이블:
+
+```txt
+users
+auth_sessions
+equipments
+maintenance_logs
+parts
+boards
+posts
+comments
+image_assets
+news_items
+```
+
+주요 migration:
+
+```txt
+0001_initial.sql
+0002_add_maintenance_logs_and_parts.sql
+0003_add_boards_posts_comments.sql
+0004_add_board_metadata.sql
+0005_add_auth_tables.sql
+0006_seed_real_equipment_posts.sql       // 선택 seed
+0007_add_news_items.sql                  // 뉴스 캐시
+```
+
+현재 package script:
+
+```txt
+npm run d1:migrate:news:local
+npm run d1:migrate:news:remote
+npm run d1:migrate:all:local
+npm run d1:migrate:all:remote
+npm run d1:seed:samples:local
+npm run d1:seed:samples:remote
+```
+
+뉴스 기능 배포 후 필요한 순서:
+
+```bash
+npm run d1:migrate:news:remote
+# 또는 새 DB라면
+npm run d1:migrate:all:remote
+```
+
+주의:
+
+```txt
+0006은 필수 schema migration이 아니라 선택 seed다.
+0007은 news_items 테이블을 생성하는 schema migration이다.
+기존 운영 DB에 news_items가 없어도 /api/news는 RSS fallback으로 동작한다.
+/api/dev/sync-news로 DB 저장을 하려면 0007 적용이 필요하다.
+Drizzle schema와 SQL migration이 어긋나지 않게 변경 시 둘 다 확인해야 한다.
+```
+
+---
+
+## 8. D1 schema drift 대응
 
 운영 D1에 migration이 일부 빠진 상태에서 최신 코드가 배포되면 `no such column`, `no such table` 오류가 발생할 수 있다.
 
@@ -458,7 +580,7 @@ self-healing은 운영 장애 완화용이다.
 
 ---
 
-## 8. 현재 주요 API
+## 9. 현재 주요 API
 
 ```txt
 POST   /api/auth/signup
@@ -505,6 +627,10 @@ GET    /api/public/posts/:id
 POST   /api/posts
 POST   /api/public/posts/:id/comments
 DELETE /api/public/posts/:id/comments?commentId=...
+
+GET    /api/news
+GET    /api/dev/sync-news
+POST   /api/dev/sync-news
 ```
 
 개발/샘플 데이터용 endpoint:
@@ -513,6 +639,7 @@ DELETE /api/public/posts/:id/comments?commentId=...
 GET/POST /api/dev/seed-lite
 GET/POST /api/dev/seed-samples
 GET/POST /api/dev/cleanup-dev-maniac
+GET/POST /api/dev/sync-news
 ```
 
 `/api/dev/*` endpoint는 `functions/api/dev/_middleware.ts`에서 기본 차단한다.
@@ -525,7 +652,7 @@ DEV_TOOLS_SECRET이 설정된 경우 x-dev-tools-secret header 또는 token quer
 
 ---
 
-## 9. 최근 해결한 주요 이슈
+## 10. 최근 해결한 주요 이슈
 
 ```txt
 Supabase free quota 제한으로 이미지 업로드가 막힘
@@ -548,17 +675,22 @@ Next Link client routing/RSC 캐시 혼선으로 메뉴 이동 시 잘못된 화
 
 /me 페이지에 RSC payload 원문이 보이는 캐시/헤더 문제
 → public/_headers로 일반 페이지 no-store, static chunk immutable 설정
+
+외부 뉴스가 홈 접속 때마다 RSS만 직접 조회하던 구조
+→ news_items D1 캐시 + /api/dev/sync-news 동기화 구조 추가
 ```
 
 ---
 
-## 10. 아직 미완성인 부분
+## 11. 아직 미완성인 부분
 
 ```txt
 부품 이미지 업로드
 게시글 본문 이미지 업로드
 R2 직접 업로드 provider
 공개 사용자 프로필 페이지
+뉴스 자동 동기화 Cron Trigger
+뉴스 숨김/고정 관리자 UI
 어드민 UI
 결제/구독
 신고/모더레이션 워크플로우
@@ -572,12 +704,15 @@ MFA
 
 ---
 
-## 11. 다음 개발 추천 순서
+## 12. 다음 개발 추천 순서
 
 1. Production 배포 후 회귀 테스트
-2. 장비 등록/수정/목록/상세 이미지 흐름 안정화 확인
-3. 부품 이미지 업로드
-4. 게시글 본문 이미지 data URL 제거 및 업로드 전환
-5. 신고/모더레이션 워크플로우
-6. 관리자 UI
-7. 결제/구독
+2. `npm run d1:migrate:news:remote` 적용
+3. `/api/dev/sync-news` 실행 후 홈 뉴스 DB source 확인
+4. 뉴스 자동 동기화 Cron Trigger 추가
+5. 장비 등록/수정/목록/상세 이미지 흐름 안정화 확인
+6. 부품 이미지 업로드
+7. 게시글 본문 이미지 data URL 제거 및 업로드 전환
+8. 신고/모더레이션 워크플로우
+9. 관리자 UI
+10. 결제/구독
