@@ -23,6 +23,7 @@ HttpOnly 쿠키 기반 세션 ✅
 커뮤니티 boards/posts/comments D1 테이블 ✅
 /explore DB API 기반 전환 ✅
 게시글 작성/상세/수정/삭제 ✅
+게시글 본문 이미지 업로드 ✅ Cloudinary
 게시글 상세 화면 작성자 수정/삭제 ✅
 댓글 작성/삭제 ✅
 댓글 상세 화면 내 댓글 삭제 ✅
@@ -122,6 +123,12 @@ npm run dev
 
 ```bash
 npm run typecheck
+```
+
+린트:
+
+```bash
+npm run lint
 ```
 
 빌드:
@@ -238,7 +245,7 @@ image_assets
 - bucket         // cloudinary cloud name or storage bucket
 - object_key     // Cloudinary public_id or storage object key
 - public_url
-- purpose        // profile_image, equipment_main_image, part_image, post_image 등
+- purpose        // profile_image, equipment_main_image, post_image 등
 - mime_type
 - size_bytes
 - width / height
@@ -259,6 +266,13 @@ POST /api/uploads/equipment-image
 → active image provider 업로드
 → image_assets insert with equipment_main_image
 → public_url 반환
+
+POST /api/uploads/post-image
+→ 로그인 확인
+→ active image provider 업로드
+→ image_assets insert with post_image
+→ public_url 반환
+→ 게시글 본문에는 data URL이 아니라 public_url 기반 img 태그 삽입
 ```
 
 장비 등록/수정 흐름:
@@ -274,6 +288,16 @@ POST /api/uploads/equipment-image
 → 대표 사진 교체 업로드
 → 미리보기 변경
 → 수정 저장 시 PATCH /api/equipments/:id 로 mainImageUrl 반영
+```
+
+게시글 작성 이미지 흐름:
+
+```txt
+/explore/.../write/
+→ 에디터에서 사진 선택
+→ /api/uploads/post-image 업로드
+→ 반환된 public_url을 본문 img src로 삽입
+→ POST /api/posts 저장
 ```
 
 나중에 R2로 옮길 때 유지할 원칙:
@@ -362,6 +386,7 @@ GET    /api/me/profile
 PATCH  /api/me/profile
 POST   /api/uploads/profile-image
 POST   /api/uploads/equipment-image
+POST   /api/uploads/post-image
 GET    /api/me/summary
 GET    /api/me/posts
 GET    /api/me/posts/:id
@@ -442,6 +467,9 @@ Next Link client routing/RSC 캐시 혼선으로 메뉴 이동 시 잘못된 화
 
 /me 페이지에 RSC payload 원문이 보이는 캐시/헤더 문제
 → public/_headers로 일반 페이지 no-store, static chunk immutable 설정
+
+게시글 본문 이미지가 data URL로 DB에 저장됨
+→ /api/uploads/post-image 추가, Cloudinary 업로드 후 public_url만 본문에 삽입
 ```
 
 ---
@@ -450,7 +478,6 @@ Next Link client routing/RSC 캐시 혼선으로 메뉴 이동 시 잘못된 화
 
 ```txt
 부품 이미지 업로드
-게시글 본문 이미지 업로드
 R2 직접 업로드 provider
 공개 사용자 프로필 페이지
 어드민 UI
@@ -471,7 +498,6 @@ MFA
 1. Production 배포 후 회귀 테스트
 2. 장비 등록/수정/목록/상세 이미지 흐름 안정화 확인
 3. 부품 이미지 업로드
-4. 게시글 본문 이미지 data URL 제거 및 업로드 전환
-5. 신고/모더레이션 워크플로우
-6. 관리자 UI
-7. 결제/구독
+4. 신고/모더레이션 워크플로우
+5. 관리자 UI
+6. 결제/구독
