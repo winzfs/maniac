@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Card } from "@/shared/components/ui/Card";
 import { PublicEquipmentDetail, type PublicEquipmentDetailData } from "./PublicEquipmentDetail";
 
+const SITE_ORIGIN = "https://maniac-c7d.pages.dev";
+
 type PublicEquipmentResponse =
   | ({ ok: true } & PublicEquipmentDetailData)
   | { ok: false; error?: string };
@@ -26,6 +28,63 @@ async function readPublicEquipment(slug: string) {
     logs: data.logs,
     parts: data.parts,
   } satisfies PublicEquipmentDetailData;
+}
+
+function upsertMeta(name: string, content: string) {
+  let meta = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("name", name);
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", content);
+}
+
+function upsertPropertyMeta(property: string, content: string) {
+  let meta = document.querySelector<HTMLMetaElement>(`meta[property="${property}"]`);
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("property", property);
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", content);
+}
+
+function upsertCanonical(href: string) {
+  let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!link) {
+    link = document.createElement("link");
+    link.setAttribute("rel", "canonical");
+    document.head.appendChild(link);
+  }
+  link.setAttribute("href", href);
+}
+
+function textSnippet(value: string | null | undefined, fallback: string) {
+  const normalized = value?.replace(/\s+/g, " ").trim();
+  if (!normalized) return fallback;
+  return normalized.length > 150 ? `${normalized.slice(0, 147)}...` : normalized;
+}
+
+function updateEquipmentSeo(data: PublicEquipmentDetailData) {
+  const { equipment, logs, parts } = data;
+  const spec = [equipment.brand, equipment.model, equipment.year].filter(Boolean).join(" · ");
+  const title = `${equipment.nickname} 장비 기록 | GearDuck`;
+  const description = textSnippet(
+    equipment.description,
+    `${equipment.nickname}${spec ? ` (${spec})` : ""}의 정비 기록 ${logs.length}개와 부품 기록 ${parts.length}개를 GearDuck에서 확인하세요.`,
+  );
+  const canonical = `${SITE_ORIGIN}/garage/view/?slug=${encodeURIComponent(equipment.slug)}`;
+
+  document.title = title;
+  upsertMeta("description", description);
+  upsertCanonical(canonical);
+  upsertPropertyMeta("og:type", "article");
+  upsertPropertyMeta("og:site_name", "GearDuck");
+  upsertPropertyMeta("og:title", title);
+  upsertPropertyMeta("og:description", description);
+  upsertPropertyMeta("og:url", canonical);
+  if (equipment.main_image_url) upsertPropertyMeta("og:image", equipment.main_image_url);
 }
 
 export function PublicEquipmentDetailClient({ slug }: { slug: string }) {
@@ -54,6 +113,10 @@ export function PublicEquipmentDetailClient({ slug }: { slug: string }) {
       mounted = false;
     };
   }, [slug]);
+
+  useEffect(() => {
+    if (state.status === "ready") updateEquipmentSeo(state.data);
+  }, [state]);
 
   if (state.status === "loading") {
     return (
