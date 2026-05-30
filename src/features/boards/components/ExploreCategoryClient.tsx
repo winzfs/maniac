@@ -47,7 +47,7 @@ async function readJson<T>(url: string) {
 }
 
 function formatDate(value: number) {
-  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+  return new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit" }).format(new Date(value));
 }
 
 function postDetailHref(id: string) {
@@ -114,21 +114,21 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
 
   if (!category) {
     return (
-      <Card className="space-y-3 p-6">
-        <h2 className="text-xl font-bold">알 수 없는 카테고리입니다.</h2>
+      <Card className="space-y-2 p-4">
+        <h2 className="text-lg font-bold">알 수 없는 카테고리입니다.</h2>
         <Link className="text-sm font-bold text-orange-600" href="/explore/">장비 둘러보기로 돌아가기</Link>
       </Card>
     );
   }
 
   if (state.status === "loading") {
-    return <Card className="p-6 text-sm text-text-secondary">{category.label} 게시글을 불러오는 중입니다...</Card>;
+    return <Card className="p-4 text-sm text-text-secondary">{category.label} 게시글을 불러오는 중입니다...</Card>;
   }
 
   if (state.status === "error") {
     return (
-      <Card className="space-y-3 p-6">
-        <h2 className="text-xl font-bold">카테고리 데이터를 불러오지 못했습니다.</h2>
+      <Card className="space-y-2 p-4">
+        <h2 className="text-lg font-bold">카테고리 데이터를 불러오지 못했습니다.</h2>
         <p className="text-sm leading-6 text-text-secondary">{state.message}</p>
       </Card>
     );
@@ -139,51 +139,63 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
   const writeHref = activeBoard ? `/explore/${categorySlug}/${activeBoard.slug}/write/` : `/explore/${categorySlug}/`;
 
   return (
-    <div className="space-y-8">
-      <Card variant="dark" className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+    <div className="space-y-4 sm:space-y-6">
+      <Card variant="dark" className="grid gap-3 p-4 sm:grid-cols-[1fr_auto] sm:items-center sm:p-5">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">{category.shortLabel} Community</p>
-          <h2 className="mt-2 text-2xl font-black tracking-[-0.04em]">{category.label} 전체 글</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-300">게시판을 따로 찾아 들어가지 않고, 이 카테고리의 모든 글을 주제별로 필터링해서 볼 수 있습니다.</p>
+          <div className="flex items-center gap-2">
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-lime-200">{category.shortLabel}</p>
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[0.68rem] font-bold text-zinc-300">{state.posts.length} posts</span>
+          </div>
+          <h2 className="mt-1 text-xl font-black tracking-[-0.04em] sm:text-2xl">{category.label} 전체 글</h2>
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-300 sm:text-sm sm:leading-6">게시판을 따로 찾아 들어가지 않고, 이 카테고리의 모든 글을 주제별로 필터링해서 볼 수 있습니다.</p>
         </div>
         <Link href={writeHref} className="sm:justify-self-end">
-          <span className="inline-flex w-full items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-black text-zinc-950 sm:w-auto">글쓰기</span>
+          <span className="inline-flex w-full items-center justify-center rounded-xl bg-white px-3 py-2 text-sm font-black text-zinc-950 sm:w-auto">글쓰기</span>
         </Link>
       </Card>
 
-      <section className="space-y-4">
-        <SectionHeader title="주제 필터" description="전체 글을 보거나, 장비 자랑·정비·부품·질문·거래 글만 골라볼 수 있습니다." />
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          <button type="button" onClick={() => setActiveType("all")} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold transition ${activeType === "all" ? "border-graphite bg-graphite text-white" : "border-border bg-surface text-text-secondary hover:text-text-primary"}`}>
+      <section className="rounded-card border border-border/80 bg-surface p-2.5 sm:p-3">
+        <div className="mb-2 flex items-center justify-between gap-3 px-1">
+          <h3 className="text-sm font-black">주제 필터</h3>
+          <span className="text-[0.7rem] font-semibold text-text-secondary">좌우 스크롤</span>
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          <button type="button" onClick={() => setActiveType("all")} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold transition ${activeType === "all" ? "border-graphite bg-graphite text-white" : "border-border bg-background text-text-secondary hover:text-text-primary"}`}>
             전체 <span className="opacity-70">{state.posts.length}</span>
           </button>
           {communityBoardTopics.map((topic) => (
-            <button key={topic.slug} type="button" onClick={() => setActiveType(topic.slug)} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold transition ${activeType === topic.slug ? "border-graphite bg-graphite text-white" : "border-border bg-surface text-text-secondary hover:text-text-primary"}`}>
-              {topic.title} <span className="opacity-70">{typeCounts.get(topic.slug) ?? 0}</span>
+            <button key={topic.slug} type="button" onClick={() => setActiveType(topic.slug)} className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold transition ${activeType === topic.slug ? "border-graphite bg-graphite text-white" : "border-border bg-background text-text-secondary hover:text-text-primary"}`}>
+              {topic.shortLabel} <span className="opacity-70">{typeCounts.get(topic.slug) ?? 0}</span>
             </button>
           ))}
         </div>
       </section>
 
-      <section>
-        <SectionHeader title={activeType === "all" ? "전체글" : communityBoardTopics.find((topic) => topic.slug === activeType)?.title ?? "게시글"} description={`${category.label} 카테고리의 공개 게시글입니다.`} />
-        {filteredPosts.length === 0 ? <Card className="mt-4 p-5 text-sm text-text-secondary">아직 이 조건에 맞는 공개 게시글이 없습니다.</Card> : null}
-        <div className="mt-4 space-y-3">
+      <section className="rounded-card border border-border/80 bg-white/40 p-2.5 sm:p-3">
+        <div className="mb-2 flex items-end justify-between gap-3 px-1">
+          <div>
+            <h3 className="text-base font-black tracking-[-0.03em]">{activeType === "all" ? "전체글" : communityBoardTopics.find((topic) => topic.slug === activeType)?.title ?? "게시글"}</h3>
+            <p className="text-xs text-text-secondary">{category.label} 공개 게시글</p>
+          </div>
+          <span className="text-xs font-bold text-text-secondary">{filteredPosts.length}개</span>
+        </div>
+        {filteredPosts.length === 0 ? <Card className="p-3 text-sm text-text-secondary">아직 이 조건에 맞는 공개 게시글이 없습니다.</Card> : null}
+        <div className="space-y-2">
           {filteredPosts.map((post) => {
             const board = boardsBySlug.get(post.board_slug);
             return (
-              <Link key={post.id} href={postDetailHref(post.id)}>
-                <Card className="space-y-3 p-5 transition hover:-translate-y-0.5 hover:shadow-sm sm:p-6">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
+              <Link key={post.id} href={postDetailHref(post.id)} className="block">
+                <Card className="space-y-2 p-3 transition hover:-translate-y-0.5 hover:shadow-sm sm:p-4">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.72rem] text-text-secondary">
                     <Badge label={board?.title ?? post.board_title} tone={toneForType(board?.type)} />
                     <span>{post.author_nickname ?? "maniac"}</span>
                     <span>·</span>
                     <span>{formatDate(post.created_at)}</span>
                     <span>·</span>
-                    <span>{post.comment_count} comments</span>
+                    <span>{post.comment_count} 댓글</span>
                   </div>
-                  <h2 className="text-xl font-black tracking-[-0.04em]">{post.title}</h2>
-                  <p className="line-clamp-2 text-sm leading-6 text-text-secondary">{excerptFromHtml(post.body)}</p>
+                  <h2 className="line-clamp-1 text-[1rem] font-black leading-snug tracking-[-0.04em] sm:text-xl">{post.title}</h2>
+                  <p className="line-clamp-1 text-xs leading-5 text-text-secondary sm:line-clamp-2 sm:text-sm sm:leading-6">{excerptFromHtml(post.body)}</p>
                 </Card>
               </Link>
             );
