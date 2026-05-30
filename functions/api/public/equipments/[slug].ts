@@ -1,9 +1,10 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { findPublicEquipment, listPublicEquipmentLogs, listPublicEquipmentParts } from "../../../_shared/db-public-equipment";
+import { getCurrentUser } from "../../../_shared/auth-session";
+import { findViewableEquipment, listPublicEquipmentLogs, listPublicEquipmentParts } from "../../../_shared/db-public-equipment";
 import { errorResponse, getErrorMessage, jsonResponse, paramValue } from "../../../_shared/http";
 
-type Env = { DB: D1Database };
+type Env = { DB: D1Database; APP_ENV?: string };
 
 function decodeSlug(slug: string) {
   try {
@@ -13,19 +14,20 @@ function decodeSlug(slug: string) {
   }
 }
 
-export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
+export const onRequestGet: PagesFunction<Env> = async ({ request, env, params }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
 
   try {
+    const viewer = await getCurrentUser(request, env).catch(() => null);
     const slug = decodeSlug(paramValue(params, "slug"));
     if (!slug) return errorResponse("Equipment slug is required.", 400);
 
-    const equipment = await findPublicEquipment(env.DB, slug);
+    const equipment = await findViewableEquipment(env.DB, slug, viewer?.id ?? null);
     if (!equipment) return errorResponse("Equipment not found.", 404);
 
     const [logs, parts] = await Promise.all([
-      listPublicEquipmentLogs(env.DB, equipment.id),
-      listPublicEquipmentParts(env.DB, equipment.id),
+      listPublicEquipmentLogs(env.DB, equipment.id, viewer?.id ?? null),
+      listPublicEquipmentParts(env.DB, equipment.id, viewer?.id ?? null),
     ]);
 
     return jsonResponse({ ok: true, equipment, logs, parts });
