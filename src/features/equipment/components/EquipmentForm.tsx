@@ -144,7 +144,7 @@ export function EquipmentForm() {
       <Card className="space-y-6 p-5 sm:p-6">
         <div className="space-y-1">
           <h2 className="text-xl font-bold">기본 정보</h2>
-          <p className="text-sm leading-6 text-text-secondary">장비 공개 페이지의 제목과 기본 스펙으로 사용됩니다.</p>
+          <p className="text-sm leading-6 text-text-secondary">장비 상세 페이지의 제목과 기본 스펙으로 사용됩니다.</p>
         </div>
 
         <div className="space-y-3 rounded-3xl border border-border bg-background p-4">
@@ -153,10 +153,10 @@ export function EquipmentForm() {
               {mainImageUrl ? <img src={mainImageUrl} alt="장비 대표 사진" className="size-full object-cover" /> : "No Image"}
             </div>
             <div className="min-w-0 flex-1 space-y-2">
-              <FieldLabel label="대표 사진" description="장비 카드와 공개 페이지 상단에 사용할 사진입니다." />
+              <FieldLabel label="대표 사진" description="장비 카드와 상세 페이지 상단에 사용할 사진입니다." />
               <input className={fileInputClassName()} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleImageChange} disabled={uploadState.status === "uploading"} />
               <input type="hidden" name="mainImageUrl" value={mainImageUrl} />
-              <p className="text-xs leading-5 text-text-secondary">jpg, png, webp, gif / 최대 8MB</p>
+              <p className="text-xs leading-5 text-text-secondary">jpg, png, webp, gif / 최대 8MB. 사진은 먼저 업로드되고, 장비 저장을 눌러야 대표 사진으로 연결됩니다.</p>
             </div>
           </div>
           {uploadState.status === "uploading" ? <p className="text-sm text-text-secondary">대표 사진을 업로드하는 중입니다...</p> : null}
@@ -173,7 +173,7 @@ export function EquipmentForm() {
           <div className="space-y-2"><FieldLabel label="연식" /><input className={inputClassName()} name="year" inputMode="numeric" placeholder="2023" /></div>
           <div className="space-y-2"><FieldLabel label="사용량" description="바이크는 주행거리, 장비는 사용 시간 등으로 기록합니다." /><div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-2"><input className={inputClassName()} name="usageMetricValue" inputMode="numeric" placeholder="12800" /><select className={inputClassName("px-3")} name="usageMetricType" defaultValue="km">{usageMetricOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div></div>
           <div className="space-y-2 sm:col-span-2"><FieldLabel label="공개 URL slug" description="비워두면 장비 이름으로 자동 생성됩니다. 중복 시 자동 보정됩니다." /><input className={inputClassName()} name="slug" placeholder="ninja-400" /></div>
-          <div className="space-y-2 sm:col-span-2"><FieldLabel label="장비 소개" description="공개 페이지 상단에 들어갈 짧은 소개를 작성하세요." /><textarea className={textareaClassName()} name="description" placeholder="어떤 장비인지, 어떤 세팅으로 타고/쓰고 있는지 적어보세요." /></div>
+          <div className="space-y-2 sm:col-span-2"><FieldLabel label="장비 소개" description="상세 페이지 상단에 들어갈 짧은 소개를 작성하세요." /><textarea className={textareaClassName()} name="description" placeholder="어떤 장비인지, 어떤 세팅으로 타고/쓰고 있는지 적어보세요." /></div>
         </div>
       </Card>
 
@@ -181,11 +181,11 @@ export function EquipmentForm() {
         <Card variant="dark" className="space-y-4 p-5">
           <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-lime-200">DB Create</p><h2 className="mt-2 text-xl font-bold">장비 저장</h2><p className="mt-2 text-sm leading-6 text-zinc-300">로그인한 계정의 내 차고에 장비를 저장합니다.</p></div>
           <Button className="w-full" type="submit" disabled={submitState.status === "submitting" || uploadState.status === "uploading"}>{submitState.status === "submitting" ? "저장 중..." : "장비 저장하기"}</Button>
-          {submitState.status === "success" ? <div className="space-y-3 rounded-2xl bg-white/10 p-3 text-sm leading-6 text-lime-100"><p>{submitState.message}</p>{submitState.nextPath ? <a className="font-semibold underline underline-offset-4" href={submitState.nextPath}>공개 페이지 확인하기</a> : null}</div> : null}
+          {submitState.status === "success" ? <div className="space-y-3 rounded-2xl bg-white/10 p-3 text-sm leading-6 text-lime-100"><p>{submitState.message}</p><div className="grid gap-2">{submitState.nextPath ? <a className="rounded-2xl bg-white px-3 py-2 text-center font-bold text-zinc-950" href={submitState.nextPath}>장비 상세 보기</a> : null}<a className="rounded-2xl bg-white/10 px-3 py-2 text-center font-bold text-white" href="/garage/">내 차고로 이동</a></div></div> : null}
           {submitState.status === "login-required" ? <div className="space-y-3 rounded-2xl bg-white/10 p-3 text-sm leading-6 text-lime-100"><p>{submitState.message}</p><div className="flex flex-wrap gap-2"><Link className="font-semibold underline underline-offset-4" href="/login/">로그인</Link><Link className="font-semibold underline underline-offset-4" href="/signup/">회원가입</Link></div></div> : null}
           {submitState.status === "error" ? <p className="rounded-2xl bg-white/10 p-3 text-sm leading-6 text-red-100">{submitState.message}</p> : null}
         </Card>
-        <Card className="space-y-3 p-5"><h3 className="font-bold">대표 사진 흐름</h3><p className="text-sm leading-6 text-text-secondary">사진은 먼저 이미지 provider에 업로드되고, 반환된 URL이 장비의 대표 이미지로 저장됩니다.</p></Card>
+        <Card className="space-y-3 p-5"><h3 className="font-bold">대표 사진 흐름</h3><p className="text-sm leading-6 text-text-secondary">사진은 먼저 이미지 provider에 업로드되고, 장비 저장 후 대표 이미지로 연결됩니다.</p></Card>
       </aside>
     </form>
   );
