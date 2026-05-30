@@ -4,6 +4,7 @@ import { createEquipment } from "../../src/features/equipment/actions/mutations"
 import { createEquipmentSchema } from "../../src/features/equipment/schemas";
 import { createDb } from "../../src/server/db/client";
 import { requireCurrentUser } from "../_shared/auth";
+import { ensureGarageSchema } from "../_shared/ensure-garage-schema";
 import { allowMethods, errorResponse, getErrorMessage, jsonResponse, readJsonObject, statusFromError, zodDetails } from "../_shared/http";
 
 type Env = {
@@ -35,27 +36,13 @@ function publicViewPath(slug: string) {
   return `/garage/view/?slug=${encodeURIComponent(slug)}`;
 }
 
-async function ignoreAlreadyExists(operation: Promise<unknown>) {
-  try {
-    await operation;
-  } catch (error) {
-    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-    if (!message.includes("duplicate column") && !message.includes("already exists")) throw error;
-  }
-}
-
-async function ensureEquipmentSchema(db: D1Database) {
-  await ignoreAlreadyExists(db.prepare("ALTER TABLE equipments ADD COLUMN main_image_url TEXT").run());
-  await ignoreAlreadyExists(db.prepare("ALTER TABLE equipments ADD COLUMN main_image_asset_id TEXT").run());
-}
-
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
   const auth = await requireCurrentUser(request, env);
   if (auth.response) return auth.response;
 
   try {
-    await ensureEquipmentSchema(env.DB);
+    await ensureGarageSchema(env.DB);
 
     const rows = await env.DB.prepare(
       `SELECT
@@ -99,7 +86,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (auth.response) return auth.response;
 
   try {
-    await ensureEquipmentSchema(env.DB);
+    await ensureGarageSchema(env.DB);
 
     const body = await readJsonObject(request);
     const input = createEquipmentSchema.parse(body);
