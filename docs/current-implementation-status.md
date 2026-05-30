@@ -1,14 +1,20 @@
-# Maniac Garage 현재 구현 상태 및 점검 문서
+# GearDuck 현재 구현 상태 및 점검 문서
 
-이 문서는 `maniac` 저장소의 현재 `main` 브랜치 기준 실제 구현 상태를 추적한다. 기획 문서는 장기 방향을 설명하고, 이 문서는 배포 구조, 동작 페이지, API, D1 연동, 최근 해결 이슈, 남은 작업을 기준으로 관리한다.
+이 문서는 `maniac` 저장소의 현재 `main` 브랜치 기준 실제 구현 상태를 추적한다. 기획 문서는 장기 방향을 설명하고, 이 문서는 배포 구조, 동작 페이지, API, D1 연동, SEO, 최근 해결 이슈, 남은 작업을 기준으로 관리한다.
+
+사용자 노출 브랜드는 **GearDuck / 기어덕**이다. 내부 저장소명, DB명, 일부 legacy 문서명에는 `maniac` 또는 `Maniac Garage` 표현이 남아 있을 수 있다.
 
 ---
 
 ## 1. 현재 한 줄 상태
 
-Cloudflare Pages + Pages Functions + D1 기반으로 장비 기록, 장비 대표 이미지 업로드, 공개/상세 장비 페이지, 커뮤니티 게시판, 외부 뉴스 캐시, 이메일/비밀번호 로그인, 내 정보/내 콘텐츠 관리, 홈 콘텐츠 피드까지 1차 MVP가 구현되어 있다.
+Cloudflare Pages + Pages Functions + D1 기반으로 장비 기록, 장비 대표 이미지 업로드, 부품 이미지 업로드, 공개 장비 페이지, 커뮤니티 게시판, 외부 뉴스 캐시, 이메일/비밀번호 로그인, 내 정보/내 콘텐츠 관리, 홈 콘텐츠 피드, Search Console 기본 SEO까지 1차 MVP가 구현되어 있다.
 
 ```txt
+브랜드/SEO: GearDuck / 기어덕 / 장비덕후들의 기록 차고 ✅
+Google Search Console HTML 인증 파일 ✅
+robots.txt / sitemap.xml ✅
+기준 URL: https://maniac-c7d.pages.dev ✅
 이메일 회원가입/로그인/로그아웃 ✅
 HttpOnly 쿠키 기반 세션 ✅
 사용자별 장비/게시글/댓글 데이터 분리 ✅
@@ -17,10 +23,15 @@ HttpOnly 쿠키 기반 세션 ✅
 장비 등록/수정 대표 사진 미리보기 ✅
 정비 기록 CRUD ✅
 부품 기록 CRUD ✅
+부품 사진 업로드 ✅ Cloudinary
 공개/상세 장비 페이지 ✅ /garage/view/?slug=...
+공개 장비 상세 client-side SEO 메타 갱신 ✅
 커뮤니티 boards/posts/comments D1 테이블 ✅
 /explore DB API 기반 전환 ✅
+탐색 메뉴명: 기어 둘러보기 ✅
 게시글 작성/상세/수정/삭제 ✅
+게시글 본문 이미지 업로드 ✅ Cloudinary
+게시글 상세 client-side SEO 메타 갱신 ✅
 게시글 상세 화면 작성자 수정/삭제 ✅
 댓글 작성/삭제 ✅
 댓글 상세 화면 내 댓글 삭제 ✅
@@ -44,7 +55,34 @@ R2 업로드 ❌ 보류
 
 ---
 
-## 2. 배포/런타임 구조
+## 2. 브랜드/용어 기준
+
+```txt
+서비스명: GearDuck
+한글명: 기어덕
+슬로건: 장비덕후들의 기록 차고
+마스코트 방향: 오리
+```
+
+사용자 노출 문구 기준:
+
+```txt
+브랜드/상단 카피/SEO: GearDuck, 기어덕, 장비덕후
+기능 용어: 장비, 내 차고, 정비 기록, 부품 기록, 게시글, 댓글, 공개 페이지
+탐색 메뉴: 기어 둘러보기
+```
+
+주의:
+
+```txt
+기능명을 과하게 브랜드화하지 않는다.
+예: 부품 기록을 덕템 기록으로 바꾸지 않는다.
+예: 정비 기록을 관리 기록으로 일괄 치환하지 않는다.
+```
+
+---
+
+## 3. 배포/런타임 구조
 
 현재 프로젝트는 Next.js static export와 Cloudflare Pages Functions를 함께 사용한다.
 
@@ -100,7 +138,63 @@ public/_headers
 
 ---
 
-## 3. 인증/사용자 상태
+## 4. SEO / Search Console 상태
+
+현재 기준 URL은 Cloudflare Pages 기본 도메인이다.
+
+```txt
+https://maniac-c7d.pages.dev
+```
+
+관련 파일:
+
+```txt
+src/app/layout.tsx
+public/robots.txt
+public/sitemap.xml
+public/googled7e36cbd6c693e0a.html
+```
+
+현재 반영 상태:
+
+```txt
+metadataBase = https://maniac-c7d.pages.dev
+robots.txt Sitemap = https://maniac-c7d.pages.dev/sitemap.xml
+sitemap.xml 주요 정적 페이지 포함
+Google Search Console HTML 인증 파일 추가 완료
+```
+
+Search Console 등록 흐름:
+
+```txt
+속성 유형: URL 접두어
+등록 URL: https://maniac-c7d.pages.dev/
+인증 방식: HTML 파일 업로드
+사이트맵 제출: https://maniac-c7d.pages.dev/sitemap.xml
+```
+
+상세 페이지 SEO 보강 방식:
+
+```txt
+/garage/view/?slug=...
+→ PublicEquipmentDetailClient가 장비 데이터 로딩 후 document.title, description, canonical, og:* 갱신
+
+/explore/post/?id=...
+→ PublicPostDetailClient가 게시글 데이터 로딩 후 document.title, description, canonical, og:* 갱신
+```
+
+주의:
+
+```txt
+Next static export + query string 상세 페이지 구조라서 상세 페이지의 완전한 서버 사이드 SEO는 제한적이다.
+Google이 JS 렌더링을 처리하면 일부 메타 갱신을 반영할 수 있지만, 강한 SEO를 원하면 정적-safe slug 라우팅 또는 Pages Function HTML 메타 주입 전략이 필요하다.
+무료 mooo.com 도메인은 CNAME 제한으로 Cloudflare Pages custom domain 연결이 불가했다.
+따라서 현재 SEO 기준 도메인은 https://maniac-c7d.pages.dev 로 복구했다.
+```
+
+---
+
+## 5. 인증/사용자 상태
 
 외부 인증 서비스 없이 이메일/비밀번호 기반 직접 로그인을 구현했다.
 
@@ -155,7 +249,7 @@ functions/_shared/auth-session.ts
 
 ---
 
-## 4. 현재 확인 가능한 주요 페이지
+## 6. 현재 확인 가능한 주요 페이지
 
 ```txt
 /
@@ -202,7 +296,7 @@ functions/garage/_middleware.ts도 사용하지 않는다.
 
 ---
 
-## 5. 기능 구현 상태
+## 7. 기능 구현 상태
 
 ### 인증
 
@@ -218,7 +312,7 @@ functions/garage/_middleware.ts도 사용하지 않는다.
 메뉴의 주요 대시보드 링크는 Next client routing/RSC 캐시 혼선을 줄이기 위해 hard navigation을 사용한다.
 
 ```txt
-메뉴 → 홈 / 장비 둘러보기 / 내 차고 / 내 정보 / 로그인 / 회원가입
+메뉴 → 홈 / 기어 둘러보기 / 내 기어 / 내 정보 / 로그인 / 회원가입
 button click → window.location.assign(...)
 ```
 
@@ -228,7 +322,7 @@ button click → window.location.assign(...)
 
 ```txt
 히어로
-- 왼쪽: 서비스 메시지 + 검색
+- 왼쪽: GearDuck 서비스 메시지 + 검색
 - 오른쪽: 로그인 사용자 내 장비 카드
 
 콘텐츠 피드
@@ -384,6 +478,25 @@ DELETE /api/equipments/:id/parts?partId=...
 
 부품 기록 API도 currentUser 소유 장비 기준으로만 동작한다.
 
+부품 사진 흐름:
+
+```txt
+POST /api/uploads/part-image
+→ 로그인 확인
+→ active image provider 업로드
+→ image_assets insert with purpose=part_image
+→ public_url 반환
+→ parts.image_url로 저장
+```
+
+UI 표시:
+
+```txt
+관리 화면 부품 목록: 좌측 1:1 썸네일 + 우측 정보
+공개 장비 페이지 장착 부품: 좌측 1:1 썸네일 + 우측 정보
+이미지 없는 경우 NO IMG placeholder 표시
+```
+
 공개 장비 페이지에는 공개 부품만 표시한다. 단, 로그인한 소유자가 자기 장비를 보는 경우 비공개 부품도 볼 수 있다.
 
 ### 커뮤니티 게시판
@@ -413,11 +526,22 @@ DELETE /api/public/posts/:id/comments?commentId=...
 DELETE /api/public/posts/:id/comments?commentId=...
 ```
 
+게시글 본문 이미지 흐름:
+
+```txt
+POST /api/uploads/post-image
+→ 로그인 확인
+→ active image provider 업로드
+→ image_assets insert with purpose=post_image
+→ public_url 반환
+→ 게시글 본문 img src로 삽입
+```
+
 ---
 
-## 6. 이미지 저장 구조
+## 8. 이미지 저장 구조
 
-이미지 파일은 현재 Cloudinary에 저장하고, Maniac D1에는 provider 중립 메타데이터만 저장한다.
+이미지 파일은 현재 Cloudinary에 저장하고, D1에는 provider 중립 메타데이터를 저장한다.
 
 ```txt
 image_assets
@@ -469,7 +593,7 @@ functions/_shared/image-storage.ts
 
 ---
 
-## 7. D1 schema / migration 상태
+## 9. D1 schema / migration 상태
 
 현재 사용 중인 주요 테이블:
 
@@ -515,14 +639,6 @@ npm run d1:seed:samples:local
 npm run d1:seed:samples:remote
 ```
 
-뉴스 기능 배포 후 필요한 순서:
-
-```bash
-npm run d1:migrate:news:remote
-# 또는 새 DB라면
-npm run d1:migrate:all:remote
-```
-
 주의:
 
 ```txt
@@ -537,7 +653,7 @@ Drizzle schema와 SQL migration이 어긋나지 않게 변경 시 둘 다 확인
 
 ---
 
-## 8. D1 schema drift 대응
+## 10. D1 schema drift 대응
 
 운영 D1에 migration이 일부 빠진 상태에서 최신 코드가 배포되면 `no such column`, `no such table` 오류가 발생할 수 있다.
 
@@ -562,6 +678,7 @@ parts
 관련 index
 main_image_url
 main_image_asset_id
+parts.image_url 등 기존 parts 테이블 누락 컬럼
 ```
 
 사용 위치:
@@ -569,6 +686,7 @@ main_image_asset_id
 ```txt
 GET  /api/equipments
 POST /api/equipments
+GET  /api/public/equipments/:slug
 ```
 
 프로필/이미지 업로드 관련 API도 필요한 경우 아래를 자동 보강한다.
@@ -588,7 +706,7 @@ self-healing은 운영 장애 완화용이다.
 
 ---
 
-## 9. 현재 주요 API
+## 11. 현재 주요 API
 
 ```txt
 POST   /api/auth/signup
@@ -600,6 +718,8 @@ GET    /api/me/profile
 PATCH  /api/me/profile
 POST   /api/uploads/profile-image
 POST   /api/uploads/equipment-image
+POST   /api/uploads/part-image
+POST   /api/uploads/post-image
 GET    /api/me/summary
 GET    /api/me/posts
 GET    /api/me/posts/:id
@@ -660,7 +780,7 @@ DEV_TOOLS_SECRET이 설정된 경우 x-dev-tools-secret header 또는 token quer
 
 ---
 
-## 10. 최근 해결한 주요 이슈
+## 12. 최근 해결한 주요 이슈
 
 ```txt
 Supabase free quota 제한으로 이미지 업로드가 막힘
@@ -689,15 +809,25 @@ Next Link client routing/RSC 캐시 혼선으로 메뉴 이동 시 잘못된 화
 
 뉴스 migration 번호가 기존 0007 profile migration과 충돌
 → news_items migration을 0009_add_news_items.sql로 이동
+
+게시글 본문 이미지가 data URL로 DB에 저장됨
+→ /api/uploads/post-image 추가, Cloudinary 업로드 후 public_url만 본문에 삽입
+
+부품 추가 폼에 사진 업로드 항목이 없었음
+→ /api/uploads/part-image + 부품 image_url 저장 + 1:1 좌측 썸네일 UI 추가
+
+Google Search Console 초기 등록 필요
+→ HTML 인증 파일, robots.txt, sitemap.xml 추가
+
+무료 mooo.com 도메인은 CNAME 제한으로 Cloudflare Pages custom domain 연결 불가
+→ SEO 기준 도메인을 https://maniac-c7d.pages.dev 로 복구
 ```
 
 ---
 
-## 11. 아직 미완성인 부분
+## 13. 아직 미완성인 부분
 
 ```txt
-부품 이미지 업로드
-게시글 본문 이미지 업로드
 R2 직접 업로드 provider
 공개 사용자 프로필 페이지
 뉴스 자동 동기화 Cron Trigger
@@ -711,19 +841,20 @@ migration 적용 이력 관리 방식 검토
 비밀번호 찾기
 소셜 로그인
 MFA
+정적-safe 공개 상세 SEO 라우팅
+개인 페이지 noindex 정책 검토
 ```
 
 ---
 
-## 12. 다음 개발 추천 순서
+## 14. 다음 개발 추천 순서
 
 1. Production 배포 후 회귀 테스트
-2. `npm run d1:migrate:news:remote` 적용
-3. `/api/dev/sync-news` 실행 후 홈 뉴스 DB source 확인
-4. 뉴스 자동 동기화 Cron Trigger 추가
-5. 장비 등록/수정/목록/상세 이미지 흐름 안정화 확인
-6. 부품 이미지 업로드
-7. 게시글 본문 이미지 data URL 제거 및 업로드 전환
-8. 신고/모더레이션 워크플로우
-9. 관리자 UI
-10. 결제/구독
+2. Search Console sitemap 상태 확인 및 주요 URL 색인 요청
+3. 브랜드/기능 용어 잔여 문구 정리
+4. 개인 페이지 noindex 정책 검토
+5. 공개 장비/게시글 상세 SEO 라우팅 전략 검토
+6. 뉴스 자동 동기화 Cron Trigger 추가
+7. 신고/모더레이션 워크플로우
+8. 관리자 UI
+9. 결제/구독
