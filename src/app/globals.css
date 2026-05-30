@@ -4,4 +4,6 @@
 
 :root { color-scheme: light; }
 body { @apply bg-background text-text-primary antialiased; }
-.container-shell { @apply mx-auto w-full max-w-content px-5 md:px-8; }
+.container-shell { @apply mx-auto w-full max-w-content px-4 md:px-6 xl:px-8; }
+.dense-section { @apply space-y-4 rounded-[1.25rem] border border-border/80 bg-white/35 p-3 sm:p-4; }
+.dense-divider { @apply border-t border-border/80; }
