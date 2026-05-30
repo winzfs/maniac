@@ -74,6 +74,20 @@ export async function ensureGarageSchema(db: D1Database) {
     )`,
   ).run();
 
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN type TEXT NOT NULL DEFAULT 'custom'").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN title TEXT").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN description TEXT").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN performed_at INTEGER").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN usage_metric_value INTEGER").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN cost INTEGER").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN shop_name TEXT").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN is_public INTEGER NOT NULL DEFAULT 1").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN moderation_status TEXT NOT NULL DEFAULT 'normal'").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE maintenance_logs ADD COLUMN deleted_at INTEGER").run());
+
   await db.prepare("CREATE INDEX IF NOT EXISTS maintenance_logs_equipment_performed_idx ON maintenance_logs (equipment_id, performed_at)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS maintenance_logs_type_idx ON maintenance_logs (type)").run();
 
@@ -96,6 +110,20 @@ export async function ensureGarageSchema(db: D1Database) {
       deleted_at INTEGER
     )`,
   ).run();
+
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN category TEXT NOT NULL DEFAULT 'custom'").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN brand TEXT").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN name TEXT").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN price INTEGER").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN installed_at INTEGER").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN purchase_url TEXT").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN image_url TEXT").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN memo TEXT").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN visibility TEXT NOT NULL DEFAULT 'public'").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN moderation_status TEXT NOT NULL DEFAULT 'normal'").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE parts ADD COLUMN deleted_at INTEGER").run());
 
   await db.prepare("CREATE INDEX IF NOT EXISTS parts_equipment_idx ON parts (equipment_id)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS parts_category_idx ON parts (category)").run();
