@@ -134,18 +134,21 @@ export function PublicEquipmentDetail({ equipment, logs, parts }: PublicEquipmen
         {parts.length === 0 ? <p className="mt-3 text-sm text-text-secondary">아직 공개된 부품 기록이 없습니다.</p> : null}
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {parts.map((part) => (
-            <article key={part.id} className="rounded-3xl border border-border bg-white/60 p-4">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-text-secondary">
-                {part.category} · {formatDate(part.installed_at)}
-              </p>
-              <h3 className="mt-1 text-lg font-black">{part.brand ? `${part.brand} ` : ""}{part.name}</h3>
-              {part.memo ? <p className="mt-2 text-sm leading-6 text-text-secondary">{part.memo}</p> : null}
-              <p className="mt-3 text-xs font-bold text-text-secondary">{formatMoney(part.price)}</p>
-              {part.purchase_url ? (
-                <a className="mt-3 inline-flex text-sm font-black text-orange-600" href={part.purchase_url} target="_blank" rel="noreferrer">
-                  구매 링크
-                </a>
-              ) : null}
+            <article key={part.id} className="overflow-hidden rounded-3xl border border-border bg-white/60">
+              {part.image_url ? <img className="h-48 w-full object-cover" src={part.image_url} alt={part.name} /> : null}
+              <div className="p-4">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-text-secondary">
+                  {part.category} · {formatDate(part.installed_at)}
+                </p>
+                <h3 className="mt-1 text-lg font-black">{part.brand ? `${part.brand} ` : ""}{part.name}</h3>
+                {part.memo ? <p className="mt-2 text-sm leading-6 text-text-secondary">{part.memo}</p> : null}
+                <p className="mt-3 text-xs font-bold text-text-secondary">{formatMoney(part.price)}</p>
+                {part.purchase_url ? (
+                  <a className="mt-3 inline-flex text-sm font-black text-orange-600" href={part.purchase_url} target="_blank" rel="noreferrer">
+                    구매 링크
+                  </a>
+                ) : null}
+              </div>
             </article>
           ))}
         </div>
