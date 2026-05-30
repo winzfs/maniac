@@ -62,10 +62,10 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
       </summary>
       <div className="absolute left-0 z-20 mt-2 w-72 overflow-hidden rounded-[1.5rem] border border-border bg-surface p-2 shadow-lg sm:w-80">
         <div className="grid gap-1 text-sm">
-          <p className={sectionLabelClassName}>주요 메뉴</p>
+          <p className={sectionLabelClassName}>GearDuck</p>
           <button type="button" onClick={() => hardNavigate("/")} className={menuLinkClassName}>홈</button>
-          <button type="button" onClick={() => hardNavigate("/explore/")} className={menuLinkClassName}>장비 둘러보기</button>
-          <button type="button" onClick={() => hardNavigate("/garage/")} className={menuLinkClassName}>내 차고</button>
+          <button type="button" onClick={() => hardNavigate("/explore/")} className={menuLinkClassName}>덕질 구경</button>
+          <button type="button" onClick={() => hardNavigate("/garage/")} className={menuLinkClassName}>내 기어</button>
           {loaded && user ? (
             <>
               <button type="button" onClick={() => hardNavigate("/me/")} className={menuLinkClassName}>내 정보 · {user.nickname}</button>
@@ -81,7 +81,7 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
         </div>
         <div className="my-2 h-px bg-border" />
         <div className="grid max-h-72 gap-1 overflow-y-auto text-sm">
-          <p className={sectionLabelClassName}>장비 카테고리</p>
+          <p className={sectionLabelClassName}>기어 카테고리</p>
           {equipmentCategories.map((category) => (
             <Link key={category.slug} href={`/explore/${category.slug}/`} className="flex items-center justify-between rounded-2xl px-3 py-2 hover:bg-background">
               <span>{category.label}</span>
