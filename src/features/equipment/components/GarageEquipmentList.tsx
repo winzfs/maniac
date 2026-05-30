@@ -45,7 +45,7 @@ function formatUsage(equipment: EquipmentListItem) {
 
 function formatDate(value: number | null) {
   if (value == null) return "기록 없음";
-  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+  return new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit" }).format(new Date(value));
 }
 
 function formatCost(value: number | null) {
@@ -66,9 +66,9 @@ function publicViewHref(slug: string) {
 
 function LoginPrompt({ message }: { message: string }) {
   return (
-    <Card className="space-y-4 p-6 text-center">
-      <div className="space-y-2">
-        <h3 className="text-xl font-bold">로그인이 필요합니다</h3>
+    <Card className="space-y-3 p-4 text-center sm:p-5">
+      <div className="space-y-1">
+        <h3 className="text-lg font-bold sm:text-xl">로그인이 필요합니다</h3>
         <p className="text-sm leading-6 text-text-secondary">{message || "내 차고를 보려면 먼저 로그인해 주세요."}</p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
@@ -105,11 +105,11 @@ export function GarageEquipmentList() {
 
   if (state.status === "loading") {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {[0, 1, 2].map((item) => (
-          <Card key={item} className="flex min-h-72 flex-col gap-4 p-4 sm:p-5">
-            <div className="aspect-[16/10] animate-pulse rounded-2xl bg-zinc-200" />
-            <div className="space-y-3"><div className="h-5 w-24 animate-pulse rounded-full bg-zinc-200" /><div className="h-7 w-40 animate-pulse rounded-full bg-zinc-200" /><div className="h-4 w-32 animate-pulse rounded-full bg-zinc-200" /></div>
+          <Card key={item} className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 p-3 sm:flex sm:min-h-72 sm:flex-col sm:gap-4 sm:p-4">
+            <div className="aspect-square animate-pulse rounded-xl bg-zinc-200 sm:aspect-[16/10] sm:rounded-2xl" />
+            <div className="space-y-2"><div className="h-4 w-20 animate-pulse rounded-full bg-zinc-200" /><div className="h-5 w-32 animate-pulse rounded-full bg-zinc-200" /><div className="h-3 w-24 animate-pulse rounded-full bg-zinc-200" /></div>
           </Card>
         ))}
       </div>
@@ -117,12 +117,12 @@ export function GarageEquipmentList() {
   }
 
   if (state.status === "login-required") return <LoginPrompt message={state.message} />;
-  if (state.status === "error") return <Card className="space-y-3 p-6"><h3 className="text-xl font-bold">장비 목록을 불러오지 못했습니다.</h3><p className="text-sm leading-6 text-text-secondary">{state.message}</p></Card>;
+  if (state.status === "error") return <Card className="space-y-2 p-4"><h3 className="text-lg font-bold">장비 목록을 불러오지 못했습니다.</h3><p className="text-sm leading-6 text-text-secondary">{state.message}</p></Card>;
 
   if (state.equipments.length === 0) {
     return (
-      <Card className="space-y-4 p-6 text-center">
-        <h3 className="text-xl font-bold">아직 등록된 장비가 없습니다.</h3>
+      <Card className="space-y-3 p-4 text-center sm:p-5">
+        <h3 className="text-lg font-bold sm:text-xl">아직 등록된 장비가 없습니다.</h3>
         <p className="text-sm leading-6 text-text-secondary">첫 장비를 등록하면 이곳에 바로 표시됩니다.</p>
         <Link href="/garage/new/"><Button>장비 추가하기</Button></Link>
       </Card>
@@ -130,27 +130,35 @@ export function GarageEquipmentList() {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {state.equipments.map((equipment) => (
-        <Card key={equipment.id} className="flex flex-col gap-4 p-4 sm:p-5">
-          <div className="aspect-[16/10] overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-200 to-zinc-400">
-            {equipment.main_image_url ? <img src={equipment.main_image_url} alt={`${equipment.nickname} 대표 사진`} className="size-full object-cover" /> : null}
+        <Card key={equipment.id} className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-3 p-3 sm:flex sm:flex-col sm:gap-4 sm:p-4">
+          <div className="relative aspect-square overflow-hidden rounded-xl bg-gradient-to-br from-zinc-200 to-zinc-400 sm:aspect-[16/10] sm:rounded-2xl">
+            {equipment.main_image_url ? <img src={equipment.main_image_url} alt={`${equipment.nickname} 대표 사진`} className="size-full object-cover" /> : <div className="grid size-full place-items-center text-[0.7rem] font-bold text-text-secondary">대표 사진 없음</div>}
+            <span className="absolute left-1.5 top-1.5 rounded-full bg-white/90 px-2 py-0.5 text-[0.65rem] font-black text-text-primary shadow-sm sm:hidden">{formatVisibility(equipment.visibility)}</span>
           </div>
-          <div className="space-y-1">
-            <Badge label={equipment.category} tone="muted" />
-            <h3 className="text-xl font-bold">{equipment.nickname}</h3>
-            <p className="text-sm text-text-secondary">{formatSpec(equipment)}</p>
-            <p className="text-sm text-text-secondary">{formatUsage(equipment)}</p>
-            <p className="text-xs font-semibold tracking-[0.12em] text-text-secondary">{formatVisibility(equipment.visibility)}</p>
-          </div>
-          <div className="grid grid-cols-3 gap-2 rounded-2xl bg-background p-2 text-center text-xs">
-            <div className="rounded-xl bg-surface p-2"><b className="block text-sm text-text-primary">{equipment.maintenance_log_count}</b><span className="text-text-secondary">기록</span></div>
-            <div className="rounded-xl bg-surface p-2"><b className="block text-sm text-text-primary">{formatDate(equipment.latest_maintenance_at).replace(/\. /g, ".")}</b><span className="text-text-secondary">최근</span></div>
-            <div className="rounded-xl bg-surface p-2"><b className="block text-sm text-text-primary">{formatCost(equipment.total_maintenance_cost)}</b><span className="text-text-secondary">비용</span></div>
-          </div>
-          <div className="mt-auto grid grid-cols-2 gap-2">
-            <Link href={publicViewHref(equipment.slug)}><Button className="w-full">보기</Button></Link>
-            <Link href={`/garage/edit/?id=${equipment.id}`}><Button className="w-full" variant="secondary">수정</Button></Link>
+
+          <div className="min-w-0 space-y-2 sm:space-y-3">
+            <div className="min-w-0 space-y-0.5">
+              <div className="hidden items-center gap-2 sm:flex">
+                <Badge label={equipment.category} tone="muted" />
+                <span className="text-xs font-semibold tracking-[0.12em] text-text-secondary">{formatVisibility(equipment.visibility)}</span>
+              </div>
+              <h3 className="line-clamp-1 text-base font-black tracking-[-0.03em] sm:text-xl">{equipment.nickname}</h3>
+              <p className="line-clamp-1 text-xs text-text-secondary sm:text-sm">{formatSpec(equipment)}</p>
+              <p className="line-clamp-1 text-xs text-text-secondary sm:text-sm">{formatUsage(equipment)}</p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1 rounded-xl bg-background p-1 text-center text-[0.68rem] sm:gap-2 sm:rounded-2xl sm:p-2 sm:text-xs">
+              <div className="rounded-lg bg-surface p-1 sm:rounded-xl sm:p-2"><b className="block text-xs text-text-primary sm:text-sm">{equipment.maintenance_log_count}</b><span className="text-text-secondary">기록</span></div>
+              <div className="rounded-lg bg-surface p-1 sm:rounded-xl sm:p-2"><b className="block text-xs text-text-primary sm:text-sm">{formatDate(equipment.latest_maintenance_at)}</b><span className="text-text-secondary">최근</span></div>
+              <div className="rounded-lg bg-surface p-1 sm:rounded-xl sm:p-2"><b className="block truncate text-xs text-text-primary sm:text-sm">{formatCost(equipment.total_maintenance_cost)}</b><span className="text-text-secondary">비용</span></div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5 sm:mt-auto sm:gap-2">
+              <Link href={publicViewHref(equipment.slug)}><Button className="w-full px-2 py-2 text-xs sm:text-sm">상세 보기</Button></Link>
+              <Link href={`/garage/edit/?id=${equipment.id}`}><Button className="w-full px-2 py-2 text-xs sm:text-sm" variant="secondary">관리</Button></Link>
+            </div>
           </div>
         </Card>
       ))}
