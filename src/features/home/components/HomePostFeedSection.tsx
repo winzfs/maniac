@@ -74,6 +74,20 @@ function SkeletonGrid() {
   );
 }
 
+function FeedColumn({ title, description, posts, popular = false }: { title: string; description: string; posts: PublicPost[]; popular?: boolean }) {
+  return (
+    <div className="min-w-0 rounded-card border border-border/80 bg-white/40 p-2.5 sm:space-y-4 sm:border-0 sm:bg-transparent sm:p-0">
+      <div className="mb-2 flex items-end justify-between gap-3 sm:mb-0 sm:block">
+        <SectionHeader title={title} description={description} />
+        <span className="shrink-0 rounded-full bg-background px-2 py-1 text-[0.7rem] font-black text-text-secondary sm:hidden">{posts.length}개</span>
+      </div>
+      <div className="grid gap-2 sm:gap-3">
+        {posts.map((post, index) => <PostCard key={post.id} post={post} rank={popular ? index + 1 : undefined} />)}
+      </div>
+    </div>
+  );
+}
+
 export function HomePostFeedSection() {
   const [state, setState] = useState<FeedState>({ latest: [], popular: [], loading: true, error: "" });
 
@@ -136,23 +150,36 @@ export function HomePostFeedSection() {
   }
 
   return (
-    <section className="grid gap-4 lg:grid-cols-2 lg:gap-5">
-      <div className="min-w-0 rounded-card border border-border/80 bg-white/40 p-2.5 sm:space-y-4 sm:bg-transparent sm:p-0 sm:border-0">
-        <div className="mb-2 sm:mb-0">
-          <SectionHeader title="최근 게시글" description="새로 올라온 공개 게시글입니다." />
+    <section className="space-y-2 sm:space-y-4">
+      <div className="flex items-center justify-between gap-3 sm:hidden">
+        <div>
+          <h2 className="text-base font-black tracking-[-0.03em]">커뮤니티 피드</h2>
+          <p className="text-xs text-text-secondary">최근글과 인기글을 옆으로 넘겨보세요.</p>
         </div>
-        <div className="grid gap-2 sm:gap-3">
-          {state.latest.map((post) => <PostCard key={post.id} post={post} />)}
+        <div className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-[0.68rem] font-black text-text-secondary">
+          <span>←</span><span>스와이프</span><span>→</span>
         </div>
       </div>
 
-      <div className="min-w-0 rounded-card border border-border/80 bg-white/40 p-2.5 sm:space-y-4 sm:bg-transparent sm:p-0 sm:border-0">
-        <div className="mb-2 sm:mb-0">
-          <SectionHeader title="댓글 많은 글" description="커뮤니티 반응이 많은 게시글입니다." />
+      <div className="relative sm:hidden">
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-background to-transparent" />
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch]">
+          <div className="w-[88vw] shrink-0 snap-start">
+            <FeedColumn title="최근 게시글" description="새로 올라온 공개 게시글입니다." posts={state.latest} />
+          </div>
+          <div className="w-[88vw] shrink-0 snap-start pr-2">
+            <FeedColumn title="댓글 많은 글" description="커뮤니티 반응이 많은 게시글입니다." posts={state.popular} popular />
+          </div>
         </div>
-        <div className="grid gap-2 sm:gap-3">
-          {state.popular.map((post, index) => <PostCard key={post.id} post={post} rank={index + 1} />)}
+        <div className="mt-1 flex justify-center gap-1.5">
+          <span className="h-1.5 w-5 rounded-full bg-graphite" />
+          <span className="h-1.5 w-1.5 rounded-full bg-border" />
         </div>
+      </div>
+
+      <div className="hidden gap-5 sm:grid lg:grid-cols-2">
+        <FeedColumn title="최근 게시글" description="새로 올라온 공개 게시글입니다." posts={state.latest} />
+        <FeedColumn title="댓글 많은 글" description="커뮤니티 반응이 많은 게시글입니다." posts={state.popular} popular />
       </div>
     </section>
   );
