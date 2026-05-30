@@ -85,8 +85,8 @@ export async function getCurrentUser(request: Request, env: AuthEnv) {
   const verifierHash = await sha256Base64(token);
   const now = Date.now();
 
-  return env.DB.prepare(
-    `SELECT users.id, users.email, users.nickname, users.bio, users.profile_image_url, users.provider
+  const user = await env.DB.prepare(
+    `SELECT users.id, users.email, users.nickname, users.profile_image_url, users.provider
      FROM auth_sessions
      INNER JOIN users ON users.id = auth_sessions.user_id
      WHERE auth_sessions.verifier_hash = ?
@@ -94,5 +94,7 @@ export async function getCurrentUser(request: Request, env: AuthEnv) {
        AND auth_sessions.expires_at > ?
        AND users.deleted_at IS NULL
      LIMIT 1`,
-  ).bind(verifierHash, now).first<CurrentUser>();
+  ).bind(verifierHash, now).first<Omit<CurrentUser, "bio">>();
+
+  return user ? { ...user, bio: null } : null;
 }
