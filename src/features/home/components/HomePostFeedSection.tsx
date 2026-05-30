@@ -46,17 +46,18 @@ function formatDate(value: number) {
 function PostCard({ post, rank }: { post: PublicPost; rank?: number }) {
   return (
     <Link href={postHref(post)} className="block">
-      <Card className="h-full space-y-3 p-5 transition hover:-translate-y-0.5 hover:shadow-md">
-        <div className="flex flex-wrap items-center gap-2">
-          {rank ? <span className="rounded-full bg-garage-orange px-2.5 py-1 text-xs font-black text-white">#{rank}</span> : null}
+      <Card className="space-y-2 p-3 transition hover:-translate-y-0.5 hover:shadow-md sm:space-y-3 sm:p-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {rank ? <span className="rounded-full bg-garage-orange px-2 py-0.5 text-[0.68rem] font-black text-white sm:px-2.5 sm:py-1 sm:text-xs">#{rank}</span> : null}
           <Badge label={post.board_title} tone="muted" />
-          <span className="text-xs text-text-secondary">{formatDate(post.created_at)}</span>
+          <span className="text-[0.72rem] text-text-secondary sm:text-xs">{formatDate(post.created_at)}</span>
+          <span className="text-[0.72rem] text-text-secondary sm:hidden">· 댓글 {post.comment_count}</span>
         </div>
-        <div className="space-y-2">
-          <h3 className="line-clamp-2 text-lg font-black leading-tight tracking-tight">{post.title}</h3>
-          <p className="line-clamp-2 text-sm leading-6 text-text-secondary">{stripHtml(post.body) || "본문 미리보기가 없습니다."}</p>
+        <div className="space-y-1 sm:space-y-2">
+          <h3 className="line-clamp-1 text-base font-black leading-snug tracking-tight sm:line-clamp-2 sm:text-lg">{post.title}</h3>
+          <p className="line-clamp-1 text-xs leading-5 text-text-secondary sm:line-clamp-2 sm:text-sm sm:leading-6">{stripHtml(post.body) || "본문 미리보기가 없습니다."}</p>
         </div>
-        <div className="flex items-center justify-between border-t border-border pt-3 text-xs text-text-secondary">
+        <div className="hidden items-center justify-between border-t border-border pt-3 text-xs text-text-secondary sm:flex">
           <span>{post.author_nickname}</span>
           <span>댓글 {post.comment_count}</span>
         </div>
@@ -67,8 +68,8 @@ function PostCard({ post, rank }: { post: PublicPost; rank?: number }) {
 
 function SkeletonGrid() {
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {[0, 1, 2, 3].map((item) => <Card key={item} className="h-40 animate-pulse p-5" />)}
+    <div className="grid gap-2 lg:grid-cols-2 sm:gap-4">
+      {[0, 1, 2, 3].map((item) => <Card key={item} className="h-24 animate-pulse p-3 sm:h-40 sm:p-5" />)}
     </div>
   );
 }
@@ -106,7 +107,7 @@ export function HomePostFeedSection() {
 
   if (state.loading) {
     return (
-      <section className="space-y-5">
+      <section className="space-y-3 sm:space-y-5">
         <SectionHeader title="커뮤니티 피드" description="최근 올라온 글과 댓글이 많은 글을 모아봅니다." />
         <SkeletonGrid />
       </section>
@@ -115,18 +116,18 @@ export function HomePostFeedSection() {
 
   if (state.error) {
     return (
-      <section className="space-y-5">
+      <section className="space-y-3 sm:space-y-5">
         <SectionHeader title="커뮤니티 피드" description="최근 올라온 글과 댓글이 많은 글을 모아봅니다." />
-        <Card className="p-5 text-sm text-text-secondary">{state.error}</Card>
+        <Card className="p-3 text-sm text-text-secondary sm:p-5">{state.error}</Card>
       </section>
     );
   }
 
   if (state.latest.length === 0 && state.popular.length === 0) {
     return (
-      <section className="space-y-5">
+      <section className="space-y-3 sm:space-y-5">
         <SectionHeader title="커뮤니티 피드" description="최근 올라온 글과 댓글이 많은 글을 모아봅니다." />
-        <Card className="space-y-2 p-5">
+        <Card className="space-y-1 p-3 sm:space-y-2 sm:p-5">
           <h3 className="font-bold">아직 공개 게시글이 없습니다.</h3>
           <p className="text-sm leading-6 text-text-secondary">게시판에 첫 글을 작성하면 이곳에 표시됩니다.</p>
         </Card>
@@ -135,17 +136,21 @@ export function HomePostFeedSection() {
   }
 
   return (
-    <section className="grid gap-5 lg:grid-cols-2">
-      <div className="min-w-0 space-y-4">
-        <SectionHeader title="최근 게시글" description="새로 올라온 공개 게시글입니다." />
-        <div className="grid gap-3">
+    <section className="grid gap-4 lg:grid-cols-2 lg:gap-5">
+      <div className="min-w-0 rounded-card border border-border/80 bg-white/40 p-2.5 sm:space-y-4 sm:bg-transparent sm:p-0 sm:border-0">
+        <div className="mb-2 sm:mb-0">
+          <SectionHeader title="최근 게시글" description="새로 올라온 공개 게시글입니다." />
+        </div>
+        <div className="grid gap-2 sm:gap-3">
           {state.latest.map((post) => <PostCard key={post.id} post={post} />)}
         </div>
       </div>
 
-      <div className="min-w-0 space-y-4">
-        <SectionHeader title="댓글 많은 글" description="커뮤니티 반응이 많은 게시글입니다." />
-        <div className="grid gap-3">
+      <div className="min-w-0 rounded-card border border-border/80 bg-white/40 p-2.5 sm:space-y-4 sm:bg-transparent sm:p-0 sm:border-0">
+        <div className="mb-2 sm:mb-0">
+          <SectionHeader title="댓글 많은 글" description="커뮤니티 반응이 많은 게시글입니다." />
+        </div>
+        <div className="grid gap-2 sm:gap-3">
           {state.popular.map((post, index) => <PostCard key={post.id} post={post} rank={index + 1} />)}
         </div>
       </div>
