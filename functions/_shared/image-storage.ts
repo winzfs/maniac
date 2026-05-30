@@ -1,8 +1,13 @@
 /// <reference types="@cloudflare/workers-types" />
 
-export type ImageProviderName = "supabase" | "r2" | "external_url";
+export type ImageProviderName = "cloudinary" | "supabase" | "r2" | "external_url";
 
 export type ImageStorageEnv = {
+  IMAGE_STORAGE_PROVIDER?: string;
+  CLOUDINARY_CLOUD_NAME?: string;
+  CLOUDINARY_API_KEY?: string;
+  CLOUDINARY_API_SECRET?: string;
+  CLOUDINARY_UPLOAD_FOLDER?: string;
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   SUPABASE_STORAGE_BUCKET?: string;
@@ -21,6 +26,8 @@ export type PutImageResult = {
   bucket: string;
   objectKey: string;
   publicUrl: string;
+  width?: number;
+  height?: number;
 };
 
 export interface ImageStorageProvider {
@@ -35,6 +42,86 @@ function trimTrailingSlash(value: string) {
 
 function encodeObjectKey(objectKey: string) {
   return objectKey.split("/").map(encodeURIComponent).join("/");
+}
+
+function removeImageExtension(objectKey: string) {
+  return objectKey.replace(/\.[a-z0-9]+$/i, "");
+}
+
+function toHex(buffer: ArrayBuffer) {
+  return [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function sha1Hex(value: string) {
+  const encoded = new TextEncoder().encode(value);
+  const hash = await crypto.subtle.digest("SHA-1", encoded);
+  return toHex(hash);
+}
+
+function buildSignatureBase(params: Record<string, string | number | boolean>) {
+  return Object.entries(params)
+    .filter(([, value]) => value !== "" && value !== undefined && value !== null)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}=${value}`)
+    .join("&");
+}
+
+export class CloudinaryImageStorageProvider implements ImageStorageProvider {
+  readonly provider = "cloudinary" as const;
+  private readonly cloudName: string;
+  private readonly apiKey: string;
+  private readonly apiSecret: string;
+  private readonly uploadFolder: string;
+
+  constructor(env: ImageStorageEnv) {
+    if (!env.CLOUDINARY_CLOUD_NAME) throw new Error("CLOUDINARY_CLOUD_NAME is not configured.");
+    if (!env.CLOUDINARY_API_KEY) throw new Error("CLOUDINARY_API_KEY is not configured.");
+    if (!env.CLOUDINARY_API_SECRET) throw new Error("CLOUDINARY_API_SECRET is not configured.");
+
+    this.cloudName = env.CLOUDINARY_CLOUD_NAME;
+    this.apiKey = env.CLOUDINARY_API_KEY;
+    this.apiSecret = env.CLOUDINARY_API_SECRET;
+    this.uploadFolder = env.CLOUDINARY_UPLOAD_FOLDER || "maniac";
+  }
+
+  getPublicUrl(objectKey: string) {
+    return `https://res.cloudinary.com/${encodeURIComponent(this.cloudName)}/image/upload/${encodeObjectKey(objectKey)}`;
+  }
+
+  async put(input: PutImageInput) {
+    const publicId = `${this.uploadFolder}/${removeImageExtension(input.objectKey)}`;
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signatureParams = { overwrite: true, public_id: publicId, timestamp };
+    const signature = await sha1Hex(`${buildSignatureBase(signatureParams)}${this.apiSecret}`);
+    const formData = new FormData();
+
+    formData.set("file", input.file);
+    formData.set("api_key", this.apiKey);
+    formData.set("timestamp", String(timestamp));
+    formData.set("public_id", publicId);
+    formData.set("overwrite", "true");
+    formData.set("signature", signature);
+
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(this.cloudName)}/image/upload`, {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await response.json().catch(() => null) as { secure_url?: string; public_id?: string; width?: number; height?: number; error?: { message?: string } } | null;
+
+    if (!response.ok || !data?.secure_url || !data.public_id) {
+      throw new Error(`Cloudinary upload failed: ${response.status} ${data?.error?.message ?? ""}`.trim());
+    }
+
+    return {
+      provider: this.provider,
+      bucket: this.cloudName,
+      objectKey: data.public_id,
+      publicUrl: data.secure_url,
+      width: data.width,
+      height: data.height,
+    };
+  }
 }
 
 export class SupabaseImageStorageProvider implements ImageStorageProvider {
@@ -88,6 +175,8 @@ export class SupabaseImageStorageProvider implements ImageStorageProvider {
 }
 
 export function createImageStorageProvider(env: ImageStorageEnv): ImageStorageProvider {
+  if (env.IMAGE_STORAGE_PROVIDER === "supabase") return new SupabaseImageStorageProvider(env);
+  if (env.IMAGE_STORAGE_PROVIDER === "cloudinary" || env.CLOUDINARY_CLOUD_NAME) return new CloudinaryImageStorageProvider(env);
   return new SupabaseImageStorageProvider(env);
 }
 
