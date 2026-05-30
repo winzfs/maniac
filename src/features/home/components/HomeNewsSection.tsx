@@ -1,0 +1,127 @@
+"use client";
+
+import { Badge } from "@/shared/components/ui/Badge";
+import { Card } from "@/shared/components/ui/Card";
+import { SectionHeader } from "@/shared/components/ui/SectionHeader";
+import { useEffect, useState } from "react";
+
+type NewsItem = {
+  id: string;
+  title: string;
+  link: string;
+  source: string;
+  category: string;
+  publishedAt: string;
+};
+
+type NewsResponse = {
+  ok?: boolean;
+  items?: NewsItem[];
+  errors?: string[];
+};
+
+type State =
+  | { status: "loading" }
+  | { status: "success"; items: NewsItem[] }
+  | { status: "error"; message: string };
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "최근";
+  return new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
+}
+
+export function HomeNewsSection() {
+  const [state, setState] = useState<State>({ status: "loading" });
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadNews() {
+      try {
+        const response = await fetch("/api/news?limit=10", { cache: "no-store" });
+        const data = (await response.json().catch(() => null)) as NewsResponse | null;
+
+        if (!response.ok || !data?.ok) throw new Error("장비 뉴스를 불러오지 못했습니다.");
+        if (mounted) setState({ status: "success", items: data.items ?? [] });
+      } catch (error) {
+        if (mounted) setState({ status: "error", message: error instanceof Error ? error.message : "장비 뉴스를 불러오지 못했습니다." });
+      }
+    }
+
+    void loadNews();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (state.status === "loading") {
+    return (
+      <section className="space-y-5">
+        <SectionHeader title="장비 뉴스" description="외부 뉴스 피드에서 장비 관련 소식을 모아봅니다." />
+        <div className="grid gap-3 lg:grid-cols-2">
+          {[0, 1, 2, 3].map((item) => <Card key={item} className="h-28 animate-pulse p-5" />)}
+        </div>
+      </section>
+    );
+  }
+
+  if (state.status === "error") {
+    return (
+      <section className="space-y-5">
+        <SectionHeader title="장비 뉴스" description="외부 뉴스 피드에서 장비 관련 소식을 모아봅니다." />
+        <Card className="p-5 text-sm text-text-secondary">{state.message}</Card>
+      </section>
+    );
+  }
+
+  if (state.items.length === 0) {
+    return (
+      <section className="space-y-5">
+        <SectionHeader title="장비 뉴스" description="외부 뉴스 피드에서 장비 관련 소식을 모아봅니다." />
+        <Card className="p-5 text-sm text-text-secondary">표시할 뉴스가 없습니다.</Card>
+      </section>
+    );
+  }
+
+  const [lead, ...rest] = state.items;
+
+  return (
+    <section className="space-y-5">
+      <SectionHeader title="장비 뉴스" description="바이크, PC, 키보드, 카메라 등 장비 관련 외부 뉴스를 모았습니다." />
+      <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+        <a href={lead.link} target="_blank" rel="noreferrer" className="block">
+          <Card variant="dark" className="flex h-full min-h-64 flex-col justify-between p-6 transition hover:-translate-y-0.5 hover:shadow-lg">
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge label={lead.category} tone="lime" />
+                <span className="text-xs text-zinc-300">{formatDate(lead.publishedAt)}</span>
+              </div>
+              <h3 className="text-2xl font-black leading-tight tracking-tight sm:text-3xl">{lead.title}</h3>
+            </div>
+            <div className="mt-6 flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-sm text-zinc-300">
+              <span>{lead.source}</span>
+              <span className="font-semibold text-lime-200">뉴스 보기 →</span>
+            </div>
+          </Card>
+        </a>
+
+        <div className="grid gap-3">
+          {rest.slice(0, 6).map((item) => (
+            <a key={item.id} href={item.link} target="_blank" rel="noreferrer" className="block">
+              <Card className="space-y-2 p-4 transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge label={item.category} tone="muted" />
+                  <span className="text-xs text-text-secondary">{formatDate(item.publishedAt)}</span>
+                </div>
+                <h3 className="line-clamp-2 font-bold leading-tight">{item.title}</h3>
+                <p className="text-xs text-text-secondary">{item.source}</p>
+              </Card>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
