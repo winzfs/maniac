@@ -69,7 +69,7 @@ function LoginPrompt({ message }: { message: string }) {
     <Card className="space-y-3 p-4 text-center sm:p-5">
       <div className="space-y-1">
         <h3 className="text-lg font-bold sm:text-xl">로그인이 필요합니다</h3>
-        <p className="text-sm leading-6 text-text-secondary">{message || "내 차고를 보려면 먼저 로그인해 주세요."}</p>
+        <p className="text-sm leading-6 text-text-secondary">{message || "내 기어를 보려면 먼저 로그인해 주세요."}</p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         <Link href="/login/"><Button>로그인</Button></Link>
@@ -89,14 +89,14 @@ export function GarageEquipmentList() {
         const response = await fetch("/api/equipments", { cache: "no-store", credentials: "same-origin" });
         const data = (await response.json()) as EquipmentListResponse;
         if (response.status === 401) {
-          if (isMounted) setState({ status: "login-required", message: data.error ?? "내 차고를 보려면 먼저 로그인해 주세요." });
+          if (isMounted) setState({ status: "login-required", message: data.error ?? "내 기어를 보려면 먼저 로그인해 주세요." });
           return;
         }
-        if (!response.ok || !data.ok) throw new Error(data.error ?? "장비 목록을 불러오지 못했습니다.");
+        if (!response.ok || !data.ok) throw new Error(data.error ?? "기어 목록을 불러오지 못했습니다.");
         if (isMounted) setState({ status: "success", equipments: data.equipments ?? [] });
       } catch (error) {
         if (!isMounted) return;
-        setState({ status: "error", message: error instanceof Error ? error.message : "장비 목록을 불러오지 못했습니다." });
+        setState({ status: "error", message: error instanceof Error ? error.message : "기어 목록을 불러오지 못했습니다." });
       }
     }
     loadEquipments();
@@ -117,14 +117,14 @@ export function GarageEquipmentList() {
   }
 
   if (state.status === "login-required") return <LoginPrompt message={state.message} />;
-  if (state.status === "error") return <Card className="space-y-2 p-4"><h3 className="text-lg font-bold">장비 목록을 불러오지 못했습니다.</h3><p className="text-sm leading-6 text-text-secondary">{state.message}</p></Card>;
+  if (state.status === "error") return <Card className="space-y-2 p-4"><h3 className="text-lg font-bold">기어 목록을 불러오지 못했습니다.</h3><p className="text-sm leading-6 text-text-secondary">{state.message}</p></Card>;
 
   if (state.equipments.length === 0) {
     return (
       <Card className="space-y-3 p-4 text-center sm:p-5">
-        <h3 className="text-lg font-bold sm:text-xl">아직 등록된 장비가 없습니다.</h3>
-        <p className="text-sm leading-6 text-text-secondary">첫 장비를 등록하면 이곳에 바로 표시됩니다.</p>
-        <Link href="/garage/new/"><Button>장비 추가하기</Button></Link>
+        <h3 className="text-lg font-bold sm:text-xl">아직 등록된 기어가 없습니다.</h3>
+        <p className="text-sm leading-6 text-text-secondary">첫 기어를 등록하면 내 덕질 기록이 이곳에 표시됩니다.</p>
+        <Link href="/garage/new/"><Button>내 기어 등록하기</Button></Link>
       </Card>
     );
   }
@@ -156,7 +156,7 @@ export function GarageEquipmentList() {
             </div>
 
             <div className="grid grid-cols-2 gap-1.5 sm:mt-auto sm:gap-2">
-              <Link href={publicViewHref(equipment.slug)}><Button className="w-full px-2 py-2 text-xs sm:text-sm">상세 보기</Button></Link>
+              <Link href={publicViewHref(equipment.slug)}><Button className="w-full px-2 py-2 text-xs sm:text-sm">자랑 보기</Button></Link>
               <Link href={`/garage/edit/?id=${equipment.id}`}><Button className="w-full px-2 py-2 text-xs sm:text-sm" variant="secondary">관리</Button></Link>
             </div>
           </div>
