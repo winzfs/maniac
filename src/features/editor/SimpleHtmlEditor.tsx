@@ -10,7 +10,14 @@ type SimpleHtmlEditorProps = {
   helperText?: string;
 };
 
-const maxImageEdge = 2000;
+type UploadedImageResponse = {
+  ok?: boolean;
+  image?: {
+    public_url?: string;
+  };
+  error?: string;
+};
+
 const open = (name: string) => String.fromCharCode(60) + name + String.fromCharCode(62);
 const close = (name: string) => String.fromCharCode(60) + "/" + name + String.fromCharCode(62);
 
@@ -19,41 +26,35 @@ const defaultPostHtml = [
   open("p") + "사진, 부품명, 교체 주기, 느낀 점을 함께 적으면 더 좋아요." + close("p"),
 ].join("");
 
-function resizeImageFile(file: File, maxEdge = maxImageEdge) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const image = new Image();
-      image.onload = () => {
-        const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
-        const width = Math.round(image.width * scale);
-        const height = Math.round(image.height * scale);
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext("2d");
-        if (!context) {
-          reject(new Error("이미지를 처리할 수 없습니다."));
-          return;
-        }
-        context.drawImage(image, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.88));
-      };
-      image.onerror = () => reject(new Error("이미지를 불러올 수 없습니다."));
-      image.src = String(reader.result);
-    };
-
-    reader.onerror = () => reject(new Error("파일을 읽을 수 없습니다."));
-    reader.readAsDataURL(file);
-  });
-}
-
 function closestElementFromSelection(selector: string) {
   const selection = window.getSelection();
   const node = selection?.anchorNode;
   const element = node?.nodeType === Node.ELEMENT_NODE ? node as Element : node?.parentElement;
   return element?.closest(selector) ?? null;
+}
+
+function insertImageElement(imageUrl: string) {
+  const imageHtml = `<img src="${imageUrl}" alt="게시글 이미지">`;
+  document.execCommand("insertHTML", false, imageHtml);
+}
+
+async function uploadPostImage(file: File) {
+  const formData = new FormData();
+  formData.set("image", file);
+
+  const response = await fetch("/api/uploads/post-image", {
+    method: "POST",
+    body: formData,
+    credentials: "same-origin",
+  });
+
+  const data = await response.json().catch(() => null) as UploadedImageResponse | null;
+
+  if (!response.ok || !data?.image?.public_url) {
+    throw new Error(data?.error || "이미지 업로드에 실패했습니다.");
+  }
+
+  return data.image.public_url;
 }
 
 export function SimpleHtmlEditor({ label = "본문", name = "bodyHtml", defaultValue = defaultPostHtml, helperText }: SimpleHtmlEditorProps) {
@@ -114,13 +115,15 @@ export function SimpleHtmlEditor({ label = "본문", name = "bodyHtml", defaultV
       return;
     }
 
-    setImageStatus("이미지 리사이징 중...");
+    setImageStatus("이미지 업로드 중...");
     try {
-      const dataUrl = await resizeImageFile(file);
-      runCommand("insertImage", dataUrl);
-      setImageStatus("이미지가 긴 축 2000px 이하로 삽입되었습니다.");
-    } catch {
-      setImageStatus("이미지를 처리하지 못했습니다.");
+      const imageUrl = await uploadPostImage(file);
+      focusEditor();
+      insertImageElement(imageUrl);
+      syncValue();
+      setImageStatus("이미지가 업로드되어 본문에 삽입되었습니다.");
+    } catch (error) {
+      setImageStatus(error instanceof Error ? error.message : "이미지를 업로드하지 못했습니다.");
     } finally {
       event.target.value = "";
     }
@@ -131,7 +134,7 @@ export function SimpleHtmlEditor({ label = "본문", name = "bodyHtml", defaultV
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <label htmlFor={editorId} className="font-semibold text-text-primary">{label}</label>
-          <p className="mt-1 text-xs leading-5 text-text-secondary">{helperText ?? "선택한 텍스트에 바로 서식을 적용하는 간단 WYSIWYG 에디터입니다. 실제 저장 전 서버 sanitize가 필요합니다."}</p>
+          <p className="mt-1 text-xs leading-5 text-text-secondary">{helperText ?? "선택한 텍스트에 바로 서식을 적용하는 간단 WYSIWYG 에디터입니다. 이미지는 서버에 업로드한 뒤 본문에는 URL로 삽입합니다."}</p>
         </div>
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
       </div>
