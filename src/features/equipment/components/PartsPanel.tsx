@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useId, useState, type ChangeEvent, type FormEvent } from "react";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 
@@ -72,6 +72,7 @@ async function uploadPartImage(file: File) {
 }
 
 function PartImagePicker({ defaultValue, disabled }: { defaultValue?: string | null; disabled?: boolean }) {
+  const inputId = useId();
   const [imageUrl, setImageUrl] = useState(defaultValue ?? "");
   const [status, setStatus] = useState("");
 
@@ -95,10 +96,19 @@ function PartImagePicker({ defaultValue, disabled }: { defaultValue?: string | n
   }
 
   return (
-    <div className="space-y-2">
-      {imageUrl ? <img src={imageUrl} alt="" className="max-h-48 w-full rounded-2xl border border-border object-cover" /> : null}
+    <div className="space-y-2 rounded-2xl border border-border bg-background p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-text-primary">부품 사진</p>
+          <p className="mt-1 text-xs leading-5 text-text-secondary">사진을 선택하면 업로드 후 이미지 URL이 자동으로 들어갑니다.</p>
+        </div>
+        <label htmlFor={inputId} className="shrink-0 cursor-pointer rounded-full bg-graphite px-4 py-2 text-sm font-bold text-white">
+          사진 선택
+        </label>
+      </div>
+      {imageUrl ? <img src={imageUrl} alt="부품 사진 미리보기" className="max-h-48 w-full rounded-2xl border border-border object-cover" /> : null}
       <input type="hidden" name="imageUrl" value={imageUrl} />
-      <input type="file" accept="image/*" disabled={disabled} onChange={handleFile} className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-full file:border-0 file:bg-graphite file:px-4 file:py-2 file:text-sm file:font-bold file:text-white disabled:opacity-60" />
+      <input id={inputId} type="file" accept="image/*" disabled={disabled} onChange={handleFile} className="sr-only" />
       <input className={fieldClass} value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="이미지 URL 또는 업로드" disabled={disabled} />
       {status ? <p className="text-xs text-text-secondary">{status}</p> : null}
     </div>
@@ -237,7 +247,7 @@ export function PartsPanel({ equipmentId }: { equipmentId: string }) {
                       </div>
                       <div className="flex gap-1"><Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => setEditingPartId(part.id)}>수정</Button><Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => handleDelete(part.id)}>삭제</Button></div>
                     </div>
-                    {part.image_url ? <img src={part.image_url} alt="" className="mt-3 max-h-56 w-full rounded-2xl border border-border object-cover" /> : null}
+                    {part.image_url ? <img src={part.image_url} alt="부품 사진" className="mt-3 max-h-56 w-full rounded-2xl border border-border object-cover" /> : null}
                     {part.memo ? <p className="mt-2 text-sm leading-6 text-text-secondary">{part.memo}</p> : null}
                     <p className="mt-3 text-xs font-semibold text-text-secondary">{formatPrice(part.price)} · {part.visibility}</p>
                   </>
