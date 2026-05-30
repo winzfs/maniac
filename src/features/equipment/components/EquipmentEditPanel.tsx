@@ -79,6 +79,10 @@ function numberValue(formData: FormData, key: string) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function publicEquipmentHref(slug: string) {
+  return `/garage/view/?slug=${encodeURIComponent(slug)}`;
+}
+
 async function readApi(response: Response) {
   const data = (await response.json()) as ApiResponse;
   if (response.status === 401) {
@@ -298,7 +302,7 @@ export function EquipmentEditPanel() {
         <Card className="space-y-3 p-5">
           <h3 className="font-bold">바로가기</h3>
           <div className="grid gap-2">
-            <Link href={`/garage/${equipment.slug}/`}><Button className="w-full" variant="secondary">공개 페이지 보기</Button></Link>
+            <Link href={publicEquipmentHref(equipment.slug)}><Button className="w-full" variant="secondary">공개 페이지 보기</Button></Link>
             <Link href="/garage/"><Button className="w-full" variant="ghost">내 차고로 돌아가기</Button></Link>
           </div>
         </Card>
