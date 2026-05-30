@@ -1,9 +1,31 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
 import { equipmentCategories, getEquipmentCategory } from "@/shared/data/equipment-categories";
 import { ExploreBoardClient } from "@/features/boards/components/ExploreBoardClient";
 
 export function generateStaticParams() {
   return equipmentCategories.flatMap((category) => category.boards.map((board) => ({ category: category.slug, board: board.slug })));
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ category: string; board: string }> }): Promise<Metadata> {
+  const { category: categorySlug, board: boardSlug } = await params;
+  const category = getEquipmentCategory(categorySlug);
+  const board = category?.boards.find((item) => item.slug === boardSlug);
+  const title = board && category ? `${category.label} ${board.title}` : "장비 게시판";
+  const description = board && category
+    ? `${category.label} 마니아들이 ${board.description}을 공유하는 게시판입니다.`
+    : "장비 마니아들의 기록, 질문, 부품 리뷰를 둘러보세요.";
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/explore/${categorySlug}/${boardSlug}/` },
+    openGraph: {
+      title: `${title} | Maniac Garage`,
+      description,
+      url: `/explore/${categorySlug}/${boardSlug}/`,
+    },
+  };
 }
 
 export default async function BoardPage({ params }: { params: Promise<{ category: string; board: string }> }) {
