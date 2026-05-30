@@ -35,42 +35,62 @@ function publicViewPath(slug: string) {
   return `/garage/view/?slug=${encodeURIComponent(slug)}`;
 }
 
+async function ignoreAlreadyExists(operation: Promise<unknown>) {
+  try {
+    await operation;
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    if (!message.includes("duplicate column") && !message.includes("already exists")) throw error;
+  }
+}
+
+async function ensureEquipmentSchema(db: D1Database) {
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE equipments ADD COLUMN main_image_url TEXT").run());
+  await ignoreAlreadyExists(db.prepare("ALTER TABLE equipments ADD COLUMN main_image_asset_id TEXT").run());
+}
+
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
   const auth = await requireCurrentUser(request, env);
   if (auth.response) return auth.response;
 
-  const rows = await env.DB.prepare(
-    `SELECT
-       equipments.id,
-       equipments.category,
-       equipments.brand,
-       equipments.model,
-       equipments.nickname,
-       equipments.slug,
-       equipments.year,
-       equipments.description,
-       equipments.main_image_url,
-       equipments.usage_metric_type,
-       equipments.usage_metric_value,
-       equipments.visibility,
-       equipments.moderation_status,
-       equipments.created_at,
-       COUNT(maintenance_logs.id) AS maintenance_log_count,
-       MAX(maintenance_logs.performed_at) AS latest_maintenance_at,
-       COALESCE(SUM(maintenance_logs.cost), 0) AS total_maintenance_cost
-     FROM equipments
-     LEFT JOIN maintenance_logs
-       ON maintenance_logs.equipment_id = equipments.id
-      AND maintenance_logs.deleted_at IS NULL
-     WHERE equipments.user_id = ?
-       AND equipments.deleted_at IS NULL
-     GROUP BY equipments.id
-     ORDER BY equipments.created_at DESC
-     LIMIT 50`,
-  ).bind(auth.user.id).all<EquipmentListRow>();
+  try {
+    await ensureEquipmentSchema(env.DB);
 
-  return jsonResponse({ ok: true, equipments: rows.results ?? [] });
+    const rows = await env.DB.prepare(
+      `SELECT
+         equipments.id,
+         equipments.category,
+         equipments.brand,
+         equipments.model,
+         equipments.nickname,
+         equipments.slug,
+         equipments.year,
+         equipments.description,
+         equipments.main_image_url,
+         equipments.usage_metric_type,
+         equipments.usage_metric_value,
+         equipments.visibility,
+         equipments.moderation_status,
+         equipments.created_at,
+         COUNT(maintenance_logs.id) AS maintenance_log_count,
+         MAX(maintenance_logs.performed_at) AS latest_maintenance_at,
+         COALESCE(SUM(maintenance_logs.cost), 0) AS total_maintenance_cost
+       FROM equipments
+       LEFT JOIN maintenance_logs
+         ON maintenance_logs.equipment_id = equipments.id
+        AND maintenance_logs.deleted_at IS NULL
+       WHERE equipments.user_id = ?
+         AND equipments.deleted_at IS NULL
+       GROUP BY equipments.id
+       ORDER BY equipments.created_at DESC
+       LIMIT 50`,
+    ).bind(auth.user.id).all<EquipmentListRow>();
+
+    return jsonResponse({ ok: true, equipments: rows.results ?? [] });
+  } catch (error) {
+    return errorResponse(getErrorMessage(error, "장비 목록을 불러오지 못했습니다."), 500);
+  }
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
@@ -79,6 +99,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (auth.response) return auth.response;
 
   try {
+    await ensureEquipmentSchema(env.DB);
+
     const body = await readJsonObject(request);
     const input = createEquipmentSchema.parse(body);
     const db = createDb(env.DB);
