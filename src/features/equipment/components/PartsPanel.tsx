@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 
@@ -18,6 +18,7 @@ type PartItem = {
 };
 
 type PartsResponse = { ok: boolean; parts?: PartItem[]; error?: string };
+type ImageUploadResponse = { ok?: boolean; image?: { public_url?: string }; error?: string };
 type State = { status: "loading" } | { status: "ready"; parts: PartItem[]; message?: string } | { status: "saving"; parts: PartItem[] } | { status: "error"; message: string };
 
 const fieldClass = "h-12 w-full rounded-2xl border border-border bg-surface px-4 text-base text-text-primary outline-none transition placeholder:text-text-secondary/60 focus:border-graphite";
@@ -60,6 +61,48 @@ async function readApi(response: Response) {
   const data = (await response.json()) as PartsResponse;
   if (!response.ok || !data.ok) throw new Error(data.error ?? "부품 기록 요청에 실패했습니다.");
   return data;
+}
+async function uploadPartImage(file: File) {
+  const formData = new FormData();
+  formData.set("image", file);
+  const response = await fetch("/api/uploads/part-image", { method: "POST", body: formData, credentials: "same-origin" });
+  const data = await response.json().catch(() => null) as ImageUploadResponse | null;
+  if (!response.ok || !data?.image?.public_url) throw new Error(data?.error || "이미지 업로드에 실패했습니다.");
+  return data.image.public_url;
+}
+
+function PartImagePicker({ defaultValue, disabled }: { defaultValue?: string | null; disabled?: boolean }) {
+  const [imageUrl, setImageUrl] = useState(defaultValue ?? "");
+  const [status, setStatus] = useState("");
+
+  async function handleFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setStatus("이미지 파일만 업로드할 수 있습니다.");
+      return;
+    }
+    setStatus("이미지 업로드 중...");
+    try {
+      const uploadedUrl = await uploadPartImage(file);
+      setImageUrl(uploadedUrl);
+      setStatus("이미지가 업로드되었습니다.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "이미지 업로드에 실패했습니다.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {imageUrl ? <img src={imageUrl} alt="" className="max-h-48 w-full rounded-2xl border border-border object-cover" /> : null}
+      <input type="hidden" name="imageUrl" value={imageUrl} />
+      <input type="file" accept="image/*" disabled={disabled} onChange={handleFile} className="block w-full text-sm text-text-secondary file:mr-3 file:rounded-full file:border-0 file:bg-graphite file:px-4 file:py-2 file:text-sm file:font-bold file:text-white disabled:opacity-60" />
+      <input className={fieldClass} value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="이미지 URL 또는 업로드" disabled={disabled} />
+      {status ? <p className="text-xs text-text-secondary">{status}</p> : null}
+    </div>
+  );
 }
 
 export function PartsPanel({ equipmentId }: { equipmentId: string }) {
@@ -180,7 +223,7 @@ export function PartsPanel({ equipmentId }: { equipmentId: string }) {
                     <input className={fieldClass} name="installedAt" type="date" defaultValue={msToDateInput(part.installed_at)} />
                     <input className={fieldClass} name="price" inputMode="numeric" defaultValue={part.price ?? ""} placeholder="가격" />
                     <input className={fieldClass} name="purchaseUrl" defaultValue={part.purchase_url ?? ""} placeholder="구매 링크" />
-                    <input className={fieldClass} name="imageUrl" defaultValue={part.image_url ?? ""} placeholder="이미지 URL" />
+                    <PartImagePicker defaultValue={part.image_url} disabled={isSaving} />
                     <textarea className={areaClass} name="memo" defaultValue={part.memo ?? ""} placeholder="메모" />
                     <select className={fieldClass} name="visibility" defaultValue={part.visibility}><option value="public">전체 공개</option><option value="unlisted">링크 공개</option><option value="private">비공개</option></select>
                     <div className="grid grid-cols-2 gap-2"><Button type="submit" disabled={isSaving}>{isSaving ? "저장 중..." : "저장"}</Button><Button type="button" variant="secondary" disabled={isSaving} onClick={() => setEditingPartId(null)}>취소</Button></div>
@@ -194,6 +237,7 @@ export function PartsPanel({ equipmentId }: { equipmentId: string }) {
                       </div>
                       <div className="flex gap-1"><Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => setEditingPartId(part.id)}>수정</Button><Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => handleDelete(part.id)}>삭제</Button></div>
                     </div>
+                    {part.image_url ? <img src={part.image_url} alt="" className="mt-3 max-h-56 w-full rounded-2xl border border-border object-cover" /> : null}
                     {part.memo ? <p className="mt-2 text-sm leading-6 text-text-secondary">{part.memo}</p> : null}
                     <p className="mt-3 text-xs font-semibold text-text-secondary">{formatPrice(part.price)} · {part.visibility}</p>
                   </>
@@ -206,13 +250,13 @@ export function PartsPanel({ equipmentId }: { equipmentId: string }) {
       <Card className="space-y-4 p-5">
         <h3 className="font-bold">부품 추가</h3>
         <form className="space-y-3" onSubmit={handleSubmit}>
-          <input className={fieldClass} name="name" placeholder="예: 브레이크 패드" required />
+          <input className={fieldClass} name="name" placeholder="예: 오일 필터" required />
           <input className={fieldClass} name="brand" placeholder="브랜드" />
           <select className={fieldClass} name="category" defaultValue="custom"><option value="custom">기타</option><option value="performance">성능</option><option value="exterior">외장</option><option value="maintenance">정비</option><option value="consumable">소모품</option></select>
           <input className={fieldClass} name="installedAt" type="date" />
           <input className={fieldClass} name="price" inputMode="numeric" placeholder="가격" />
           <input className={fieldClass} name="purchaseUrl" placeholder="구매 링크" />
-          <input className={fieldClass} name="imageUrl" placeholder="이미지 URL" />
+          <PartImagePicker disabled={isSaving} />
           <textarea className={areaClass} name="memo" placeholder="메모" />
           <select className={fieldClass} name="visibility" defaultValue="public"><option value="public">전체 공개</option><option value="unlisted">링크 공개</option><option value="private">비공개</option></select>
           <Button className="w-full" type="submit" disabled={isSaving}>{isSaving ? "처리 중..." : "부품 기록 추가"}</Button>
