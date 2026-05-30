@@ -64,7 +64,7 @@ function makePayload(formData: FormData, fallbackToNow = true) {
 }
 async function readApi(response: Response) {
   const data = (await response.json()) as LogResponse;
-  if (!response.ok || !data.ok) throw new Error(data.error ?? "정비 기록 요청에 실패했습니다.");
+  if (!response.ok || !data.ok) throw new Error(data.error ?? "관리 기록 요청에 실패했습니다.");
   return data;
 }
 
@@ -79,7 +79,7 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
         const data = await readApi(await fetch(`/api/equipments/${equipmentId}/logs`, { cache: "no-store" }));
         if (mounted) setState({ status: "ready", logs: data.logs ?? [] });
       } catch (error) {
-        if (mounted) setState({ status: "error", message: error instanceof Error ? error.message : "정비 기록을 불러오지 못했습니다." });
+        if (mounted) setState({ status: "error", message: error instanceof Error ? error.message : "관리 기록을 불러오지 못했습니다." });
       }
     }
     load();
@@ -98,9 +98,9 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
     try {
       const data = await readApi(await fetch(`/api/equipments/${equipmentId}/logs`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }));
       form.reset();
-      setState({ status: "ready", logs: data.logs ?? [], message: "정비 기록이 추가되었습니다." });
+      setState({ status: "ready", logs: data.logs ?? [], message: "관리 기록이 추가되었습니다." });
     } catch (error) {
-      setState({ status: "ready", logs: previous, message: error instanceof Error ? error.message : "정비 기록 추가에 실패했습니다." });
+      setState({ status: "ready", logs: previous, message: error instanceof Error ? error.message : "관리 기록 추가에 실패했습니다." });
     }
   }
 
@@ -121,15 +121,15 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
       }));
 
       setEditingLogId(null);
-      setState({ status: "ready", logs: data.logs ?? [], message: "정비 기록이 수정되었습니다." });
+      setState({ status: "ready", logs: data.logs ?? [], message: "관리 기록이 수정되었습니다." });
     } catch (error) {
-      setState({ status: "ready", logs: previous, message: error instanceof Error ? error.message : "정비 기록 수정에 실패했습니다." });
+      setState({ status: "ready", logs: previous, message: error instanceof Error ? error.message : "관리 기록 수정에 실패했습니다." });
     }
   }
 
   async function handleDelete(logId: string) {
     if (state.status !== "ready") return;
-    const confirmed = window.confirm("이 정비 기록을 삭제할까요? 공개 페이지에서도 사라집니다.");
+    const confirmed = window.confirm("이 관리 기록을 삭제할까요? 공개 페이지에서도 사라집니다.");
     if (!confirmed) return;
 
     const previous = state.logs;
@@ -138,13 +138,13 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
     try {
       const data = await readApi(await fetch(`/api/equipments/${equipmentId}/logs?logId=${encodeURIComponent(logId)}`, { method: "DELETE" }));
       setEditingLogId(null);
-      setState({ status: "ready", logs: data.logs ?? [], message: "정비 기록이 삭제되었습니다." });
+      setState({ status: "ready", logs: data.logs ?? [], message: "관리 기록이 삭제되었습니다." });
     } catch (error) {
-      setState({ status: "ready", logs: previous, message: error instanceof Error ? error.message : "정비 기록 삭제에 실패했습니다." });
+      setState({ status: "ready", logs: previous, message: error instanceof Error ? error.message : "관리 기록 삭제에 실패했습니다." });
     }
   }
 
-  if (state.status === "loading") return <Card className="p-6 text-sm text-text-secondary">정비 기록을 불러오는 중입니다...</Card>;
+  if (state.status === "loading") return <Card className="p-6 text-sm text-text-secondary">관리 기록을 불러오는 중입니다...</Card>;
   if (state.status === "error") return <Card className="p-6 text-sm text-red-700">{state.message}</Card>;
 
   const logs = state.logs;
@@ -154,10 +154,10 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
     <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
       <Card className="space-y-4 p-5 sm:p-6">
         <div>
-          <h2 className="text-xl font-bold">정비 타임라인</h2>
-          <p className="mt-1 text-sm leading-6 text-text-secondary">오일 교환, 소모품 교체, 점검 내역을 기록합니다.</p>
+          <h2 className="text-xl font-bold">관리 타임라인</h2>
+          <p className="mt-1 text-sm leading-6 text-text-secondary">오일 교환, 소모품 교체, 세팅 변경, 점검 내역을 기록합니다.</p>
         </div>
-        {logs.length === 0 ? <div className="rounded-2xl border border-dashed border-border p-5 text-sm text-text-secondary">아직 정비 기록이 없습니다.</div> : null}
+        {logs.length === 0 ? <div className="rounded-2xl border border-dashed border-border p-5 text-sm text-text-secondary">아직 관리 기록이 없습니다.</div> : null}
         <div className="space-y-3">
           {logs.map((log) => {
             const isEditing = editingLogId === log.id;
@@ -169,9 +169,9 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
                     <input className={fieldClass} name="title" defaultValue={log.title} required />
                     <select className={fieldClass} name="type" defaultValue={log.type}><option value="oil">오일</option><option value="tire">타이어</option><option value="inspection">점검</option><option value="custom">기타</option></select>
                     <input className={fieldClass} name="performedAt" type="date" defaultValue={msToDateInput(log.performed_at)} />
-                    <input className={fieldClass} name="usageMetricValue" inputMode="numeric" defaultValue={log.usage_metric_value ?? ""} placeholder="주행거리 km" />
+                    <input className={fieldClass} name="usageMetricValue" inputMode="numeric" defaultValue={log.usage_metric_value ?? ""} placeholder="주행거리/사용량" />
                     <input className={fieldClass} name="cost" inputMode="numeric" defaultValue={log.cost ?? ""} placeholder="비용" />
-                    <input className={fieldClass} name="shopName" defaultValue={log.shop_name ?? ""} placeholder="정비소명" />
+                    <input className={fieldClass} name="shopName" defaultValue={log.shop_name ?? ""} placeholder="정비소/구매처" />
                     <textarea className={areaClass} name="description" defaultValue={log.description ?? ""} placeholder="메모" />
                     <select className={fieldClass} name="visibility" defaultValue={log.visibility}><option value="public">전체 공개</option><option value="unlisted">링크 공개</option><option value="private">비공개</option></select>
                     <div className="grid grid-cols-2 gap-2">
@@ -192,7 +192,7 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
                       </div>
                     </div>
                     {log.description ? <p className="mt-2 text-sm leading-6 text-text-secondary">{log.description}</p> : null}
-                    <p className="mt-3 text-xs font-semibold text-text-secondary">{log.usage_metric_value != null ? `${log.usage_metric_value.toLocaleString()} km` : ""} {log.cost != null ? `· ${log.cost.toLocaleString()}원` : ""} {log.shop_name ? `· ${log.shop_name}` : ""} · {log.visibility}</p>
+                    <p className="mt-3 text-xs font-semibold text-text-secondary">{log.usage_metric_value != null ? `${log.usage_metric_value.toLocaleString()}` : ""} {log.cost != null ? `· ${log.cost.toLocaleString()}원` : ""} {log.shop_name ? `· ${log.shop_name}` : ""} · {log.visibility}</p>
                   </>
                 )}
               </article>
@@ -201,17 +201,17 @@ export function MaintenanceLogPanel({ equipmentId }: { equipmentId: string }) {
         </div>
       </Card>
       <Card className="space-y-4 p-5">
-        <h3 className="font-bold">정비 기록 추가</h3>
+        <h3 className="font-bold">관리 기록 추가</h3>
         <form className="space-y-3" onSubmit={handleSubmit}>
           <input className={fieldClass} name="title" placeholder="예: 엔진오일 교환" required />
           <select className={fieldClass} name="type" defaultValue="oil"><option value="oil">오일</option><option value="tire">타이어</option><option value="inspection">점검</option><option value="custom">기타</option></select>
           <input className={fieldClass} name="performedAt" type="date" />
-          <input className={fieldClass} name="usageMetricValue" inputMode="numeric" placeholder="주행거리 km" />
+          <input className={fieldClass} name="usageMetricValue" inputMode="numeric" placeholder="주행거리/사용량" />
           <input className={fieldClass} name="cost" inputMode="numeric" placeholder="비용" />
-          <input className={fieldClass} name="shopName" placeholder="정비소명" />
+          <input className={fieldClass} name="shopName" placeholder="정비소/구매처" />
           <textarea className={areaClass} name="description" placeholder="메모" />
           <select className={fieldClass} name="visibility" defaultValue="public"><option value="public">전체 공개</option><option value="unlisted">링크 공개</option><option value="private">비공개</option></select>
-          <Button className="w-full" type="submit" disabled={isSaving}>{isSaving ? "처리 중..." : "정비 기록 추가"}</Button>
+          <Button className="w-full" type="submit" disabled={isSaving}>{isSaving ? "처리 중..." : "관리 기록 추가"}</Button>
           {state.status === "ready" && state.message ? <p className="rounded-2xl bg-background p-3 text-sm leading-6 text-text-secondary">{state.message}</p> : null}
         </form>
       </Card>
