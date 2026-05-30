@@ -26,7 +26,9 @@ export class NoopStorageProvider implements StorageProvider {
     return { key: input.key };
   }
 
-  async delete(_key: string) {}
+  async delete() {
+    // Noop provider intentionally does not persist objects.
+  }
 }
 
 export class R2StorageProvider implements StorageProvider {
