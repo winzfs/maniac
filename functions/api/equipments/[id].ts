@@ -28,12 +28,49 @@ type EquipmentRow = {
   updated_at: number;
 };
 
+type SlugRow = { id: string };
+
 function getEquipmentId(params: EventContext<Env, string, unknown>["params"]) {
   return paramValue(params, "id");
 }
 
 function publicViewPath(slug: string) {
   return `/garage/view/?slug=${encodeURIComponent(slug)}`;
+}
+
+function slugify(input: string) {
+  const slug = input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9가-힣\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+
+  return slug || "equipment";
+}
+
+async function isSlugAvailable(env: Env, userId: string, slug: string, ignoreEquipmentId: string) {
+  const existing = await env.DB.prepare(
+    `SELECT id
+     FROM equipments
+     WHERE user_id = ? AND slug = ?
+     LIMIT 1`,
+  ).bind(userId, slug).first<SlugRow>();
+
+  return !existing || existing.id === ignoreEquipmentId;
+}
+
+async function createAvailableSlug(env: Env, userId: string, baseSlug: string, ignoreEquipmentId: string) {
+  const normalizedBase = slugify(baseSlug);
+
+  for (let suffix = 0; suffix < 50; suffix += 1) {
+    const slug = suffix === 0 ? normalizedBase : `${normalizedBase}-${suffix + 1}`;
+    if (await isSlugAvailable(env, userId, slug, ignoreEquipmentId)) return slug;
+  }
+
+  return `${normalizedBase}-${Date.now().toString(36)}`;
 }
 
 async function findEquipment(env: Env, id: string, userId: string) {
@@ -74,6 +111,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
     const body = await readJsonObject(request);
     const input = updateEquipmentSchema.parse({ ...body, id });
     const now = Date.now();
+    const nextSlug = input.slug ? await createAvailableSlug(env, auth.user.id, input.slug, id) : existing.slug;
 
     await env.DB.prepare(
       `UPDATE equipments
@@ -84,7 +122,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
       input.brand ?? existing.brand,
       input.model ?? existing.model,
       input.nickname ?? existing.nickname,
-      input.slug ?? existing.slug,
+      nextSlug,
       input.year ?? existing.year,
       input.description ?? existing.description,
       input.mainImageUrl ?? existing.main_image_url,
