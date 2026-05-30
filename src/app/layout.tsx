@@ -2,7 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-const siteUrl = "https://gearduck.mooo.com";
+const siteUrl = "https://maniac-c7d.pages.dev";
 const siteTitle = "GearDuck | 장비덕후들의 기록 차고";
 const siteDescription = "오토바이, 기계식 키보드, 커스텀 PC, 카메라, 캠핑 장비까지. 내 장비의 세팅, 정비, 부품 기록을 남기고 다른 장비덕후들의 기어를 둘러보세요.";
 
