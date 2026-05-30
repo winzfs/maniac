@@ -5,7 +5,13 @@ const reservedSlugs = new Set(["new", "edit", "view"]);
 function firstGarageSegment(pathname: string) {
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] !== "garage") return "";
-  return parts[1] || "";
+
+  const raw = parts[1] || "";
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }
 
 export const onRequest: PagesFunction = async ({ request, next }) => {
