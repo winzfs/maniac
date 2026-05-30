@@ -1,8 +1,10 @@
-# Maniac Garage
+# GearDuck
 
-장비 마니아를 위한 **장비/정비/부품 기록 갤러리** 웹서비스입니다.
+장비덕후들을 위한 **장비/정비/부품 기록 갤러리** 웹서비스입니다.
 
 오토바이, 커스텀 PC, 기계식 키보드, 자전거, 카메라, 캠핑 장비처럼 애착이 큰 장비를 등록하고, 정비 이력과 부품 정보를 기록한 뒤 공개 페이지로 공유하는 것을 목표로 합니다.
+
+> 내부 저장소/DB 이름에는 아직 `maniac` 표현이 남아 있을 수 있습니다. 사용자 노출 브랜드는 **GearDuck / 기어덕** 기준으로 정리합니다.
 
 ---
 
@@ -11,6 +13,10 @@
 현재 저장소는 **Cloudflare Pages + Pages Functions + D1 기반 1차 MVP** 상태입니다.
 
 ```txt
+브랜드/SEO: GearDuck / 기어덕 / 장비덕후들의 기록 차고 ✅
+Google Search Console HTML 인증 파일 ✅
+robots.txt / sitemap.xml ✅
+기준 URL: https://maniac-c7d.pages.dev ✅
 이메일 회원가입/로그인/로그아웃 ✅
 HttpOnly 쿠키 기반 세션 ✅
 사용자별 장비/게시글/댓글 데이터 분리 ✅
@@ -19,11 +25,15 @@ HttpOnly 쿠키 기반 세션 ✅
 장비 등록/수정 대표 사진 미리보기 ✅
 정비 기록 CRUD ✅
 부품 기록 CRUD ✅
+부품 사진 업로드 ✅ Cloudinary
 공개/상세 장비 페이지 ✅ /garage/view/?slug=...
+공개 장비 상세 client-side SEO 메타 갱신 ✅
 커뮤니티 boards/posts/comments D1 테이블 ✅
 /explore DB API 기반 전환 ✅
+탐색 메뉴명: 기어 둘러보기 ✅
 게시글 작성/상세/수정/삭제 ✅
 게시글 본문 이미지 업로드 ✅ Cloudinary
+게시글 상세 client-side SEO 메타 갱신 ✅
 게시글 상세 화면 작성자 수정/삭제 ✅
 댓글 작성/삭제 ✅
 댓글 상세 화면 내 댓글 삭제 ✅
@@ -67,6 +77,78 @@ docs/d1-migration-guide.md
 docs/regression-test-checklist.md
 docs/cloudinary-image-provider.md
 docs/deploy-trigger.md
+```
+
+---
+
+## 브랜드/용어 기준
+
+```txt
+서비스명: GearDuck
+한글명: 기어덕
+슬로건: 장비덕후들의 기록 차고
+마스코트 방향: 오리
+```
+
+사용자 노출 문구 기준:
+
+```txt
+브랜드/상단 카피/SEO: GearDuck, 기어덕, 장비덕후
+기능 용어: 장비, 내 차고, 정비 기록, 부품 기록, 게시글, 댓글, 공개 페이지
+탐색 메뉴: 기어 둘러보기
+```
+
+주의:
+
+```txt
+기능명을 과하게 브랜드화하지 않습니다.
+예: 부품 기록을 덕템 기록으로 바꾸지 않습니다.
+예: 정비 기록을 관리 기록으로 일괄 치환하지 않습니다.
+```
+
+---
+
+## SEO / Search Console 상태
+
+현재 기준 URL은 Cloudflare Pages 기본 도메인입니다.
+
+```txt
+https://maniac-c7d.pages.dev
+```
+
+관련 파일:
+
+```txt
+src/app/layout.tsx
+public/robots.txt
+public/sitemap.xml
+public/googled7e36cbd6c693e0a.html
+```
+
+현재 반영 상태:
+
+```txt
+metadataBase = https://maniac-c7d.pages.dev
+robots.txt Sitemap = https://maniac-c7d.pages.dev/sitemap.xml
+sitemap.xml 주요 정적 페이지 포함
+Google Search Console HTML 인증 파일 추가 완료
+```
+
+상세 페이지 SEO 보강 방식:
+
+```txt
+/garage/view/?slug=...
+→ PublicEquipmentDetailClient가 장비 데이터 로딩 후 document.title, description, canonical, og:* 갱신
+
+/explore/post/?id=...
+→ PublicPostDetailClient가 게시글 데이터 로딩 후 document.title, description, canonical, og:* 갱신
+```
+
+주의:
+
+```txt
+Next static export + query string 상세 페이지 구조라서 상세 페이지의 완전한 서버 사이드 SEO는 제한적입니다.
+장기적으로 공개 장비/게시글 SEO를 강화하려면 정적-safe slug 라우팅 또는 Pages Function HTML 메타 주입 전략을 검토합니다.
 ```
 
 ---
@@ -227,6 +309,7 @@ parts
 관련 index
 main_image_url
 main_image_asset_id
+parts.image_url 등 기존 parts 테이블 누락 컬럼
 ```
 
 프로필/이미지 업로드 API도 필요한 경우 일부 컬럼과 `image_assets`를 자동 보강합니다. 다만 신규 환경에서는 정식 migration 적용을 우선합니다.
@@ -235,7 +318,7 @@ main_image_asset_id
 
 ## 이미지 저장 구조
 
-이미지 파일은 현재 Cloudinary에 저장하고, Maniac D1에는 provider 중립 메타데이터만 저장합니다.
+이미지 파일은 현재 Cloudinary에 저장하고, D1에는 provider 중립 메타데이터를 저장합니다.
 
 ```txt
 image_assets
@@ -245,7 +328,7 @@ image_assets
 - bucket         // cloudinary cloud name or storage bucket
 - object_key     // Cloudinary public_id or storage object key
 - public_url
-- purpose        // profile_image, equipment_main_image, post_image 등
+- purpose        // profile_image, equipment_main_image, part_image, post_image 등
 - mime_type
 - size_bytes
 - width / height
@@ -266,6 +349,13 @@ POST /api/uploads/equipment-image
 → active image provider 업로드
 → image_assets insert with equipment_main_image
 → public_url 반환
+
+POST /api/uploads/part-image
+→ 로그인 확인
+→ active image provider 업로드
+→ image_assets insert with part_image
+→ public_url 반환
+→ 부품 기록 image_url로 저장
 
 POST /api/uploads/post-image
 → 로그인 확인
@@ -288,6 +378,17 @@ POST /api/uploads/post-image
 → 대표 사진 교체 업로드
 → 미리보기 변경
 → 수정 저장 시 PATCH /api/equipments/:id 로 mainImageUrl 반영
+```
+
+부품 기록 흐름:
+
+```txt
+/garage/edit/?id=...
+→ 부품 추가/수정 폼에서 사진 선택
+→ /api/uploads/part-image 업로드
+→ 반환된 public_url을 imageUrl로 저장
+→ POST/PATCH /api/equipments/:id/parts
+→ 공개 장비 페이지에는 좌측 1:1 썸네일로 표시
 ```
 
 게시글 작성 이미지 흐름:
@@ -335,7 +436,7 @@ functions/garage/_middleware.ts도 사용하지 않습니다.
 메뉴의 주요 대시보드 링크는 Next client routing/RSC 캐시 혼선을 줄이기 위해 hard navigation을 사용합니다.
 
 ```txt
-메뉴 → 홈 / 장비 둘러보기 / 내 차고 / 내 정보 / 로그인 / 회원가입
+메뉴 → 홈 / 기어 둘러보기 / 내 기어 / 내 정보 / 로그인 / 회원가입
 button click → window.location.assign(...)
 ```
 
@@ -386,6 +487,7 @@ GET    /api/me/profile
 PATCH  /api/me/profile
 POST   /api/uploads/profile-image
 POST   /api/uploads/equipment-image
+POST   /api/uploads/part-image
 POST   /api/uploads/post-image
 GET    /api/me/summary
 GET    /api/me/posts
@@ -470,6 +572,15 @@ Next Link client routing/RSC 캐시 혼선으로 메뉴 이동 시 잘못된 화
 
 게시글 본문 이미지가 data URL로 DB에 저장됨
 → /api/uploads/post-image 추가, Cloudinary 업로드 후 public_url만 본문에 삽입
+
+부품 추가 폼에 사진 업로드 항목이 없었음
+→ /api/uploads/part-image + 부품 image_url 저장 + 1:1 좌측 썸네일 UI 추가
+
+Google Search Console 초기 등록 필요
+→ HTML 인증 파일, robots.txt, sitemap.xml 추가
+
+무료 mooo.com 도메인은 CNAME 제한으로 Cloudflare Pages custom domain 연결 불가
+→ SEO 기준 도메인을 https://maniac-c7d.pages.dev 로 복구
 ```
 
 ---
@@ -477,9 +588,10 @@ Next Link client routing/RSC 캐시 혼선으로 메뉴 이동 시 잘못된 화
 ## 아직 미완성인 부분
 
 ```txt
-부품 이미지 업로드
 R2 직접 업로드 provider
 공개 사용자 프로필 페이지
+뉴스 자동 동기화 Cron Trigger
+뉴스 숨김/고정 관리자 UI
 어드민 UI
 결제/구독
 신고/모더레이션 워크플로우
@@ -489,6 +601,7 @@ migration 적용 이력 관리 방식 검토
 비밀번호 찾기
 소셜 로그인
 MFA
+정적-safe 공개 상세 SEO 라우팅
 ```
 
 ---
@@ -496,8 +609,11 @@ MFA
 ## 다음 개발 추천 순서
 
 1. Production 배포 후 회귀 테스트
-2. 장비 등록/수정/목록/상세 이미지 흐름 안정화 확인
-3. 부품 이미지 업로드
-4. 신고/모더레이션 워크플로우
-5. 관리자 UI
-6. 결제/구독
+2. Search Console sitemap 상태 확인 및 주요 URL 색인 요청
+3. 브랜드/기능 용어 잔여 문구 정리
+4. 개인 페이지 noindex 정책 검토
+5. 공개 장비/게시글 상세 SEO 라우팅 전략 검토
+6. 뉴스 자동 동기화 Cron Trigger 추가
+7. 신고/모더레이션 워크플로우
+8. 관리자 UI
+9. 결제/구독
