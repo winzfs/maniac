@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
-import { equipmentCategories } from "@/shared/data/equipment-categories";
+import { communityBoardTopics, equipmentCategories, topicBoardSlug } from "@/shared/data/equipment-categories";
 
 type PublicBoard = {
   id: string;
@@ -44,12 +44,15 @@ async function readBoards() {
   return data.boards;
 }
 
+function boardHref(categorySlug: string, topicSlug: string) {
+  return `/explore/${categorySlug}/${topicBoardSlug(categorySlug, topicSlug)}/`;
+}
+
 export function ExploreBoardsClient() {
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
     let mounted = true;
-
     async function load() {
       try {
         const boards = await readBoards();
@@ -59,38 +62,29 @@ export function ExploreBoardsClient() {
         setState({ status: "error", message: error instanceof Error ? error.message : "게시판 목록을 불러오지 못했습니다." });
       }
     }
-
     load();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
-  const categories = useMemo(() => {
-    if (state.status !== "ready") return [];
-
-    const grouped = new Map<string, PublicBoard[]>();
+  const topicStats = useMemo(() => {
+    if (state.status !== "ready") return new Map<string, { postCount: number; categories: Set<string> }>();
+    const stats = new Map<string, { postCount: number; categories: Set<string> }>();
+    for (const topic of communityBoardTopics) stats.set(topic.slug, { postCount: 0, categories: new Set() });
     for (const board of state.boards) {
-      const list = grouped.get(board.category) ?? [];
-      list.push(board);
-      grouped.set(board.category, list);
+      const stat = stats.get(board.type) ?? { postCount: 0, categories: new Set<string>() };
+      stat.postCount += board.post_count;
+      stat.categories.add(board.category);
+      stats.set(board.type, stat);
     }
-
-    return Array.from(grouped.entries()).map(([categorySlug, boards]) => ({
-      categorySlug,
-      category: categoryLabelBySlug.get(categorySlug),
-      boards: boards.sort((a, b) => a.sort_order - b.sort_order || a.slug.localeCompare(b.slug)),
-    }));
+    return stats;
   }, [state]);
 
   if (state.status === "loading") {
     return (
       <section>
-        <SectionHeader title="카테고리" description="D1에서 게시판 목록을 불러오는 중입니다." />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[0, 1, 2, 3].map((item) => (
-            <Card key={item} className="h-48 animate-pulse bg-zinc-100" />
-          ))}
+        <SectionHeader title="커뮤니티 게시판" description="주제별 게시판과 장비 카테고리를 불러오는 중입니다." />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((item) => <Card key={item} className="h-44 animate-pulse bg-zinc-100" />)}
         </div>
       </section>
     );
@@ -106,33 +100,70 @@ export function ExploreBoardsClient() {
   }
 
   return (
-    <section className="space-y-6">
-      <SectionHeader title="카테고리" description="D1에 등록된 게시판 메타데이터를 기준으로 카테고리를 표시합니다." />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {categories.map(({ categorySlug, category, boards }) => (
-          <Card key={categorySlug} className="h-full space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <Badge label={category?.shortLabel ?? categorySlug} tone="muted" />
-              <span className="text-xs text-text-secondary">{boards.length} boards</span>
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">{category?.label ?? categorySlug}</h2>
-              <p className="mt-2 text-sm leading-6 text-text-secondary">{category?.description ?? "장비 마니아를 위한 게시판입니다."}</p>
-            </div>
-            <div className="space-y-2 pt-2">
-              {boards.map((board) => (
-                <Link key={board.id} href={`/explore/${categorySlug}/${board.slug}/`} className="block rounded-2xl border border-border bg-background p-3 transition hover:-translate-y-0.5 hover:shadow-sm">
+    <div className="space-y-8 lg:space-y-10">
+      <section className="space-y-4">
+        <SectionHeader
+          title="통합 게시판"
+          description="먼저 글의 주제를 고르고, 게시판 안에서 바이크·PC·키보드 같은 장비 카테고리로 필터링하세요."
+        />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {communityBoardTopics.map((topic) => {
+            const stat = topicStats.get(topic.slug);
+            const defaultCategory = equipmentCategories.find((category) => stat?.categories.has(category.slug)) ?? equipmentCategories[0];
+            return (
+              <Link key={topic.slug} href={boardHref(defaultCategory.slug, topic.slug)}>
+                <Card className="flex h-full flex-col gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-sm">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-bold">{board.title}</p>
-                    <span className="text-xs text-text-secondary">{board.post_count}</span>
+                    <Badge label={topic.shortLabel} tone={topic.slug === "trade" ? "orange" : "muted"} />
+                    <span className="text-xs font-semibold text-text-secondary">{stat?.postCount ?? 0} posts</span>
                   </div>
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-text-secondary">{board.description ?? "게시판 설명이 없습니다."}</p>
-                </Link>
-              ))}
-            </div>
-          </Card>
-        ))}
-      </div>
-    </section>
+                  <div className="space-y-2">
+                    <h2 className="text-lg font-black tracking-[-0.03em]">{topic.title}</h2>
+                    <p className="line-clamp-3 text-sm leading-6 text-text-secondary">{topic.description}</p>
+                  </div>
+                  <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
+                    {equipmentCategories.slice(0, 4).map((category) => (
+                      <span key={category.slug} className="rounded-full bg-background px-2.5 py-1 text-[0.7rem] font-bold text-text-secondary">{category.label}</span>
+                    ))}
+                  </div>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <SectionHeader
+          title="장비 카테고리"
+          description="특정 장비군만 보고 싶다면 카테고리로 들어가서 모든 주제의 글을 한 번에 확인하세요."
+        />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {equipmentCategories.map((category) => {
+            const boards = state.boards.filter((board) => board.category === category.slug);
+            const postCount = boards.reduce((total, board) => total + board.post_count, 0);
+            return (
+              <Link key={category.slug} href={`/explore/${category.slug}/`}>
+                <Card className="h-full space-y-3 p-4 transition hover:-translate-y-0.5 hover:shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <Badge label={category.shortLabel} tone="muted" />
+                    <span className="text-xs text-text-secondary">{postCount} posts</span>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold">{category.label}</h2>
+                    <p className="mt-1 line-clamp-2 text-sm leading-6 text-text-secondary">{category.description}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {boards.slice(0, 3).map((board) => (
+                      <span key={board.id} className="rounded-full bg-background px-2.5 py-1 text-[0.7rem] font-semibold text-text-secondary">{board.title}</span>
+                    ))}
+                  </div>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+    </div>
   );
 }
