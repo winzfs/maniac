@@ -39,8 +39,15 @@ function formatUsage(equipment: Equipment) {
   return equipment.usage_metric_value.toLocaleString();
 }
 
+function formatVisibility(value: string) {
+  if (value === "public") return "전체 공개";
+  if (value === "unlisted") return "링크 공개";
+  if (value === "private") return "비공개";
+  return value;
+}
+
 function viewHref(equipment: Equipment) {
-  return equipment.visibility === "public" ? `/garage/view/?slug=${encodeURIComponent(equipment.slug)}` : `/garage/edit/?id=${encodeURIComponent(equipment.id)}`;
+  return `/garage/view/?slug=${encodeURIComponent(equipment.slug)}`;
 }
 
 export function HomeHeroGarageCard() {
@@ -162,12 +169,12 @@ export function HomeHeroGarageCard() {
 
         <div className="grid grid-cols-3 gap-2 text-center text-sm">
           <div className="rounded-2xl bg-white/10 p-3"><b>{formatUsage(equipment)}</b><p className="text-xs text-zinc-300">{equipment.usage_metric_type}</p></div>
-          <div className="rounded-2xl bg-white/10 p-3"><b>{equipment.maintenance_log_count ?? 0}</b><p className="text-xs text-zinc-300">records</p></div>
-          <div className="rounded-2xl bg-white/10 p-3"><b>{equipment.visibility}</b><p className="text-xs text-zinc-300">visibility</p></div>
+          <div className="rounded-2xl bg-white/10 p-3"><b>{equipment.maintenance_log_count ?? 0}</b><p className="text-xs text-zinc-300">기록</p></div>
+          <div className="rounded-2xl bg-white/10 p-3"><b>{formatVisibility(equipment.visibility)}</b><p className="text-xs text-zinc-300">공개 상태</p></div>
         </div>
 
         <Link href={viewHref(equipment)}>
-          <Button className="w-full" variant="secondary">장비 페이지 보기</Button>
+          <Button className="w-full" variant="secondary">장비 상세 보기</Button>
         </Link>
       </div>
     </Card>
