@@ -20,6 +20,7 @@ type EquipmentListRow = {
   slug: string;
   year: number | null;
   description: string | null;
+  main_image_url: string | null;
   usage_metric_type: string;
   usage_metric_value: number | null;
   visibility: string;
@@ -49,6 +50,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
        equipments.slug,
        equipments.year,
        equipments.description,
+       equipments.main_image_url,
        equipments.usage_metric_type,
        equipments.usage_metric_value,
        equipments.visibility,
