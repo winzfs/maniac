@@ -4,4 +4,4 @@ This file records small documentation-only changes used to trigger fresh Cloudfl
 
 No application logic or secret value is stored here.
 
-Last trigger: runtime environment update.
+Last trigger: navigation hard reload fix.
