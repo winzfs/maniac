@@ -64,7 +64,7 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
         <div className="grid gap-1 text-sm">
           <p className={sectionLabelClassName}>GearDuck</p>
           <button type="button" onClick={() => hardNavigate("/")} className={menuLinkClassName}>홈</button>
-          <button type="button" onClick={() => hardNavigate("/explore/")} className={menuLinkClassName}>덕질 구경</button>
+          <button type="button" onClick={() => hardNavigate("/explore/")} className={menuLinkClassName}>기어 둘러보기</button>
           <button type="button" onClick={() => hardNavigate("/garage/")} className={menuLinkClassName}>내 기어</button>
           {loaded && user ? (
             <>
