@@ -495,12 +495,18 @@ news_items
 0004_add_board_metadata.sql
 0005_add_auth_tables.sql
 0006_seed_real_equipment_posts.sql       // 선택 seed
-0007_add_news_items.sql                  // 뉴스 캐시
+0007_add_user_profile_fields.sql         // 프로필 bio
+0008_create_image_assets.sql             // 이미지 메타데이터
+0009_add_news_items.sql                  // 뉴스 캐시
 ```
 
 현재 package script:
 
 ```txt
+npm run d1:migrate:profile:local
+npm run d1:migrate:profile:remote
+npm run d1:migrate:images:local
+npm run d1:migrate:images:remote
 npm run d1:migrate:news:local
 npm run d1:migrate:news:remote
 npm run d1:migrate:all:local
@@ -521,9 +527,11 @@ npm run d1:migrate:all:remote
 
 ```txt
 0006은 필수 schema migration이 아니라 선택 seed다.
-0007은 news_items 테이블을 생성하는 schema migration이다.
+0007은 users.bio 컬럼을 추가한다.
+0008은 image_assets 테이블과 users.profile_image_asset_id 컬럼을 추가한다.
+0009는 news_items 테이블을 생성하는 schema migration이다.
 기존 운영 DB에 news_items가 없어도 /api/news는 RSS fallback으로 동작한다.
-/api/dev/sync-news로 DB 저장을 하려면 0007 적용이 필요하다.
+/api/dev/sync-news로 DB 저장을 하려면 0009 적용이 필요하다.
 Drizzle schema와 SQL migration이 어긋나지 않게 변경 시 둘 다 확인해야 한다.
 ```
 
@@ -678,6 +686,9 @@ Next Link client routing/RSC 캐시 혼선으로 메뉴 이동 시 잘못된 화
 
 외부 뉴스가 홈 접속 때마다 RSS만 직접 조회하던 구조
 → news_items D1 캐시 + /api/dev/sync-news 동기화 구조 추가
+
+뉴스 migration 번호가 기존 0007 profile migration과 충돌
+→ news_items migration을 0009_add_news_items.sql로 이동
 ```
 
 ---
