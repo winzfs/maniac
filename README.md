@@ -188,6 +188,7 @@ migrations/0004_add_board_metadata.sql
 migrations/0005_add_auth_tables.sql
 migrations/0007_add_user_profile_fields.sql
 migrations/0008_create_image_assets.sql
+migrations/0009_add_news_items.sql
 ```
 
 `0006_seed_real_equipment_posts.sql`는 필수 schema migration이 아니라 선택 seed입니다.
@@ -396,6 +397,7 @@ GET    /api/public/posts/:id
 POST   /api/posts
 POST   /api/public/posts/:id/comments
 DELETE /api/public/posts/:id/comments?commentId=...
+GET    /api/news
 ```
 
 개발/샘플 데이터용 endpoint:
@@ -404,6 +406,7 @@ DELETE /api/public/posts/:id/comments?commentId=...
 GET/POST /api/dev/seed-lite
 GET/POST /api/dev/seed-samples
 GET/POST /api/dev/cleanup-dev-maniac
+GET/POST /api/dev/sync-news
 ```
 
 `/api/dev/*` endpoint는 `functions/api/dev/_middleware.ts`에서 기본 차단합니다.
