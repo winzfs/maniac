@@ -1,5 +1,7 @@
 # Deploy Trigger
 
-This file records a small documentation-only change used to trigger a fresh Cloudflare Pages production deployment after runtime environment settings were updated.
+This file records small documentation-only changes used to trigger fresh Cloudflare Pages production deployments after runtime environment settings are updated.
 
 No application logic or secret value is stored here.
+
+Last trigger: Cloudinary environment variable update retry.
