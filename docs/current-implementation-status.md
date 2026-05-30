@@ -6,32 +6,35 @@
 
 ## 1. 현재 한 줄 상태
 
-Cloudflare Pages + Pages Functions + D1 기반으로 장비 기록, 공개 장비 페이지, 커뮤니티 게시판, 이메일/비밀번호 로그인, 내 정보/내 콘텐츠 관리, 홈 콘텐츠 피드까지 1차 MVP가 구현되어 있다.
+Cloudflare Pages + Pages Functions + D1 기반으로 장비 기록, 장비 대표 이미지 업로드, 공개/상세 장비 페이지, 커뮤니티 게시판, 이메일/비밀번호 로그인, 내 정보/내 콘텐츠 관리, 홈 콘텐츠 피드까지 1차 MVP가 구현되어 있다.
 
 ```txt
 이메일 회원가입/로그인/로그아웃 ✅
 HttpOnly 쿠키 기반 세션 ✅
 사용자별 장비/게시글/댓글 데이터 분리 ✅
 장비 CRUD ✅
+장비 대표 사진 업로드 ✅ Cloudinary
+장비 등록/수정 대표 사진 미리보기 ✅
 정비 기록 CRUD ✅
 부품 기록 CRUD ✅
-공개 장비 페이지 ✅
-기존 장비 slug 공개 링크 redirect ✅
+공개/상세 장비 페이지 ✅ /garage/view/?slug=...
 커뮤니티 boards/posts/comments D1 테이블 ✅
 /explore DB API 기반 전환 ✅
 게시글 작성/상세/수정/삭제 ✅
+게시글 상세 화면 작성자 수정/삭제 ✅
 댓글 작성/삭제 ✅
+댓글 상세 화면 내 댓글 삭제 ✅
 내 정보 페이지 ✅
-내 활동 요약 ✅
-내 작성글 관리 ✅
-내 댓글 관리 ✅
+프로필 설정 페이지 ✅
+프로필 이미지 업로드 ✅ Cloudinary
+provider 추상화 image_assets ✅ R2 이전 가능 구조
+D1 garage schema self-healing ✅
 관리 페이지 레이아웃 1차 정리 ✅
 홈 콘텐츠 피드화 ✅
 홈 히어로 내 장비 카드 ✅
 홈 히어로 대표 장비 선택 ✅
 샘플 콘텐츠 seed endpoint ✅
 Dev Maniac 초기 콘텐츠 cleanup endpoint ✅
-D1 migration 정리 ✅
 R2 업로드 ❌ 보류
 결제/구독 ❌ 미구현
 관리자/모더레이션 UI ❌ 미구현
@@ -48,6 +51,8 @@ Next.js static export
 Cloudflare Pages
 Cloudflare Pages Functions
 Cloudflare D1
+Cloudinary // active image provider
+Supabase Storage // optional fallback provider
 ```
 
 주요 설정:
@@ -70,9 +75,18 @@ wrangler.toml
 D1 binding은 wrangler.toml 기준으로 관리한다.
 Cloudflare 대시보드에서 binding을 추가해도 wrangler.toml 설정이 우선될 수 있다.
 R2는 카드 등록 요구로 현재 보류 중이다.
-R2 대신 장비 대표 이미지 URL, 부품 이미지 URL, 게시글 본문 data URL 방식으로 임시 대응한다.
+현재 이미지는 IMAGE_STORAGE_PROVIDER=cloudinary 설정 시 Cloudinary에 업로드한다.
 정적 export 환경 때문에 새 데이터 상세는 동적 라우트보다 query string 기반 정적 shell 방식을 우선 사용한다.
 useSearchParams()를 쓰는 클라이언트 컴포넌트는 static export 빌드 안정성을 위해 Suspense로 감싼다.
+/garage/[slug] 동적 라우트와 /garage middleware는 사용하지 않는다.
+```
+
+캐시/헤더:
+
+```txt
+public/_headers
+- 일반 페이지: Cache-Control no-store
+- /_next/static/*: public, max-age=31536000, immutable
 ```
 
 ---
@@ -145,6 +159,7 @@ functions/_shared/auth-session.ts
 /login/
 /signup/
 /me/
+/me/settings/
 /me/posts/
 /me/posts/edit/?id=게시글ID
 /me/comments/
@@ -153,7 +168,6 @@ functions/_shared/auth-session.ts
 /garage/new/
 /garage/edit/?id=장비ID
 /garage/view/?slug=장비slug
-/garage/[slug]/ → /garage/view/?slug=장비slug redirect
 ```
 
 구형 게시글 상세 URL은 redirect한다.
@@ -161,6 +175,20 @@ functions/_shared/auth-session.ts
 ```txt
 /explore/:category/:board/:post
 → /explore/post/?id=:post
+```
+
+장비 상세/공개 페이지는 반드시 아래 형식을 사용한다.
+
+```txt
+/garage/view/?slug=장비slug
+```
+
+중요:
+
+```txt
+/garage/[slug]/ 라우트는 사용하지 않는다.
+functions/garage/_middleware.ts도 사용하지 않는다.
+구형 slug redirect를 위해 /garage middleware를 추가하면 /garage/ 내 차고 라우팅과 충돌할 수 있다.
 ```
 
 ---
@@ -177,6 +205,13 @@ functions/_shared/auth-session.ts
 ```
 
 회원가입/로그인 화면은 `credentials: same-origin`을 명시하고, 메뉴는 `/api/auth/me`를 호출해 로그인 상태에 따라 `로그인/회원가입` 또는 `내 정보/로그아웃`을 표시한다.
+
+메뉴의 주요 대시보드 링크는 Next client routing/RSC 캐시 혼선을 줄이기 위해 hard navigation을 사용한다.
+
+```txt
+메뉴 → 홈 / 장비 둘러보기 / 내 차고 / 내 정보 / 로그인 / 회원가입
+button click → window.location.assign(...)
+```
 
 ### 홈
 
@@ -228,15 +263,38 @@ GET /api/equipments  // 히어로 내 장비 카드용, 로그인 필요
 /garage/view/?slug=... → GET /api/public/equipments/:slug
 ```
 
-공개 장비 JSON API는 아래 조건을 만족하는 장비만 반환한다.
+장비 대표 이미지:
 
 ```txt
-deleted_at IS NULL
-visibility = public
-moderation_status = normal
+POST /api/uploads/equipment-image
+→ 로그인 확인
+→ active image provider 업로드
+→ image_assets insert with purpose=equipment_main_image
+→ public_url 반환
 ```
 
-기존 `/garage/[slug]/` 공유 링크는 `/garage/view/?slug=...`로 redirect한다.
+장비 등록/수정 흐름:
+
+```txt
+/garage/new/
+→ 대표 사진 선택
+→ /api/uploads/equipment-image 업로드
+→ 반환된 public_url을 mainImageUrl로 저장
+→ POST /api/equipments
+
+/garage/edit/?id=...
+→ 대표 사진 교체 업로드
+→ 미리보기 변경
+→ 수정 저장 시 PATCH /api/equipments/:id 로 mainImageUrl 반영
+```
+
+공개/상세 장비 JSON API는 아래처럼 동작한다.
+
+```txt
+visibility = public AND moderation_status = normal → 누구나 보기 가능
+private/unlisted 장비 → 로그인한 소유자면 보기 가능
+다른 사람의 private/unlisted 장비 → Equipment not found
+```
 
 ### 정비 기록
 
@@ -251,7 +309,7 @@ DELETE /api/equipments/:id/logs?logId=...
 
 PATCH는 동적 SET 절을 사용해 요청 body에 포함된 필드만 수정한다. 누락된 `description`, `usageMetricValue`, `cost`, `shopName` 등이 `null`로 덮이는 문제를 수정했다.
 
-공개 장비 페이지에는 `visibility = public`이고 `deleted_at IS NULL`인 정비 기록만 표시한다.
+공개 장비 페이지에는 공개 기록만 표시한다. 단, 로그인한 소유자가 자기 장비를 보는 경우 비공개 기록도 볼 수 있다.
 
 ### 부품 기록
 
@@ -262,172 +320,145 @@ PATCH  /api/equipments/:id/parts?partId=...
 DELETE /api/equipments/:id/parts?partId=...
 ```
 
-부품 API는 먼저 현재 로그인 유저를 확인하고, 해당 장비가 `currentUser.id` 소유인지 확인한다.
+부품 기록 API도 currentUser 소유 장비 기준으로만 동작한다.
 
-PATCH는 동적 SET 절을 사용해 요청 body에 포함된 필드만 수정한다. 누락된 `brand`, `price`, `installedAt`, `purchaseUrl`, `imageUrl`, `memo` 등이 `null`로 덮이는 문제를 수정했다.
+공개 장비 페이지에는 공개 부품만 표시한다. 단, 로그인한 소유자가 자기 장비를 보는 경우 비공개 부품도 볼 수 있다.
 
-공개 장비 페이지에는 `visibility = public`이고 `deleted_at IS NULL`인 부품만 표시한다.
-
-### 커뮤니티 / Explore
-
-`/explore`는 D1 API 기반 게시판/게시글 구조로 동작한다.
+### 커뮤니티 게시판
 
 ```txt
-/explore/ → GET /api/public/boards
-/explore/[category]/ → GET /api/public/posts?category=...
-/explore/[category]/[board]/ → GET /api/public/posts?board=...
-/explore/post/?id=게시글ID → GET /api/public/posts/:id
+GET  /api/public/boards
+GET  /api/public/posts?category=...
+GET  /api/public/posts?board=...
+GET  /api/public/posts?sort=latest
+GET  /api/public/posts?sort=popular
+GET  /api/public/posts/:id
+POST /api/posts
+POST /api/public/posts/:id/comments
+DELETE /api/public/posts/:id/comments?commentId=...
 ```
 
-게시글 저장 흐름:
+게시글 상세 화면에서 작성자면 수정/삭제 버튼이 표시된다.
 
 ```txt
-/explore/[category]/[board]/write/
-→ POST /api/posts
-→ requireCurrentUser()
-→ sanitizePostHtml()
-→ D1 posts insert with currentUser.id
-→ /explore/post/?id=새글ID
+수정 → /me/posts/edit/?id=게시글ID
+삭제 → DELETE /api/me/posts/:id
 ```
 
-게시글 저장 API는 서버 저장 전 `sanitizePostHtml()`을 적용하고, 제목/본문 길이 제한을 검사한다.
+댓글은 상세 화면에서 내가 쓴 댓글이면 바로 삭제할 수 있다.
 
 ```txt
-제목 최대 길이: 120자
-본문 최대 길이: 200KB
+DELETE /api/public/posts/:id/comments?commentId=...
 ```
 
-댓글 상태:
+---
+
+## 6. 이미지 저장 구조
+
+이미지 파일은 현재 Cloudinary에 저장하고, Maniac D1에는 provider 중립 메타데이터만 저장한다.
 
 ```txt
-공개 상세 API에서 댓글 조회 지원 ✅
-댓글 작성 UI 연결 ✅
-댓글 작성 API 연결 ✅
-댓글 삭제 API 연결 ✅
-댓글 작성자 닉네임 users join 표시 ✅
-댓글 삭제는 본인 댓글만 가능 ✅
+image_assets
+- id
+- owner_user_id
+- provider       // cloudinary, supabase, later r2
+- bucket         // cloudinary cloud name or storage bucket
+- object_key     // Cloudinary public_id or storage object key
+- public_url
+- purpose        // profile_image, equipment_main_image, part_image, post_image 등
+- mime_type
+- size_bytes
+- width / height
+- deleted_at
 ```
 
-### 내 콘텐츠 관리
+현재 active provider:
 
 ```txt
-/me/ → 프로필 + 활동 요약 + 최근 작성글
-/me/posts/ → 내 작성글 목록
-/me/posts/edit/?id=... → 내 게시글 수정/삭제
-/me/comments/ → 내 댓글 목록/삭제
+IMAGE_STORAGE_PROVIDER=cloudinary
 ```
 
-관련 API:
+Cloudinary 환경변수:
 
 ```txt
-GET    /api/me/summary
-GET    /api/me/posts
-GET    /api/me/posts/:id
-PATCH  /api/me/posts/:id
-DELETE /api/me/posts/:id
-GET    /api/me/comments
-DELETE /api/me/comments/:id
-```
-
-### 샘플/개발용 콘텐츠 관리
-
-배포된 브라우저에서 직접 실행할 수 있는 개발용 endpoint를 추가했다.
-
-```txt
-GET/POST /api/dev/seed-lite
-GET/POST /api/dev/seed-samples
-GET/POST /api/dev/cleanup-dev-maniac
-```
-
-용도:
-
-```txt
-/api/dev/seed-lite
-- 적은 수의 실제 장비 기반 샘플 유저/게시판/장비/게시글/댓글 생성
-- 브라우저에서 실행 가능
-- 홈 콘텐츠가 비어 있을 때 빠르게 채우는 용도
-
-/api/dev/seed-samples
-- 더 많은 실제 장비 기반 샘플 데이터 seed
-- DB 상태나 migration 누락이 있으면 실패 가능성이 있으므로 lite seed 우선 권장
-
-/api/dev/cleanup-dev-maniac
-- 초기 Dev Maniac / Dev Manic 작성글과 댓글을 soft delete
-- users는 삭제하지 않음
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+CLOUDINARY_UPLOAD_FOLDER=maniac
 ```
 
 주의:
 
 ```txt
-이 endpoint들은 개발/샘플 데이터용이다.
-운영 공개 전에 관리자 인증 또는 제거가 필요하다.
+CLOUDINARY_API_SECRET은 서버 환경변수로만 보관한다.
+Cloudinary API key는 upload/create 권한이 있어야 한다.
+제한된 key를 쓰면 Request forbidden due to missing permissions actions=[create] 오류가 난다.
+```
+
+구현 파일:
+
+```txt
+functions/_shared/image-storage.ts
+- CloudinaryImageStorageProvider
+- SupabaseImageStorageProvider
+- createImageStorageProvider(env)
+- createImageObjectKey(...)
 ```
 
 ---
 
-## 6. D1/Drizzle schema 상태
+## 7. D1 schema drift 대응
 
-현재 사용 중인 주요 테이블:
+운영 D1에 migration이 일부 빠진 상태에서 최신 코드가 배포되면 `no such column`, `no such table` 오류가 발생할 수 있다.
+
+정식 해결은 migration 적용이다.
+
+```bash
+npm run d1:migrate:all:remote
+```
+
+다만 모바일 환경 등에서 즉시 migration을 실행하기 어려운 상황을 대비해 핵심 garage 기능에는 self-healing helper를 둔다.
 
 ```txt
-users
-auth_sessions
+functions/_shared/ensure-garage-schema.ts
+```
+
+자동 보강 대상:
+
+```txt
 equipments
 maintenance_logs
 parts
-boards
-posts
-comments
+관련 index
+main_image_url
+main_image_asset_id
 ```
 
-주요 migration:
+사용 위치:
 
 ```txt
-migrations/0001_initial.sql
-migrations/0002_add_maintenance_logs_and_parts.sql
-migrations/0003_add_boards_posts_comments.sql
-migrations/0004_add_board_metadata.sql
-migrations/0005_add_auth_tables.sql
-migrations/0006_seed_real_equipment_posts.sql  // 선택 seed
+GET  /api/equipments
+POST /api/equipments
 ```
 
-추가된 package scripts:
+프로필/이미지 업로드 관련 API도 필요한 경우 아래를 자동 보강한다.
 
 ```txt
-npm run d1:migrate:initial:local
-npm run d1:migrate:local
-npm run d1:migrate:community:local
-npm run d1:migrate:board-meta:local
-npm run d1:migrate:auth:local
-npm run d1:seed:samples:local
-npm run d1:migrate:all:local
-npm run d1:tables:local
-
-npm run d1:migrate:initial:remote
-npm run d1:migrate:remote
-npm run d1:migrate:community:remote
-npm run d1:migrate:board-meta:remote
-npm run d1:migrate:auth:remote
-npm run d1:seed:samples:remote
-npm run d1:migrate:all:remote
-npm run d1:tables:remote
+users.bio
+users.profile_image_asset_id
+image_assets
 ```
 
 주의:
 
 ```txt
-새 D1 DB는 0001 → 0002 → 0003 → 0004 → 0005 순서로 적용한다.
-0005는 users.credential_hash 컬럼과 auth_sessions 테이블을 추가한다.
-0006은 필수 schema migration이 아니라 선택 seed다.
-ALTER TABLE users ADD COLUMN credential_hash TEXT; 는 같은 DB에 두 번 실행하면 중복 컬럼 오류가 난다.
-앞으로 테이블 생성/변경은 migration에서 관리한다.
-Drizzle schema와 SQL migration이 어긋나지 않게 변경 시 둘 다 확인해야 한다.
-D1 local/remote migration 흐름은 아직 더 정교하게 정리할 수 있다.
+self-healing은 운영 장애 완화용이다.
+새 D1 환경이나 장기 운영 환경에서는 migrations 디렉터리의 SQL을 순서대로 적용하는 것이 원칙이다.
 ```
 
 ---
 
-## 7. 현재 API 목록
+## 8. 현재 주요 API
 
 ```txt
 POST   /api/auth/signup
@@ -435,6 +466,10 @@ POST   /api/auth/login
 POST   /api/auth/logout
 GET    /api/auth/me
 
+GET    /api/me/profile
+PATCH  /api/me/profile
+POST   /api/uploads/profile-image
+POST   /api/uploads/equipment-image
 GET    /api/me/summary
 GET    /api/me/posts
 GET    /api/me/posts/:id
@@ -445,7 +480,6 @@ DELETE /api/me/comments/:id
 
 GET    /api/equipments
 POST   /api/equipments
-
 GET    /api/equipments/:id
 PATCH  /api/equipments/:id
 DELETE /api/equipments/:id
@@ -462,8 +496,6 @@ DELETE /api/equipments/:id/parts?partId=...
 
 GET    /api/public/equipments
 GET    /api/public/equipments/:slug
-GET    /garage/:slug → redirect to /garage/view/?slug=...
-
 GET    /api/public/boards
 GET    /api/public/posts?category=...
 GET    /api/public/posts?board=...
@@ -473,104 +505,63 @@ GET    /api/public/posts/:id
 POST   /api/posts
 POST   /api/public/posts/:id/comments
 DELETE /api/public/posts/:id/comments?commentId=...
-GET    /explore/:category/:board/:post → redirect to /explore/post/?id=...
+```
 
-GET    /api/dev/seed-lite
-POST   /api/dev/seed-lite
-GET    /api/dev/seed-samples
-POST   /api/dev/seed-samples
-GET    /api/dev/cleanup-dev-maniac
-POST   /api/dev/cleanup-dev-maniac
+개발/샘플 데이터용 endpoint:
+
+```txt
+GET/POST /api/dev/seed-lite
+GET/POST /api/dev/seed-samples
+GET/POST /api/dev/cleanup-dev-maniac
+```
+
+`/api/dev/*` endpoint는 `functions/api/dev/_middleware.ts`에서 기본 차단한다.
+
+```txt
+DEV_TOOLS_ENABLED=true 일 때만 접근 가능
+APP_ENV=production 에서는 DEV_TOOLS_SECRET 필수
+DEV_TOOLS_SECRET이 설정된 경우 x-dev-tools-secret header 또는 token query string 값이 일치해야 함
 ```
 
 ---
 
-## 8. API 공통 유틸 상태
-
-공통 파일:
+## 9. 최근 해결한 주요 이슈
 
 ```txt
-functions/_shared/http.ts
-functions/_shared/auth.ts
-functions/_shared/auth-crypto.ts
-functions/_shared/auth-session.ts
-functions/_shared/db-equipment.ts
-functions/_shared/db-posts.ts
-functions/_shared/db-public-equipment.ts
-functions/_shared/db-boards.ts
-```
+Supabase free quota 제한으로 이미지 업로드가 막힘
+→ Cloudinary active provider 추가
 
-현재 공통화 상태:
+Cloudinary restricted API key로 upload create 권한 오류 발생
+→ upload/create 권한 있는 key 사용 필요 문서화
 
-```txt
-세션 기반 current user 조회 ✅
-장비/정비/부품 소유권 검증 ✅
-게시글/댓글 author_id currentUser.id 저장 ✅
-내 콘텐츠 관리 API currentUser.id 스코프 적용 ✅
-공개 게시글 상세 API 상세 조회 ✅
-공개 게시글 상세 API 댓글 목록 조회 ✅
-공개 게시글 목록 API 목록 조회 ✅
-공개 게시글 sort=popular 지원 ✅
-공개 게시판 목록 API 목록 조회 ✅
-공개 장비 목록 API 인기 공개 장비 조회 ✅
-공개 장비 API 장비 조회 ✅
-공개 장비 API 정비 기록 조회 ✅
-공개 장비 API 부품 조회 ✅
+Production D1 schema drift로 no such column/table 오류 연쇄 발생
+→ ensure-garage-schema helper 추가
+
+/garage/[slug] 동적 라우트가 static export 빌드를 깨뜨림
+→ 동적 slug 라우트 제거, /garage/view/?slug=... 통일
+
+functions/garage/_middleware.ts가 /garage 라우팅과 충돌
+→ middleware 제거
+
+Next Link client routing/RSC 캐시 혼선으로 메뉴 이동 시 잘못된 화면 노출
+→ 메뉴 주요 링크 hard navigation 처리
+
+/me 페이지에 RSC payload 원문이 보이는 캐시/헤더 문제
+→ public/_headers로 일반 페이지 no-store, static chunk immutable 설정
 ```
 
 ---
 
-## 9. 최근 해결한 이슈
+## 10. 아직 미완성인 부분
 
 ```txt
-D1 binding 문제 해결 ✅
-한글 slug 조회 문제 해결 ✅
-정적 export 동적 페이지 문제 해결 ✅
-부품/정비 추가 후 form reset 에러 해결 ✅
-/garage/view/가 slug Function에 잡히는 문제 해결 ✅
-/explore mock 정적 상세 제거 ✅
-Cloudflare Error 1101 redirect 문제 해결 ✅
-게시글 HTML 태그 노출 문제 해결 ✅
-홈에서 게시글 진입 시 불러오기 실패 해결 ✅
-공개 장비 API가 private 장비를 반환할 수 있는 문제 해결 ✅
-정비 기록 PATCH 누락 필드 null 덮어쓰기 문제 해결 ✅
-부품 PATCH 누락 필드 null 덮어쓰기 문제 해결 ✅
-게시글 HTML sanitize allowlist 강화 ✅
-게시글 저장 전 서버 sanitize 및 길이 제한 추가 ✅
-초기 D1 schema migration 추가 ✅
-전체 remote/local migration script 추가 ✅
-이메일/비밀번호 직접 로그인 추가 ✅
-Cloudflare PBKDF2 iteration 100000 초과 오류 해결 ✅
-D1 credential_hash 누락 대응 문서화 ✅
-세션 쿠키 유지 문제 보강 ✅
-메뉴 로그인 상태 반영 ✅
-게시글/댓글 작성자 닉네임 users join 표시 ✅
-내 작성글 목록 API 누락 수정 ✅
-/me/posts/edit useSearchParams Suspense 빌드 오류 해결 ✅
-내 정보/내 작성글/내 댓글 관리 레이아웃 정리 ✅
-홈을 콘텐츠 피드형으로 전환 ✅
-인기 공개 장비 API 추가 ✅
-공개 게시글 sort=popular 추가 ✅
-홈 히어로를 로그인 사용자 내 장비 카드로 전환 ✅
-홈 히어로 대표 장비 선택/localStorage 저장 추가 ✅
-샘플 seed endpoint 추가 ✅
-Dev Maniac 초기 글 cleanup endpoint 추가 ✅
-```
-
----
-
-## 10. 아직 mock/stub 또는 미완성인 부분
-
-```txt
-R2 이미지 업로드
-프로필 설정
-프로필 이미지
+부품 이미지 업로드
+게시글 본문 이미지 업로드
+R2 직접 업로드 provider
 공개 사용자 프로필 페이지
 어드민 UI
 결제/구독
 신고/모더레이션 워크플로우
-개발용 seed/cleanup endpoint 보호 또는 제거
-OpenNext 또는 Workers 런타임 전환 검토
 D1 local migration 흐름 고도화
 migration 적용 이력 관리 방식 검토
 이메일 인증
@@ -583,81 +574,10 @@ MFA
 
 ## 11. 다음 개발 추천 순서
 
-### 1순위: 배포 후 회귀 테스트
-
-확인 경로:
-
-```txt
-/
-/login/
-/signup/
-/me/
-/me/posts/
-/me/posts/edit/?id=...
-/me/comments/
-/explore/
-/explore/motorcycle/
-/explore/motorcycle/motorcycle-showcase/
-/explore/motorcycle/motorcycle-showcase/write/
-/explore/post/?id=...
-/garage/
-/garage/new/
-/garage/edit/?id=...
-/garage/view/?slug=...
-/api/dev/seed-lite
-/api/dev/cleanup-dev-maniac
-```
-
-확인 항목:
-
-```txt
-회원가입 → /me 이동 정상
-로그아웃 → 로그인 요구 표시 정상
-로그인 → 홈 이동 후 메뉴에 내 정보/로그아웃 표시
-홈 히어로 내 장비 카드 표시
-내 장비 2개 이상일 때 대표 장비 선택 드롭다운 표시
-대표 장비 선택 후 새로고침해도 선택 유지
-홈 최근 게시글 표시
-홈 댓글 많은 글 표시
-홈 인기 공개 장비 표시
-/me 활동 요약 숫자 표시
-/me/posts 내 작성글 표시
-/me/posts/edit 게시글 수정/삭제
-/me/comments 내 댓글 표시/삭제
-비로그인 /garage 접근 시 로그인 안내
-장비 등록/수정/삭제 정상 동작
-장비 계정별 분리 확인
-공개 장비 조회 정상 동작
-private 장비 공개 API 404 확인
-글쓰기 저장 → 새 상세로 이동
-댓글 작성 → 댓글 목록 반영
-댓글 삭제 → 본인 댓글만 삭제 가능
-목록에서 HTML 태그 미노출
-상세에서 HTML 본문 정상 표시
-기존 게시글 URL redirect 정상 동작
-정비/부품 PATCH 시 누락 필드 보존 확인
-새 D1 DB에 npm run d1:migrate:all:remote 적용 확인
-샘플 콘텐츠가 필요하면 /api/dev/seed-lite 실행
-초기 Dev Maniac 글이 보이면 /api/dev/cleanup-dev-maniac 실행
-```
-
-### 2순위: 프로필 설정
-
-```txt
-users.bio 또는 profile 관련 컬럼 추가
-PATCH /api/me/profile
-/me/settings/ 페이지
-닉네임 변경
-소개글 변경
-프로필 이미지 준비
-```
-
-### 3순위: 이미지 업로드
-
-```txt
-Cloudflare R2 연결
-게시글 이미지 data URL 제거
-장비 대표 이미지 업로드
-부품 이미지 업로드
-프로필 이미지 업로드
-```
+1. Production 배포 후 회귀 테스트
+2. 장비 등록/수정/목록/상세 이미지 흐름 안정화 확인
+3. 부품 이미지 업로드
+4. 게시글 본문 이미지 data URL 제거 및 업로드 전환
+5. 신고/모더레이션 워크플로우
+6. 관리자 UI
+7. 결제/구독
