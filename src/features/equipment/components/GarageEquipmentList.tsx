@@ -15,6 +15,7 @@ type EquipmentListItem = {
   slug: string;
   year: number | null;
   description: string | null;
+  main_image_url: string | null;
   usage_metric_type: string;
   usage_metric_value: number | null;
   visibility: string;
@@ -25,11 +26,7 @@ type EquipmentListItem = {
   total_maintenance_cost: number | null;
 };
 
-type EquipmentListResponse = {
-  ok: boolean;
-  equipments?: EquipmentListItem[];
-  error?: string;
-};
+type EquipmentListResponse = { ok: boolean; equipments?: EquipmentListItem[]; error?: string };
 
 type ListState =
   | { status: "loading" }
@@ -80,17 +77,14 @@ export function GarageEquipmentList() {
 
   useEffect(() => {
     let isMounted = true;
-
     async function loadEquipments() {
       try {
         const response = await fetch("/api/equipments", { cache: "no-store", credentials: "same-origin" });
         const data = (await response.json()) as EquipmentListResponse;
-
         if (response.status === 401) {
           if (isMounted) setState({ status: "login-required", message: data.error ?? "내 차고를 보려면 먼저 로그인해 주세요." });
           return;
         }
-
         if (!response.ok || !data.ok) throw new Error(data.error ?? "장비 목록을 불러오지 못했습니다.");
         if (isMounted) setState({ status: "success", equipments: data.equipments ?? [] });
       } catch (error) {
@@ -98,12 +92,8 @@ export function GarageEquipmentList() {
         setState({ status: "error", message: error instanceof Error ? error.message : "장비 목록을 불러오지 못했습니다." });
       }
     }
-
     loadEquipments();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   if (state.status === "loading") {
@@ -112,38 +102,22 @@ export function GarageEquipmentList() {
         {[0, 1, 2].map((item) => (
           <Card key={item} className="flex min-h-72 flex-col gap-4 p-4 sm:p-5">
             <div className="aspect-[16/10] animate-pulse rounded-2xl bg-zinc-200" />
-            <div className="space-y-3">
-              <div className="h-5 w-24 animate-pulse rounded-full bg-zinc-200" />
-              <div className="h-7 w-40 animate-pulse rounded-full bg-zinc-200" />
-              <div className="h-4 w-32 animate-pulse rounded-full bg-zinc-200" />
-            </div>
+            <div className="space-y-3"><div className="h-5 w-24 animate-pulse rounded-full bg-zinc-200" /><div className="h-7 w-40 animate-pulse rounded-full bg-zinc-200" /><div className="h-4 w-32 animate-pulse rounded-full bg-zinc-200" /></div>
           </Card>
         ))}
       </div>
     );
   }
 
-  if (state.status === "login-required") {
-    return <LoginPrompt message={state.message} />;
-  }
-
-  if (state.status === "error") {
-    return (
-      <Card className="space-y-3 p-6">
-        <h3 className="text-xl font-bold">장비 목록을 불러오지 못했습니다.</h3>
-        <p className="text-sm leading-6 text-text-secondary">{state.message}</p>
-      </Card>
-    );
-  }
+  if (state.status === "login-required") return <LoginPrompt message={state.message} />;
+  if (state.status === "error") return <Card className="space-y-3 p-6"><h3 className="text-xl font-bold">장비 목록을 불러오지 못했습니다.</h3><p className="text-sm leading-6 text-text-secondary">{state.message}</p></Card>;
 
   if (state.equipments.length === 0) {
     return (
       <Card className="space-y-4 p-6 text-center">
         <h3 className="text-xl font-bold">아직 등록된 장비가 없습니다.</h3>
         <p className="text-sm leading-6 text-text-secondary">첫 장비를 등록하면 이곳에 바로 표시됩니다.</p>
-        <Link href="/garage/new/">
-          <Button>장비 추가하기</Button>
-        </Link>
+        <Link href="/garage/new/"><Button>장비 추가하기</Button></Link>
       </Card>
     );
   }
@@ -152,7 +126,9 @@ export function GarageEquipmentList() {
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {state.equipments.map((equipment) => (
         <Card key={equipment.id} className="flex flex-col gap-4 p-4 sm:p-5">
-          <div className="aspect-[16/10] rounded-2xl bg-gradient-to-br from-zinc-200 to-zinc-400" />
+          <div className="aspect-[16/10] overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-200 to-zinc-400">
+            {equipment.main_image_url ? <img src={equipment.main_image_url} alt={`${equipment.nickname} 대표 사진`} className="size-full object-cover" /> : null}
+          </div>
           <div className="space-y-1">
             <Badge label={equipment.category} tone="muted" />
             <h3 className="text-xl font-bold">{equipment.nickname}</h3>
@@ -161,26 +137,13 @@ export function GarageEquipmentList() {
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{equipment.visibility}</p>
           </div>
           <div className="grid grid-cols-3 gap-2 rounded-2xl bg-background p-2 text-center text-xs">
-            <div className="rounded-xl bg-surface p-2">
-              <b className="block text-sm text-text-primary">{equipment.maintenance_log_count}</b>
-              <span className="text-text-secondary">기록</span>
-            </div>
-            <div className="rounded-xl bg-surface p-2">
-              <b className="block text-sm text-text-primary">{formatDate(equipment.latest_maintenance_at).replace(/\. /g, ".")}</b>
-              <span className="text-text-secondary">최근</span>
-            </div>
-            <div className="rounded-xl bg-surface p-2">
-              <b className="block text-sm text-text-primary">{formatCost(equipment.total_maintenance_cost)}</b>
-              <span className="text-text-secondary">비용</span>
-            </div>
+            <div className="rounded-xl bg-surface p-2"><b className="block text-sm text-text-primary">{equipment.maintenance_log_count}</b><span className="text-text-secondary">기록</span></div>
+            <div className="rounded-xl bg-surface p-2"><b className="block text-sm text-text-primary">{formatDate(equipment.latest_maintenance_at).replace(/\. /g, ".")}</b><span className="text-text-secondary">최근</span></div>
+            <div className="rounded-xl bg-surface p-2"><b className="block text-sm text-text-primary">{formatCost(equipment.total_maintenance_cost)}</b><span className="text-text-secondary">비용</span></div>
           </div>
           <div className="mt-auto grid grid-cols-2 gap-2">
-            <Link href={publicViewHref(equipment.slug)}>
-              <Button className="w-full">보기</Button>
-            </Link>
-            <Link href={`/garage/edit/?id=${equipment.id}`}>
-              <Button className="w-full" variant="secondary">수정</Button>
-            </Link>
+            <Link href={publicViewHref(equipment.slug)}><Button className="w-full">보기</Button></Link>
+            <Link href={`/garage/edit/?id=${equipment.id}`}><Button className="w-full" variant="secondary">수정</Button></Link>
           </div>
         </Card>
       ))}
