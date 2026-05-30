@@ -2,19 +2,22 @@ import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-const siteUrl = "https://maniac-garage.pages.dev";
-const siteTitle = "Maniac Garage | 장비 기록과 정비 이야기가 모이는 커뮤니티";
-const siteDescription = "오토바이, 기계식 키보드, 커스텀 PC, 카메라, 캠핑 장비까지. 내 장비를 기록하고 다른 마니아들의 세팅과 정비 이야기를 둘러보세요.";
+const siteUrl = "https://maniac-c7d.pages.dev";
+const siteTitle = "GearDuck | 장비덕후들의 기록 차고";
+const siteDescription = "오토바이, 기계식 키보드, 커스텀 PC, 카메라, 캠핑 장비까지. 내 장비의 세팅, 정비, 부품 기록을 남기고 다른 장비덕후들의 기어를 둘러보세요.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
     default: siteTitle,
-    template: "%s | Maniac Garage",
+    template: "%s | GearDuck",
   },
   description: siteDescription,
-  applicationName: "Maniac Garage",
+  applicationName: "GearDuck",
   keywords: [
+    "GearDuck",
+    "기어덕",
+    "장비덕후",
     "장비 기록",
     "정비 기록",
     "오토바이 정비",
@@ -24,9 +27,9 @@ export const metadata: Metadata = {
     "튜닝 기록",
     "부품 기록",
   ],
-  authors: [{ name: "Maniac Garage" }],
-  creator: "Maniac Garage",
-  publisher: "Maniac Garage",
+  authors: [{ name: "GearDuck" }],
+  creator: "GearDuck",
+  publisher: "GearDuck",
   alternates: {
     canonical: "/",
   },
@@ -34,7 +37,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ko_KR",
     url: "/",
-    siteName: "Maniac Garage",
+    siteName: "GearDuck",
     title: siteTitle,
     description: siteDescription,
   },
