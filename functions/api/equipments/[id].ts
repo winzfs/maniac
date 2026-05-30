@@ -129,7 +129,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ request, env, params 
       input.usageMetricType ?? existing.usage_metric_type,
       input.usageMetricValue ?? existing.usage_metric_value,
       input.visibility ?? existing.visibility,
-      input.moderationStatus ?? existing.moderation_status,
+      existing.moderation_status,
       now,
       id,
       auth.user.id,
