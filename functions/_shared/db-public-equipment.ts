@@ -1,5 +1,6 @@
 export type PublicEquipmentRow = {
   id: string;
+  user_id: string;
   category: string;
   brand: string | null;
   model: string | null;
@@ -42,7 +43,7 @@ export type PublicPartRow = {
 
 export async function findPublicEquipment(db: D1Database, slug: string) {
   return db.prepare(
-    `SELECT id, category, brand, model, nickname, slug, year, description, main_image_url, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at
+    `SELECT id, user_id, category, brand, model, nickname, slug, year, description, main_image_url, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at
      FROM equipments
      WHERE slug = ?
        AND deleted_at IS NULL
@@ -53,26 +54,53 @@ export async function findPublicEquipment(db: D1Database, slug: string) {
   ).bind(slug).first<PublicEquipmentRow>();
 }
 
-export async function listPublicEquipmentLogs(db: D1Database, equipmentId: string) {
+export async function findViewableEquipment(db: D1Database, slug: string, viewerUserId?: string | null) {
+  if (!viewerUserId) return findPublicEquipment(db, slug);
+
+  return db.prepare(
+    `SELECT id, user_id, category, brand, model, nickname, slug, year, description, main_image_url, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at
+     FROM equipments
+     WHERE slug = ?
+       AND deleted_at IS NULL
+       AND (
+         (visibility = 'public' AND moderation_status = 'normal')
+         OR user_id = ?
+       )
+     ORDER BY CASE WHEN user_id = ? THEN 0 ELSE 1 END, created_at DESC
+     LIMIT 1`,
+  ).bind(slug, viewerUserId, viewerUserId).first<PublicEquipmentRow>();
+}
+
+export async function listPublicEquipmentLogs(db: D1Database, equipmentId: string, viewerUserId?: string | null) {
+  const equipment = viewerUserId
+    ? await db.prepare("SELECT user_id FROM equipments WHERE id = ? AND deleted_at IS NULL LIMIT 1").bind(equipmentId).first<{ user_id: string }>()
+    : null;
+  const isOwner = Boolean(viewerUserId && equipment?.user_id === viewerUserId);
+
   const rows = await db.prepare(
     `SELECT id, type, title, description, performed_at, usage_metric_value, cost, shop_name, visibility
      FROM maintenance_logs
-     WHERE equipment_id = ? AND deleted_at IS NULL AND visibility = 'public'
+     WHERE equipment_id = ? AND deleted_at IS NULL AND (? = 1 OR visibility = 'public')
      ORDER BY performed_at DESC, created_at DESC
      LIMIT 20`,
-  ).bind(equipmentId).all<PublicMaintenanceLogRow>();
+  ).bind(equipmentId, isOwner ? 1 : 0).all<PublicMaintenanceLogRow>();
 
   return rows.results ?? [];
 }
 
-export async function listPublicEquipmentParts(db: D1Database, equipmentId: string) {
+export async function listPublicEquipmentParts(db: D1Database, equipmentId: string, viewerUserId?: string | null) {
+  const equipment = viewerUserId
+    ? await db.prepare("SELECT user_id FROM equipments WHERE id = ? AND deleted_at IS NULL LIMIT 1").bind(equipmentId).first<{ user_id: string }>()
+    : null;
+  const isOwner = Boolean(viewerUserId && equipment?.user_id === viewerUserId);
+
   const rows = await db.prepare(
     `SELECT id, category, brand, name, price, installed_at, purchase_url, image_url, memo, visibility
      FROM parts
-     WHERE equipment_id = ? AND deleted_at IS NULL AND visibility = 'public'
+     WHERE equipment_id = ? AND deleted_at IS NULL AND (? = 1 OR visibility = 'public')
      ORDER BY installed_at DESC, created_at DESC
      LIMIT 20`,
-  ).bind(equipmentId).all<PublicPartRow>();
+  ).bind(equipmentId, isOwner ? 1 : 0).all<PublicPartRow>();
 
   return rows.results ?? [];
 }
