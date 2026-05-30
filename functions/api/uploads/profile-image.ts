@@ -9,6 +9,44 @@ type Env = ImageStorageEnv & { DB: D1Database; APP_ENV?: string };
 const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 const maxImageBytes = 5 * 1024 * 1024;
 
+async function ignoreDuplicateColumn(operation: Promise<unknown>) {
+  try {
+    await operation;
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+    if (!message.includes("duplicate column") && !message.includes("already exists")) throw error;
+  }
+}
+
+async function ensureImageSchema(db: D1Database) {
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS image_assets (
+      id TEXT PRIMARY KEY NOT NULL,
+      owner_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL,
+      bucket TEXT,
+      object_key TEXT NOT NULL,
+      public_url TEXT NOT NULL,
+      purpose TEXT NOT NULL,
+      mime_type TEXT,
+      size_bytes INTEGER,
+      width INTEGER,
+      height INTEGER,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+      deleted_at INTEGER
+    )`,
+  ).run();
+
+  await db.prepare("CREATE INDEX IF NOT EXISTS image_assets_owner_idx ON image_assets (owner_user_id, purpose)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS image_assets_provider_key_idx ON image_assets (provider, bucket, object_key)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS image_assets_deleted_idx ON image_assets (deleted_at)").run();
+
+  await ignoreDuplicateColumn(
+    db.prepare("ALTER TABLE users ADD COLUMN profile_image_asset_id TEXT REFERENCES image_assets(id) ON DELETE SET NULL").run(),
+  );
+}
+
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!env.DB) return errorResponse("D1 binding DB is not configured.", 500);
 
@@ -16,6 +54,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (auth.response) return auth.response;
 
   try {
+    await ensureImageSchema(env.DB);
+
     const formData = await request.formData();
     const image = formData.get("image");
 
