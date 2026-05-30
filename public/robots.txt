@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://maniac-garage.pages.dev/sitemap.xml
+Sitemap: https://gearduck.mooo.com/sitemap.xml
