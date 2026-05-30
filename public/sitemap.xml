@@ -1,62 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://maniac-garage.pages.dev/</loc>
+    <loc>https://gearduck.mooo.com/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://maniac-garage.pages.dev/explore/</loc>
+    <loc>https://gearduck.mooo.com/explore/</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://maniac-garage.pages.dev/explore/motorcycle/</loc>
+    <loc>https://gearduck.mooo.com/explore/motorcycle/</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://maniac-garage.pages.dev/explore/pc/</loc>
+    <loc>https://gearduck.mooo.com/explore/pc/</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://maniac-garage.pages.dev/explore/keyboard/</loc>
+    <loc>https://gearduck.mooo.com/explore/keyboard/</loc>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://maniac-garage.pages.dev/explore/bicycle/</loc>
+    <loc>https://gearduck.mooo.com/explore/bicycle/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://maniac-garage.pages.dev/explore/camera/</loc>
+    <loc>https://gearduck.mooo.com/explore/camera/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://maniac-garage.pages.dev/explore/camping/</loc>
+    <loc>https://gearduck.mooo.com/explore/camping/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://maniac-garage.pages.dev/explore/audio/</loc>
+    <loc>https://gearduck.mooo.com/explore/audio/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://maniac-garage.pages.dev/explore/custom/</loc>
+    <loc>https://gearduck.mooo.com/explore/custom/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://maniac-garage.pages.dev/garage/</loc>
+    <loc>https://gearduck.mooo.com/garage/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://maniac-garage.pages.dev/garage/new/</loc>
+    <loc>https://gearduck.mooo.com/garage/new/</loc>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
