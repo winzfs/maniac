@@ -106,7 +106,7 @@ function PartImagePicker({ defaultValue, disabled }: { defaultValue?: string | n
           사진 선택
         </label>
       </div>
-      {imageUrl ? <img src={imageUrl} alt="부품 사진 미리보기" className="max-h-48 w-full rounded-2xl border border-border object-cover" /> : null}
+      {imageUrl ? <img src={imageUrl} alt="부품 사진 미리보기" className="aspect-square w-24 rounded-2xl border border-border object-cover" /> : null}
       <input type="hidden" name="imageUrl" value={imageUrl} />
       <input id={inputId} type="file" accept="image/*" disabled={disabled} onChange={handleFile} className="sr-only" />
       <input className={fieldClass} value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="이미지 URL 또는 업로드" disabled={disabled} />
@@ -239,18 +239,24 @@ export function PartsPanel({ equipmentId }: { equipmentId: string }) {
                     <div className="grid grid-cols-2 gap-2"><Button type="submit" disabled={isSaving}>{isSaving ? "저장 중..." : "저장"}</Button><Button type="button" variant="secondary" disabled={isSaving} onClick={() => setEditingPartId(null)}>취소</Button></div>
                   </form>
                 ) : (
-                  <>
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{part.category} · {formatDate(part.installed_at)}</p>
-                        <h3 className="mt-1 text-lg font-bold">{part.brand ? `${part.brand} ` : ""}{part.name}</h3>
+                  <div className="flex gap-3">
+                    {part.image_url ? (
+                      <img src={part.image_url} alt="부품 사진" className="aspect-square h-20 w-20 shrink-0 rounded-2xl border border-border object-cover" />
+                    ) : (
+                      <div className="flex aspect-square h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-dashed border-border bg-background text-[0.65rem] font-bold text-text-secondary">NO IMG</div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{part.category} · {formatDate(part.installed_at)}</p>
+                          <h3 className="mt-1 truncate text-lg font-bold">{part.brand ? `${part.brand} ` : ""}{part.name}</h3>
+                        </div>
+                        <div className="flex shrink-0 gap-1"><Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => setEditingPartId(part.id)}>수정</Button><Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => handleDelete(part.id)}>삭제</Button></div>
                       </div>
-                      <div className="flex gap-1"><Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => setEditingPartId(part.id)}>수정</Button><Button type="button" size="sm" variant="ghost" disabled={isSaving} onClick={() => handleDelete(part.id)}>삭제</Button></div>
+                      {part.memo ? <p className="mt-2 line-clamp-2 text-sm leading-6 text-text-secondary">{part.memo}</p> : null}
+                      <p className="mt-3 text-xs font-semibold text-text-secondary">{formatPrice(part.price)} · {part.visibility}</p>
                     </div>
-                    {part.image_url ? <img src={part.image_url} alt="부품 사진" className="mt-3 max-h-56 w-full rounded-2xl border border-border object-cover" /> : null}
-                    {part.memo ? <p className="mt-2 text-sm leading-6 text-text-secondary">{part.memo}</p> : null}
-                    <p className="mt-3 text-xs font-semibold text-text-secondary">{formatPrice(part.price)} · {part.visibility}</p>
-                  </>
+                  </div>
                 )}
               </article>
             );
