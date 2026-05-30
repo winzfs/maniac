@@ -4,4 +4,4 @@ This file records small documentation-only changes used to trigger fresh Cloudfl
 
 No application logic or secret value is stored here.
 
-Last trigger: Cloudinary environment variable update retry.
+Last trigger: runtime environment update.
