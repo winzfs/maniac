@@ -8,6 +8,8 @@ import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { sanitizePostHtml } from "@/features/boards/utils/html";
 
+const SITE_ORIGIN = "https://maniac-c7d.pages.dev";
+
 type User = { id: string; email: string; nickname: string };
 
 type PublicPost = {
@@ -81,6 +83,68 @@ function formatDate(value: number) {
   return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
 }
 
+function upsertMeta(name: string, content: string) {
+  let meta = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("name", name);
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", content);
+}
+
+function upsertPropertyMeta(property: string, content: string) {
+  let meta = document.querySelector<HTMLMetaElement>(`meta[property="${property}"]`);
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("property", property);
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", content);
+}
+
+function upsertCanonical(href: string) {
+  let link = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+  if (!link) {
+    link = document.createElement("link");
+    link.setAttribute("rel", "canonical");
+    document.head.appendChild(link);
+  }
+  link.setAttribute("href", href);
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function textSnippet(value: string, fallback: string) {
+  const normalized = stripHtml(value);
+  if (!normalized) return fallback;
+  return normalized.length > 150 ? `${normalized.slice(0, 147)}...` : normalized;
+}
+
+function firstImageFromHtml(value: string) {
+  const match = value.match(/<img[^>]+src=["']([^"']+)["']/i);
+  return match?.[1];
+}
+
+function updatePostSeo(post: PublicPost, commentCount: number) {
+  const title = `${post.title} | GearDuck`;
+  const description = textSnippet(post.body, `${post.board_title} 게시판의 장비 이야기와 댓글 ${commentCount}개를 GearDuck에서 확인하세요.`);
+  const canonical = `${SITE_ORIGIN}/explore/post/?id=${encodeURIComponent(post.id)}`;
+  const image = firstImageFromHtml(post.body);
+
+  document.title = title;
+  upsertMeta("description", description);
+  upsertCanonical(canonical);
+  upsertPropertyMeta("og:type", "article");
+  upsertPropertyMeta("og:site_name", "GearDuck");
+  upsertPropertyMeta("og:title", title);
+  upsertPropertyMeta("og:description", description);
+  upsertPropertyMeta("og:url", canonical);
+  if (image) upsertPropertyMeta("og:image", image);
+}
+
 export function PublicPostDetailClient({ id }: { id: string }) {
   const router = useRouter();
   const [state, setState] = useState<State>({ status: "loading" });
@@ -108,6 +172,10 @@ export function PublicPostDetailClient({ id }: { id: string }) {
     else void load();
     return () => { mounted = false; };
   }, [id]);
+
+  useEffect(() => {
+    if (state.status === "ready") updatePostSeo(state.post, state.comments.length);
+  }, [state]);
 
   async function handleCommentSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -170,7 +238,7 @@ export function PublicPostDetailClient({ id }: { id: string }) {
         <Card className="space-y-6 p-5 sm:p-7">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
             <Badge label={post.board_title} tone={post.board_type === "trade" ? "orange" : "muted"} />
-            <span>{post.author_nickname ?? "maniac"}</span><span>·</span><span>{formatDate(post.created_at)}</span><span>·</span><span>{comments.length} comments</span>
+            <span>{post.author_nickname ?? "GearDuck"}</span><span>·</span><span>{formatDate(post.created_at)}</span><span>·</span><span>{comments.length} comments</span>
           </div>
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -201,7 +269,7 @@ export function PublicPostDetailClient({ id }: { id: string }) {
               return (
                 <div key={comment.id} className="rounded-2xl border border-border bg-background p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary">
-                    <div className="flex flex-wrap items-center gap-2"><span>{comment.author_nickname ?? "maniac"}</span><span>·</span><span>{formatDate(comment.created_at)}</span></div>
+                    <div className="flex flex-wrap items-center gap-2"><span>{comment.author_nickname ?? "GearDuck"}</span><span>·</span><span>{formatDate(comment.created_at)}</span></div>
                     {isCommentOwner ? <button type="button" className="font-bold text-red-600 disabled:opacity-50" onClick={() => handleRemoveComment(comment.id)} disabled={busyCommentId === comment.id}>{busyCommentId === comment.id ? "삭제 중..." : "삭제"}</button> : null}
                   </div>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-text-secondary">{comment.body}</p>
