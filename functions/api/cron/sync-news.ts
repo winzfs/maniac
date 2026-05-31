@@ -51,9 +51,31 @@ function parseLimit(request: Request) {
   return Math.min(Math.max(Math.trunc(value), 1), 50);
 }
 
+async function ensureNewsSchema(db: D1Database) {
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS news_items (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      link TEXT NOT NULL UNIQUE,
+      source TEXT NOT NULL,
+      category TEXT NOT NULL,
+      published_at INTEGER NOT NULL,
+      hidden_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
+  ).run();
+
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_news_items_category ON news_items(category)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_news_items_published_at ON news_items(published_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_news_items_hidden_at ON news_items(hidden_at)").run();
+}
+
 async function syncNews(request: Request, env: Env) {
   if (!isAuthorized(request, env)) return json({ ok: false, error: "News sync authorization failed." }, 401);
   if (!env.DB) return json({ ok: false, error: "D1 binding DB is not configured." }, 500);
+
+  await ensureNewsSchema(env.DB);
 
   const limit = parseLimit(request);
   const fetched = await fetchExternalNews(limit);
