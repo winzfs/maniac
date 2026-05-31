@@ -7,6 +7,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { communityBoardTopics, getEquipmentCategory } from "@/shared/data/equipment-categories";
 import { excerptFromHtml } from "@/features/boards/utils/html";
+import { UserActionMenu } from "@/features/users/components/UserActionMenu";
 
 type PublicBoard = {
   id: string;
@@ -26,6 +27,7 @@ type PublicPost = {
   category: string;
   title: string;
   body: string;
+  author_id: string;
   author_nickname: string | null;
   created_at: number;
   comment_count: number;
@@ -101,17 +103,9 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
     return state.posts.filter((post) => state.boards.some((board) => board.slug === post.board_slug && board.type === activeType));
   }, [activeType, state]);
 
-  if (!category) {
-    return <Card className="p-6 text-sm text-text-secondary">존재하지 않는 기어 카테고리입니다.</Card>;
-  }
-
-  if (state.status === "loading") {
-    return <Card className="h-48 animate-pulse bg-zinc-100" />;
-  }
-
-  if (state.status === "error") {
-    return <Card className="p-6 text-sm text-red-700">{state.message}</Card>;
-  }
+  if (!category) return <Card className="p-6 text-sm text-text-secondary">존재하지 않는 기어 카테고리입니다.</Card>;
+  if (state.status === "loading") return <Card className="h-48 animate-pulse bg-zinc-100" />;
+  if (state.status === "error") return <Card className="p-6 text-sm text-red-700">{state.message}</Card>;
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -123,9 +117,7 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <Link href={writeHref} className="shrink-0">
-            <Button>글쓰기</Button>
-          </Link>
+          <Link href={writeHref} className="shrink-0"><Button>글쓰기</Button></Link>
           <p className="text-xs font-semibold text-text-secondary">세부 카테고리는 글쓰기 화면에서 선택할 수 있어요.</p>
         </div>
 
@@ -138,17 +130,19 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
 
         <div className="grid gap-3">
           {filteredPosts.map((post) => (
-            <Link key={post.id} href={postDetailHref(post.id)}>
-              <Card className="space-y-2 p-4 transition hover:-translate-y-0.5 hover:shadow-sm">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge label={post.board_title} tone={toneForType(state.boards.find((board) => board.slug === post.board_slug)?.type)} />
-                  <span className="text-xs font-semibold text-text-secondary">{formatDate(post.created_at)} · 댓글 {post.comment_count}</span>
-                </div>
-                <h2 className="text-xl font-black tracking-[-0.04em]">{post.title}</h2>
-                <p className="line-clamp-2 text-sm leading-6 text-text-secondary">{excerptFromHtml(post.body, 140)}</p>
-                <p className="text-xs font-semibold text-text-secondary">by {post.author_nickname ?? "GearDuck"}</p>
-              </Card>
-            </Link>
+            <Card key={post.id} className="space-y-2 p-4 transition hover:-translate-y-0.5 hover:shadow-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge label={post.board_title} tone={toneForType(state.boards.find((board) => board.slug === post.board_slug)?.type)} />
+                <span className="text-xs font-semibold text-text-secondary">{formatDate(post.created_at)} · 댓글 {post.comment_count}</span>
+              </div>
+              <Link href={postDetailHref(post.id)} className="block">
+                <h2 className="text-xl font-black tracking-[-0.04em] transition hover:text-garage-orange">{post.title}</h2>
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-text-secondary">{excerptFromHtml(post.body, 140)}</p>
+              </Link>
+              <div className="pt-1">
+                <UserActionMenu userId={post.author_id} nickname={post.author_nickname} compact />
+              </div>
+            </Card>
           ))}
         </div>
 
