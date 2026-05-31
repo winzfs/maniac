@@ -12,13 +12,49 @@ export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   email: text("email").notNull(),
   nickname: text("nickname").notNull(),
+  bio: text("bio"),
   profileImageUrl: text("profile_image_url"),
+  profileImageAssetId: text("profile_image_asset_id"),
   provider: text("provider"),
+  credentialHash: text("credential_hash"),
   ...timestamps,
   ...softDelete,
 }, (table) => ({
   emailUnique: uniqueIndex("users_email_unique").on(table.email),
   nicknameIdx: index("users_nickname_idx").on(table.nickname),
+}));
+
+export const authSessions = sqliteTable("auth_sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  verifierHash: text("verifier_hash").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+  ...timestamps,
+}, (table) => ({
+  verifierHashUnique: uniqueIndex("auth_sessions_verifier_hash_unique").on(table.verifierHash),
+  userIdx: index("auth_sessions_user_idx").on(table.userId),
+  expiresIdx: index("auth_sessions_expires_idx").on(table.expiresAt),
+}));
+
+export const imageAssets = sqliteTable("image_assets", {
+  id: text("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  bucket: text("bucket"),
+  objectKey: text("object_key").notNull(),
+  publicUrl: text("public_url").notNull(),
+  purpose: text("purpose").notNull(),
+  mimeType: text("mime_type"),
+  sizeBytes: integer("size_bytes"),
+  width: integer("width"),
+  height: integer("height"),
+  ...timestamps,
+  ...softDelete,
+}, (table) => ({
+  ownerIdx: index("image_assets_owner_idx").on(table.ownerUserId, table.purpose),
+  providerKeyIdx: index("image_assets_provider_key_idx").on(table.provider, table.bucket, table.objectKey),
+  deletedIdx: index("image_assets_deleted_idx").on(table.deletedAt),
 }));
 
 export const userRoles = sqliteTable("user_roles", {
@@ -44,6 +80,7 @@ export const equipments = sqliteTable("equipments", {
   year: integer("year"),
   description: text("description"),
   mainImageUrl: text("main_image_url"),
+  mainImageAssetId: text("main_image_asset_id").references(() => imageAssets.id, { onDelete: "set null" }),
   usageMetricType: text("usage_metric_type").notNull().default("km"),
   usageMetricValue: integer("usage_metric_value"),
   visibility: text("visibility").notNull().default("private"),
@@ -199,3 +236,19 @@ export const comments = sqliteTable("comments", {
 export const reports = sqliteTable("reports", { id: text("id").primaryKey(), resourceType: text("resource_type").notNull(), resourceId: text("resource_id").notNull(), reporterId: text("reporter_id").references(() => users.id, { onDelete: "set null" }), reason: text("reason").notNull(), status: text("status").notNull().default("pending"), ...timestamps });
 export const moderationActions = sqliteTable("moderation_actions", { id: text("id").primaryKey(), reportId: text("report_id").references(() => reports.id, { onDelete: "set null" }), moderatorId: text("moderator_id").notNull().references(() => users.id, { onDelete: "cascade" }), action: text("action").notNull(), note: text("note"), ...timestamps });
 export const adminAuditLogs = sqliteTable("admin_audit_logs", { id: text("id").primaryKey(), adminUserId: text("admin_user_id").notNull().references(() => users.id, { onDelete: "cascade" }), action: text("action").notNull(), resourceType: text("resource_type").notNull(), resourceId: text("resource_id").notNull(), beforeValueJson: text("before_value_json"), afterValueJson: text("after_value_json"), reason: text("reason"), ipAddress: text("ip_address"), userAgent: text("user_agent"), createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(now) });
+
+export const newsItems = sqliteTable("news_items", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  link: text("link").notNull(),
+  source: text("source").notNull(),
+  category: text("category").notNull(),
+  publishedAt: integer("published_at", { mode: "timestamp_ms" }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull().default(now),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull().default(now),
+  hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
+}, (table) => ({
+  linkUnique: uniqueIndex("news_items_link_unique").on(table.link),
+  publishedIdx: index("news_items_published_idx").on(table.publishedAt),
+  categoryPublishedIdx: index("news_items_category_published_idx").on(table.category, table.publishedAt),
+}));
