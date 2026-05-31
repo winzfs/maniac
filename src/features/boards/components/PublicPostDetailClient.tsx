@@ -270,7 +270,6 @@ export function PublicPostDetailClient({ id }: { id: string }) {
   const category = getEquipmentCategory(post.category);
   const categoryLabel = category?.label ?? post.category;
   const categoryHref = `/explore/${post.category}/`;
-  const related = relatedPosts;
 
   return (
     <>
@@ -279,10 +278,10 @@ export function PublicPostDetailClient({ id }: { id: string }) {
       <article className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start">
         <div className="min-w-0 space-y-5">
           <Card className="space-y-6 p-5 sm:p-7">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl bg-surface px-3 py-2 text-xs text-text-secondary">
               <Badge label={post.board_title} tone={toneForBoard(post.board_type)} />
-              <UserActionMenu userId={post.author_id} nickname={post.author_nickname} />
-              <span>·</span><span>{formatDate(post.created_at)}</span><span>·</span><span>{comments.length} comments</span>
+              <UserActionMenu userId={post.author_id} nickname={post.author_nickname} compact />
+              <span>·</span><span>{formatDate(post.created_at)}</span><span>·</span><span>댓글 {comments.length}</span>
             </div>
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -292,20 +291,6 @@ export function PublicPostDetailClient({ id }: { id: string }) {
             {ownerStatus ? <p className="rounded-2xl bg-surface p-3 text-sm leading-6 text-text-secondary">{ownerStatus}</p> : null}
             <div className="post-body text-sm leading-7 text-text-secondary sm:text-base sm:leading-8 [&_a]:font-bold [&_a]:text-garage-orange [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-garage-orange [&_blockquote]:bg-surface [&_blockquote]:py-2 [&_blockquote]:pl-4 [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-2xl [&_h2]:font-black [&_img]:my-5 [&_img]:max-w-full [&_img]:rounded-2xl [&_li]:ml-5 [&_li]:list-disc [&_p]:my-3" dangerouslySetInnerHTML={{ __html: sanitizePostHtml(post.body) }} />
           </Card>
-
-          {related.length > 0 ? (
-            <Card className="space-y-3 p-5 sm:p-6">
-              <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black tracking-[-0.04em]">같은 {categoryLabel} 글</h2><Link className="text-sm font-black text-orange-600" href={categoryHref}>목록으로</Link></div>
-              <div className="grid gap-2">
-                {related.map((item) => (
-                  <Link key={item.id} href={postDetailHref(item.id)} className="rounded-2xl border border-border bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-sm">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary"><Badge label={item.board_title} tone="muted" /><span>댓글 {item.comment_count}</span></div>
-                    <p className="mt-1 line-clamp-1 text-sm font-black text-text-primary">{item.title}</p>
-                  </Link>
-                ))}
-              </div>
-            </Card>
-          ) : null}
 
           <Card className="space-y-5 p-5 sm:p-6">
             <div><h2 className="text-xl font-black tracking-[-0.04em]">댓글</h2><p className="mt-1 text-sm leading-6 text-text-secondary">달린 댓글을 확인하고 새 댓글을 남겨보세요.</p></div>
@@ -324,16 +309,37 @@ export function PublicPostDetailClient({ id }: { id: string }) {
                 );
               })}
             </div>
-            <form onSubmit={handleCommentSubmit} className="space-y-3 border-t border-border pt-4">
-              <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} className="min-h-20 w-full rounded-2xl border border-zinc-300 bg-white p-4 text-sm leading-6 outline-none transition focus:border-graphite focus:bg-white focus:ring-2 focus:ring-graphite/10" placeholder="댓글을 입력하세요" maxLength={1000} />
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-text-secondary">{commentStatus || `${commentBody.length}/1000`}</p><Button type="submit" disabled={submitting}>{submitting ? "저장 중..." : "댓글 저장"}</Button></div>
-            </form>
+
+            {me ? (
+              <form onSubmit={handleCommentSubmit} className="space-y-3 border-t border-border pt-4">
+                <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} className="min-h-20 w-full rounded-2xl border border-zinc-300 bg-white p-4 text-sm leading-6 outline-none transition focus:border-graphite focus:bg-white focus:ring-2 focus:ring-graphite/10" placeholder="댓글을 입력하세요" maxLength={1000} />
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-text-secondary">{commentStatus || `${commentBody.length}/1000`}</p><Button type="submit" disabled={submitting}>{submitting ? "저장 중..." : "댓글 저장"}</Button></div>
+              </form>
+            ) : (
+              <div className="rounded-2xl border border-border bg-surface p-4 text-sm leading-6 text-text-secondary">
+                댓글을 작성하려면 로그인해 주세요.
+                <div className="mt-3 flex flex-wrap gap-2"><Link href="/login/"><Button size="sm">로그인</Button></Link><Link href="/signup/"><Button size="sm" variant="secondary">회원가입</Button></Link></div>
+              </div>
+            )}
           </Card>
+
+          {relatedPosts.length > 0 ? (
+            <Card className="space-y-3 p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black tracking-[-0.04em]">같은 {categoryLabel} 글</h2><Link className="text-sm font-black text-orange-600" href={categoryHref}>더보기</Link></div>
+              <div className="grid gap-2">
+                {relatedPosts.map((item) => (
+                  <Link key={item.id} href={postDetailHref(item.id)} className="rounded-2xl border border-border bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary"><Badge label={item.board_title} tone="muted" /><span>댓글 {item.comment_count}</span></div>
+                    <p className="mt-1 line-clamp-1 text-sm font-black text-text-primary">{item.title}</p>
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          ) : null}
         </div>
 
-        <aside className="min-w-0 space-y-3">
-          <Link href={categoryHref} className="inline-flex w-full items-center justify-center rounded-full bg-graphite px-5 py-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">{categoryLabel}로 돌아가기</Link>
-          <Link href={categoryHref} className="inline-flex w-full items-center justify-center rounded-full border border-border bg-white px-5 py-4 text-sm font-black text-text-primary shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">목록으로</Link>
+        <aside className="min-w-0">
+          <Link href={categoryHref} className="inline-flex w-full items-center justify-center rounded-full bg-graphite px-5 py-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">{categoryLabel} 글 목록으로</Link>
         </aside>
       </article>
     </>
