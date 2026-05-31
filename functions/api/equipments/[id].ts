@@ -163,7 +163,4 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   return jsonResponse({ ok: true, id });
 };
 
-export const onRequest: PagesFunction<Env> = async ({ request }) => {
-  if (request.method === "OPTIONS") return allowMethods(["GET", "PATCH", "DELETE", "OPTIONS"]);
-  return errorResponse("Method not allowed.", 405);
-};
+export const onRequestOptions = () => allowMethods(["GET", "PATCH", "DELETE", "OPTIONS"]);
