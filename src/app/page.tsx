@@ -12,7 +12,7 @@ export default function HomePage() {
       <Link href="/" aria-label="홈으로 이동" className="inline-flex items-center justify-center">
         <img src="/img/logo.png" alt="GearDuck" className="h-24 w-auto sm:h-28 lg:h-32" />
       </Link>
-      <div className="absolute right-0 top-1/2 -translate-y-1/2">
+      <div className="absolute right-0 top-[calc(50%-1.5rem)] sm:top-[calc(50%-1.75rem)]">
         <MenuButton />
       </div>
     </header>
