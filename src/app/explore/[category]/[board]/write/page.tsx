@@ -16,7 +16,7 @@ export default async function BoardWritePage({ params }: { params: Promise<{ cat
   return (
     <main className="container-shell max-w-full space-y-8 overflow-x-hidden py-5 sm:py-8 lg:space-y-12">
       <PageHeader
-        breadcrumbs={[{ label: "홈", href: "/" }, { label: "장비 둘러보기", href: "/explore/" }, { label: category.label, href: `/explore/${category.slug}/` }, { label: board.title, href: `/explore/${category.slug}/${board.slug}/` }, { label: "글쓰기" }]}
+        breadcrumbs={[{ label: "홈", href: "/" }, { label: category.label, href: `/explore/${category.slug}/` }]}
         title="글쓰기"
         description="게시글은 D1 posts 테이블에 저장됩니다."
       />
