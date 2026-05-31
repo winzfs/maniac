@@ -12,6 +12,14 @@ type NewsRow = {
   image_url: string | null;
 };
 
+type NewsPage = {
+  rows: NewsRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 const categoryLabels = new Map([
   ["motorcycle", "바이크"],
   ["pc", "PC"],
@@ -36,6 +44,12 @@ function parseLimit(request: Request) {
   const value = Number(new URL(request.url).searchParams.get("limit") ?? 12);
   if (!Number.isFinite(value)) return 12;
   return Math.min(Math.max(Math.trunc(value), 1), 50);
+}
+
+function parsePage(request: Request) {
+  const value = Number(new URL(request.url).searchParams.get("page") ?? 1);
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(Math.trunc(value), 1);
 }
 
 function parseCategory(request: Request) {
@@ -85,8 +99,23 @@ async function ensureReadableNewsSchema(db: D1Database) {
   }
 }
 
-async function readCachedNews(db: D1Database, limit: number, category: string | null) {
+async function countCachedNews(db: D1Database, category: string | null) {
+  const query = category
+    ? `SELECT COUNT(*) AS count FROM news_items WHERE hidden_at IS NULL AND category = ?`
+    : `SELECT COUNT(*) AS count FROM news_items WHERE hidden_at IS NULL`;
+  const row = category
+    ? await db.prepare(query).bind(category).first<{ count: number }>()
+    : await db.prepare(query).first<{ count: number }>();
+  return row?.count ?? 0;
+}
+
+async function readCachedNews(db: D1Database, limit: number, page: number, category: string | null): Promise<NewsPage> {
   await ensureReadableNewsSchema(db);
+
+  const total = await countCachedNews(db, category);
+  const totalPages = Math.max(Math.ceil(total / limit), 1);
+  const normalizedPage = Math.min(page, totalPages);
+  const offset = (normalizedPage - 1) * limit;
 
   if (category) {
     const rows = await db.prepare(
@@ -94,9 +123,9 @@ async function readCachedNews(db: D1Database, limit: number, category: string | 
        FROM news_items
        WHERE hidden_at IS NULL AND category = ?
        ORDER BY published_at DESC
-       LIMIT ?`,
-    ).bind(category, limit).all<NewsRow>();
-    return rows.results ?? [];
+       LIMIT ? OFFSET ?`,
+    ).bind(category, limit, offset).all<NewsRow>();
+    return { rows: rows.results ?? [], total, page: normalizedPage, pageSize: limit, totalPages };
   }
 
   const rows = await db.prepare(
@@ -104,21 +133,34 @@ async function readCachedNews(db: D1Database, limit: number, category: string | 
      FROM news_items
      WHERE hidden_at IS NULL
      ORDER BY published_at DESC
-     LIMIT ?`,
-  ).bind(limit).all<NewsRow>();
-  return rows.results ?? [];
+     LIMIT ? OFFSET ?`,
+  ).bind(limit, offset).all<NewsRow>();
+  return { rows: rows.results ?? [], total, page: normalizedPage, pageSize: limit, totalPages };
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const limit = parseLimit(request);
+  const page = parsePage(request);
   const category = parseCategory(request);
 
-  if (!env.DB) return json({ ok: true, source: "db", category, items: [], errors: ["D1 binding DB is not configured."] });
+  if (!env.DB) return json({ ok: true, source: "db", category, page, pageSize: limit, total: 0, totalPages: 1, items: [], errors: ["D1 binding DB is not configured."] });
 
   try {
-    const cached = await readCachedNews(env.DB, limit, category);
-    return json({ ok: true, source: "db", category, items: cached.map(dbItem), errors: [] });
+    const cached = await readCachedNews(env.DB, limit, page, category);
+    return json({
+      ok: true,
+      source: "db",
+      category,
+      page: cached.page,
+      pageSize: cached.pageSize,
+      total: cached.total,
+      totalPages: cached.totalPages,
+      hasPreviousPage: cached.page > 1,
+      hasNextPage: cached.page < cached.totalPages,
+      items: cached.rows.map(dbItem),
+      errors: [],
+    });
   } catch (error) {
-    return json({ ok: true, source: "db", category, items: [], errors: [error instanceof Error ? error.message : "news_items table is not ready"] });
+    return json({ ok: true, source: "db", category, page, pageSize: limit, total: 0, totalPages: 1, items: [], errors: [error instanceof Error ? error.message : "news_items table is not ready"] });
   }
 };
