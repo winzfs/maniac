@@ -32,8 +32,8 @@ type EquipmentListRow = {
   total_maintenance_cost: number | null;
 };
 
-function publicViewPath(slug: string) {
-  return `/garage/view/?slug=${encodeURIComponent(slug)}`;
+function publicViewPath(id: string) {
+  return `/garage/view/?id=${encodeURIComponent(id)}`;
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
@@ -97,7 +97,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return jsonResponse({
       ok: true,
       equipment: result,
-      nextPath: publicViewPath(result.slug),
+      nextPath: publicViewPath(result.id),
       authMode: "session",
     }, { status: 201 });
   } catch (error) {
