@@ -199,10 +199,10 @@ async function fetchFeedNews(feed: NewsFeed, perCategory: number) {
   return { items: [], errors };
 }
 
-export async function fetchExternalNews(limit = 8) {
+export async function fetchExternalNews(limit = 8, feeds: NewsFeed[] = newsFeeds) {
   const perCategory = Math.min(Math.max(Math.trunc(limit), 1), 20);
 
-  const results = await Promise.all(newsFeeds.map((feed) => fetchFeedNews(feed, perCategory)));
+  const results = await Promise.all(feeds.map((feed) => fetchFeedNews(feed, perCategory)));
 
   const items = uniqueByLink(results
     .flatMap((result) => result.items)
