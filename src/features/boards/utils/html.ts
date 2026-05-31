@@ -30,7 +30,7 @@ function sanitizeAttributes(tagName: string, rawAttributes: string) {
   for (const match of rawAttributes.matchAll(attributePattern)) {
     const name = match[1]?.toLowerCase() ?? "";
     const rawValue = match[2] ?? "";
-    const value = rawValue.replace(/^[']|[']$/g, "").replace(/^["]|["]$/g, "");
+    const value = rawValue.replace(/^["']|["']$/g, "");
 
     if (name.startsWith("on") || name === "style") continue;
 
