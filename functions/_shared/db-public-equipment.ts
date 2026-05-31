@@ -41,9 +41,11 @@ export type PublicPartRow = {
   visibility: string;
 };
 
+const publicEquipmentSelect = "id, user_id, category, brand, model, nickname, slug, year, description, main_image_url, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at";
+
 export async function findPublicEquipment(db: D1Database, slug: string) {
   return db.prepare(
-    `SELECT id, user_id, category, brand, model, nickname, slug, year, description, main_image_url, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at
+    `SELECT ${publicEquipmentSelect}
      FROM equipments
      WHERE slug = ?
        AND deleted_at IS NULL
@@ -54,11 +56,23 @@ export async function findPublicEquipment(db: D1Database, slug: string) {
   ).bind(slug).first<PublicEquipmentRow>();
 }
 
+export async function findPublicEquipmentById(db: D1Database, id: string) {
+  return db.prepare(
+    `SELECT ${publicEquipmentSelect}
+     FROM equipments
+     WHERE id = ?
+       AND deleted_at IS NULL
+       AND visibility = 'public'
+       AND moderation_status = 'normal'
+     LIMIT 1`,
+  ).bind(id).first<PublicEquipmentRow>();
+}
+
 export async function findViewableEquipment(db: D1Database, slug: string, viewerUserId?: string | null) {
   if (!viewerUserId) return findPublicEquipment(db, slug);
 
   return db.prepare(
-    `SELECT id, user_id, category, brand, model, nickname, slug, year, description, main_image_url, usage_metric_type, usage_metric_value, visibility, moderation_status, created_at
+    `SELECT ${publicEquipmentSelect}
      FROM equipments
      WHERE slug = ?
        AND deleted_at IS NULL
@@ -69,6 +83,28 @@ export async function findViewableEquipment(db: D1Database, slug: string, viewer
      ORDER BY CASE WHEN user_id = ? THEN 0 ELSE 1 END, created_at DESC
      LIMIT 1`,
   ).bind(slug, viewerUserId, viewerUserId).first<PublicEquipmentRow>();
+}
+
+export async function findViewableEquipmentById(db: D1Database, id: string, viewerUserId?: string | null) {
+  if (!viewerUserId) return findPublicEquipmentById(db, id);
+
+  return db.prepare(
+    `SELECT ${publicEquipmentSelect}
+     FROM equipments
+     WHERE id = ?
+       AND deleted_at IS NULL
+       AND (
+         (visibility = 'public' AND moderation_status = 'normal')
+         OR user_id = ?
+       )
+     LIMIT 1`,
+  ).bind(id, viewerUserId).first<PublicEquipmentRow>();
+}
+
+export async function findViewableEquipmentByIdentifier(db: D1Database, identifier: string, viewerUserId?: string | null) {
+  const byId = await findViewableEquipmentById(db, identifier, viewerUserId);
+  if (byId) return byId;
+  return findViewableEquipment(db, identifier, viewerUserId);
 }
 
 export async function listPublicEquipmentLogs(db: D1Database, equipmentId: string, viewerUserId?: string | null) {
