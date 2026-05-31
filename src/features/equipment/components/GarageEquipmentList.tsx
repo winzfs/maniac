@@ -60,8 +60,8 @@ function formatVisibility(value: string) {
   return value;
 }
 
-function publicViewHref(slug: string) {
-  return `/garage/view/?slug=${encodeURIComponent(slug)}`;
+function publicViewHref(id: string) {
+  return `/garage/view/?id=${encodeURIComponent(id)}`;
 }
 
 function LoginPrompt({ message }: { message: string }) {
@@ -156,7 +156,7 @@ export function GarageEquipmentList() {
             </div>
 
             <div className="grid grid-cols-2 gap-1.5 sm:mt-auto sm:gap-2">
-              <Link href={publicViewHref(equipment.slug)}><Button className="w-full px-2 py-2 text-xs sm:text-sm">자랑 보기</Button></Link>
+              <Link href={publicViewHref(equipment.id)}><Button className="w-full px-2 py-2 text-xs sm:text-sm">자랑 보기</Button></Link>
               <Link href={`/garage/edit/?id=${equipment.id}`}><Button className="w-full px-2 py-2 text-xs sm:text-sm" variant="secondary">관리</Button></Link>
             </div>
           </div>
