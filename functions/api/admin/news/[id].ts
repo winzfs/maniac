@@ -14,7 +14,8 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   const id = paramValue(params, "id");
   if (!id) return errorResponse("뉴스 id가 필요합니다.", 400);
 
-  await env.DB.prepare("DELETE FROM news_items WHERE id = ?").bind(id).run();
+  const now = Date.now();
+  await env.DB.prepare("UPDATE news_items SET hidden_at = ?, updated_at = ? WHERE id = ?").bind(now, now, id).run();
 
   return jsonResponse({ ok: true });
 };
