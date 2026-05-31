@@ -99,10 +99,28 @@ export function ExploreBoardsClient() {
     <div className="space-y-8 lg:space-y-10">
       <section className="space-y-4">
         <SectionHeader
-          title="덕질 게시판"
-          description="먼저 이야기할 주제를 고르고, 바이크·PC·키보드 같은 기어 카테고리로 덕질 기록을 필터링하세요."
+          title="기어 게시판"
+          description="뉴스, 자랑, 질문, 부품 리뷰, 거래 게시판을 같은 방식으로 둘러보세요."
         />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <Link href="/explore/news/">
+            <Card className="flex h-full flex-col gap-4 p-4 transition hover:-translate-y-0.5 hover:shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <Badge label="뉴스" tone="orange" />
+                <span className="text-xs font-semibold text-text-secondary">external</span>
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-lg font-black tracking-[-0.03em]">장비 뉴스</h2>
+                <p className="line-clamp-3 text-sm leading-6 text-text-secondary">바이크, PC, 키보드, 카메라 등 장비 관련 외부 뉴스를 카테고리별로 모아봅니다.</p>
+              </div>
+              <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
+                {equipmentCategories.slice(0, 4).map((category) => (
+                  <span key={category.slug} className="rounded-full bg-background px-2.5 py-1 text-[0.7rem] font-bold text-text-secondary">{category.label}</span>
+                ))}
+              </div>
+            </Card>
+          </Link>
+
           {communityBoardTopics.map((topic) => {
             const stat = topicStats.get(topic.slug);
             const defaultCategory = equipmentCategories.find((category) => stat?.categories.has(category.slug)) ?? equipmentCategories[0];
@@ -132,7 +150,7 @@ export function ExploreBoardsClient() {
       <section className="space-y-4">
         <SectionHeader
           title="기어 카테고리"
-          description="특정 장비군만 보고 싶다면 카테고리로 들어가서 모든 덕질 글을 한 번에 확인하세요."
+          description="특정 장비군만 보고 싶다면 카테고리로 들어가서 모든 게시글을 한 번에 확인하세요."
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {equipmentCategories.map((category) => (
