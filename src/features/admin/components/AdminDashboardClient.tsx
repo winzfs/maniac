@@ -89,6 +89,10 @@ function textToQueries(value: string) {
     .slice(0, 10);
 }
 
+function draftMapFromFeeds(feeds: NewsFeedSetting[]) {
+  return Object.fromEntries(feeds.map((feed) => [feed.category, queriesToText(feed.queries)]));
+}
+
 async function readOverview() {
   const response = await fetch("/api/admin/overview?limit=50", { cache: "no-store", credentials: "same-origin" });
   const data = (await response.json().catch(() => null)) as OverviewResponse | null;
@@ -134,6 +138,7 @@ export function AdminDashboardClient() {
   const [status, setStatus] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [feeds, setFeeds] = useState<NewsFeedSetting[]>([]);
+  const [feedDrafts, setFeedDrafts] = useState<Record<string, string>>({});
   const [feedsLoaded, setFeedsLoaded] = useState(false);
   const [feedsSaving, setFeedsSaving] = useState(false);
 
@@ -153,6 +158,7 @@ export function AdminDashboardClient() {
     try {
       const data = await readNewsFeeds();
       setFeeds(data);
+      setFeedDrafts(draftMapFromFeeds(data));
       setFeedsLoaded(true);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "뉴스 키워드를 불러오지 못했습니다.");
@@ -191,16 +197,21 @@ export function AdminDashboardClient() {
     }
   }
 
-  function updateFeedQueries(category: string, value: string) {
-    setFeeds((current) => current.map((feed) => feed.category === category ? { ...feed, queries: textToQueries(value) } : feed));
+  function updateFeedDraft(category: string, value: string) {
+    setFeedDrafts((current) => ({ ...current, [category]: value }));
   }
 
   async function handleSaveFeeds() {
     setFeedsSaving(true);
     setStatus("뉴스 키워드를 저장 중입니다...");
     try {
-      const saved = await saveNewsFeeds(feeds);
+      const feedsToSave = feeds.map((feed) => ({
+        ...feed,
+        queries: textToQueries(feedDrafts[feed.category] ?? queriesToText(feed.queries)),
+      }));
+      const saved = await saveNewsFeeds(feedsToSave);
       setFeeds(saved);
+      setFeedDrafts(draftMapFromFeeds(saved));
       setFeedsLoaded(true);
       setStatus("뉴스 키워드가 저장되었습니다. 다음 뉴스 동기화부터 적용됩니다.");
     } catch (error) {
@@ -331,8 +342,8 @@ export function AdminDashboardClient() {
                     <span className="text-xs text-text-secondary">최대 10개</span>
                   </div>
                   <textarea
-                    value={queriesToText(feed.queries)}
-                    onChange={(event) => updateFeedQueries(feed.category, event.target.value)}
+                    value={feedDrafts[feed.category] ?? queriesToText(feed.queries)}
+                    onChange={(event) => updateFeedDraft(feed.category, event.target.value)}
                     rows={3}
                     className="w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm font-semibold outline-none focus:border-orange-500"
                     placeholder="검색어를 쉼표 또는 줄바꿈으로 입력"
