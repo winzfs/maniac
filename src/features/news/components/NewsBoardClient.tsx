@@ -128,16 +128,18 @@ export function NewsBoardClient() {
         <SectionHeader title="뉴스 글" description="카드를 누르면 원문 기사로 이동합니다." />
 
         {state.status === "loading" ? (
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Card key={index} className="min-h-64 space-y-4 p-5">
-                <div className="aspect-video w-full animate-pulse rounded-2xl bg-zinc-200" />
-                <div className="h-5 w-24 animate-pulse rounded-full bg-zinc-200" />
-                <div className="space-y-2">
-                  <div className="h-5 w-11/12 animate-pulse rounded-full bg-zinc-200" />
-                  <div className="h-5 w-9/12 animate-pulse rounded-full bg-zinc-200" />
+              <Card key={index} className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 p-3 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                <div className="aspect-square w-full animate-pulse rounded-2xl bg-zinc-200" />
+                <div className="min-w-0 space-y-3 py-1">
+                  <div className="h-5 w-24 animate-pulse rounded-full bg-zinc-200" />
+                  <div className="space-y-2">
+                    <div className="h-5 w-11/12 animate-pulse rounded-full bg-zinc-200" />
+                    <div className="h-5 w-8/12 animate-pulse rounded-full bg-zinc-200" />
+                  </div>
+                  <div className="h-4 w-32 animate-pulse rounded-full bg-zinc-200" />
                 </div>
-                <div className="h-4 w-32 animate-pulse rounded-full bg-zinc-200" />
               </Card>
             ))}
           </div>
@@ -148,7 +150,7 @@ export function NewsBoardClient() {
         {state.status === "success" && state.items.length === 0 ? <Card className="mt-5 p-6 text-sm text-text-secondary">표시할 뉴스가 없습니다.</Card> : null}
 
         {state.status === "success" && state.items.length > 0 ? (
-          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {state.items.map((item, index) => {
               const href = text(item.link, "#");
               const title = text(item.title, "제목 없는 뉴스");
@@ -159,21 +161,19 @@ export function NewsBoardClient() {
 
               return (
                 <a key={itemKey(item, index)} href={href} target={disabled ? undefined : "_blank"} rel={disabled ? undefined : "noreferrer"} className="block">
-                  <Card className="flex h-full min-h-72 flex-col justify-between space-y-4 overflow-hidden p-0 transition hover:-translate-y-0.5 hover:shadow-sm">
+                  <Card className="grid h-full grid-cols-[5.5rem_minmax(0,1fr)] gap-3 p-3 transition hover:-translate-y-0.5 hover:shadow-sm sm:grid-cols-[7rem_minmax(0,1fr)]">
                     {thumbnail ? (
-                      <img src={thumbnail} alt="" className="aspect-video w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                      <img src={thumbnail} alt="" className="aspect-square h-full w-full rounded-2xl object-cover" loading="lazy" referrerPolicy="no-referrer" />
                     ) : (
-                      <div className="flex aspect-video w-full items-center justify-center bg-background text-sm font-black text-text-secondary">{category}</div>
+                      <div className="flex aspect-square h-full w-full items-center justify-center rounded-2xl bg-background text-xs font-black text-text-secondary">{category}</div>
                     )}
-                    <div className="flex flex-1 flex-col justify-between gap-4 p-5 pt-0">
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge label={category} tone="muted" />
-                          <span className="text-xs font-semibold text-text-secondary">{formatDate(item.publishedAt)}</span>
-                        </div>
-                        <h3 className="line-clamp-3 text-lg font-black leading-snug tracking-[-0.03em] text-text-primary">{title}</h3>
+                    <div className="min-w-0 space-y-2 py-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge label={category} tone="muted" />
+                        <span className="text-xs font-semibold text-text-secondary">{formatDate(item.publishedAt)}</span>
                       </div>
-                      <div className="flex items-center justify-between gap-3 border-t border-border pt-3 text-xs font-semibold text-text-secondary">
+                      <h3 className="line-clamp-2 font-bold leading-tight text-text-primary">{title}</h3>
+                      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-text-secondary">
                         <span className="truncate">{source}</span>
                         <span className="shrink-0 text-orange-600">{disabled ? "링크 없음" : "원문 보기 →"}</span>
                       </div>
