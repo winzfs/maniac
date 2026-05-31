@@ -1,7 +1,7 @@
 export type NewsFeed = {
   category: string;
   label: string;
-  query: string;
+  queries: string[];
 };
 
 export type ExternalNewsItem = {
@@ -15,13 +15,13 @@ export type ExternalNewsItem = {
 };
 
 export const newsFeeds: NewsFeed[] = [
-  { category: "motorcycle", label: "바이크", query: "Kawasaki OR Yamaha OR Honda motorcycle" },
-  { category: "pc", label: "PC", query: "Ryzen OR GeForce OR RTX PC hardware" },
-  { category: "keyboard", label: "키보드", query: "mechanical keyboard OR Keychron OR Wooting" },
-  { category: "bicycle", label: "자전거", query: "Trek bicycle OR Shimano OR road bike" },
-  { category: "camera", label: "카메라", query: "Canon OR Sony Alpha OR Fujifilm camera" },
-  { category: "camping", label: "캠핑", query: "camping gear OR Helinox OR MSR" },
-  { category: "audio", label: "오디오", query: "Sony headphones OR Sennheiser OR audio gear" },
+  { category: "motorcycle", label: "바이크", queries: ["오토바이", "바이크", "motorcycle"] },
+  { category: "pc", label: "PC", queries: ["그래픽카드", "PC 하드웨어", "GeForce"] },
+  { category: "keyboard", label: "키보드", queries: ["기계식 키보드", "키보드", "mechanical keyboard"] },
+  { category: "bicycle", label: "자전거", queries: ["자전거", "로드바이크", "bicycle"] },
+  { category: "camera", label: "카메라", queries: ["카메라", "미러리스", "camera"] },
+  { category: "camping", label: "캠핑", queries: ["캠핑 장비", "캠핑", "camping gear"] },
+  { category: "audio", label: "오디오", queries: ["헤드폰", "이어폰", "오디오"] },
 ];
 
 function decodeXml(value: string) {
@@ -84,30 +84,48 @@ function parseItems(xml: string, feed: NewsFeed, maxItems: number): ExternalNews
   }).filter((item) => item.title && item.link);
 }
 
-export async function fetchExternalNews(limit = 12) {
-  const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 50);
-  const perFeed = Math.max(2, Math.ceil(safeLimit / newsFeeds.length));
+function uniqueByLink(items: ExternalNewsItem[]) {
+  const seen = new Set<string>();
+  const unique: ExternalNewsItem[] = [];
+  for (const item of items) {
+    if (seen.has(item.link)) continue;
+    seen.add(item.link);
+    unique.push(item);
+  }
+  return unique;
+}
 
-  const results = await Promise.allSettled(
-    newsFeeds.map(async (feed) => {
-      const response = await fetch(rssUrl(feed.query), {
-        headers: { "user-agent": "ManiacGarage/1.0" },
+async function fetchFeedNews(feed: NewsFeed, perCategory: number) {
+  const errors: string[] = [];
+
+  for (const query of feed.queries) {
+    try {
+      const response = await fetch(rssUrl(query), {
+        headers: { "user-agent": "GearDuck/1.0" },
         cf: { cacheTtl: 900, cacheEverything: true },
       });
       if (!response.ok) throw new Error(`${feed.category} news fetch failed: ${response.status}`);
       const xml = await response.text();
-      return parseItems(xml, feed, perFeed);
-    }),
-  );
+      const items = parseItems(xml, feed, perCategory);
+      if (items.length > 0) return { items, errors };
+    } catch (error) {
+      errors.push(error instanceof Error ? `${feed.category} ${query}: ${error.message}` : `${feed.category} ${query}: ${String(error)}`);
+    }
+  }
 
-  const items = results
-    .flatMap((result) => result.status === "fulfilled" ? result.value : [])
-    .sort((a, b) => b.publishedAtMs - a.publishedAtMs)
-    .slice(0, safeLimit);
+  return { items: [], errors };
+}
 
-  const errors = results
-    .filter((result): result is PromiseRejectedResult => result.status === "rejected")
-    .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason));
+export async function fetchExternalNews(limit = 8) {
+  const perCategory = Math.min(Math.max(Math.trunc(limit), 1), 20);
+
+  const results = await Promise.all(newsFeeds.map((feed) => fetchFeedNews(feed, perCategory)));
+
+  const items = uniqueByLink(results
+    .flatMap((result) => result.items)
+    .sort((a, b) => b.publishedAtMs - a.publishedAtMs));
+
+  const errors = results.flatMap((result) => result.errors);
 
   return { items, errors };
 }
