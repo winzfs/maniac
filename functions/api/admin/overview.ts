@@ -38,10 +38,16 @@ type AdminNewsRow = {
   image_url: string | null;
 };
 
-function safeLimit(value: string | null) {
-  const parsed = Number(value ?? 30);
-  if (!Number.isFinite(parsed)) return 30;
-  return Math.min(Math.max(Math.trunc(parsed), 1), 100);
+function safeLimit(value: string | null, fallback = 30, max = 100) {
+  const parsed = Number(value ?? fallback);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(Math.max(Math.trunc(parsed), 1), max);
+}
+
+function safePage(value: string | null) {
+  const parsed = Number(value ?? 1);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.max(Math.trunc(parsed), 1);
 }
 
 async function listPosts(db: D1Database, limit: number) {
@@ -89,15 +95,31 @@ async function listComments(db: D1Database, limit: number) {
   return rows.results ?? [];
 }
 
-async function listNews(db: D1Database, limit: number) {
+async function countNews(db: D1Database) {
+  const row = await db.prepare("SELECT COUNT(*) AS count FROM news_items WHERE hidden_at IS NULL").first<{ count: number }>();
+  return row?.count ?? 0;
+}
+
+async function listNews(db: D1Database, limit: number, page: number) {
+  const total = await countNews(db);
+  const totalPages = Math.max(Math.ceil(total / limit), 1);
+  const normalizedPage = Math.min(page, totalPages);
+  const offset = (normalizedPage - 1) * limit;
   const rows = await db.prepare(
     `SELECT id, title, link, source, category, published_at, image_url
      FROM news_items
      WHERE hidden_at IS NULL
      ORDER BY published_at DESC
-     LIMIT ?`,
-  ).bind(limit).all<AdminNewsRow>();
-  return rows.results ?? [];
+     LIMIT ? OFFSET ?`,
+  ).bind(limit, offset).all<AdminNewsRow>();
+
+  return {
+    news: rows.results ?? [],
+    page: normalizedPage,
+    pageSize: limit,
+    total,
+    totalPages,
+  };
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
@@ -106,16 +128,33 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const auth = await requireAdminUser(request, env);
   if (auth.response) return auth.response;
 
-  const limit = safeLimit(new URL(request.url).searchParams.get("limit"));
+  const url = new URL(request.url);
+  const limit = safeLimit(url.searchParams.get("limit"));
+  const newsLimit = safeLimit(url.searchParams.get("newsLimit"), 12, 50);
+  const newsPage = safePage(url.searchParams.get("newsPage"));
 
   try {
-    const [posts, comments, news] = await Promise.all([
+    const [posts, comments, newsPageData] = await Promise.all([
       listPosts(env.DB, limit),
       listComments(env.DB, limit),
-      listNews(env.DB, limit),
+      listNews(env.DB, newsLimit, newsPage),
     ]);
 
-    return jsonResponse({ ok: true, user: auth.user, posts, comments, news });
+    return jsonResponse({
+      ok: true,
+      user: auth.user,
+      posts,
+      comments,
+      news: newsPageData.news,
+      newsPagination: {
+        page: newsPageData.page,
+        pageSize: newsPageData.pageSize,
+        total: newsPageData.total,
+        totalPages: newsPageData.totalPages,
+        hasPreviousPage: newsPageData.page > 1,
+        hasNextPage: newsPageData.page < newsPageData.totalPages,
+      },
+    });
   } catch (error) {
     return errorResponse(error instanceof Error ? error.message : "관리자 데이터를 불러오지 못했습니다.", 500);
   }
