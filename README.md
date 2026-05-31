@@ -47,7 +47,8 @@ provider 추상화 image_assets ✅ R2 이전 가능 구조
 D1 garage schema self-healing ✅
 홈 콘텐츠 피드화 ✅
 홈 히어로 내 장비 카드 ✅
-홈 상단 중앙 로고/사이드 네비게이션 ✅
+홈 상단 중앙 로고/오른쪽 사이드 네비게이션 ✅
+공개 장비/게시글/뉴스 통합 검색 ✅ /search/
 샘플 콘텐츠 seed endpoint ✅
 개발용 /api/dev/* endpoint 보호 ✅
 R2 직접 업로드 ❌ 보류
