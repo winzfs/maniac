@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/shared/components/ui/Badge";
@@ -270,7 +270,7 @@ export function PublicPostDetailClient({ id }: { id: string }) {
   const category = getEquipmentCategory(post.category);
   const categoryLabel = category?.label ?? post.category;
   const categoryHref = `/explore/${post.category}/`;
-  const related = useMemo(() => relatedPosts, [relatedPosts]);
+  const related = relatedPosts;
 
   return (
     <>
@@ -295,10 +295,7 @@ export function PublicPostDetailClient({ id }: { id: string }) {
 
           {related.length > 0 ? (
             <Card className="space-y-3 p-5 sm:p-6">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xl font-black tracking-[-0.04em]">같은 {categoryLabel} 글</h2>
-                <Link className="text-sm font-black text-orange-600" href={categoryHref}>목록으로</Link>
-              </div>
+              <div className="flex items-center justify-between gap-3"><h2 className="text-xl font-black tracking-[-0.04em]">같은 {categoryLabel} 글</h2><Link className="text-sm font-black text-orange-600" href={categoryHref}>목록으로</Link></div>
               <div className="grid gap-2">
                 {related.map((item) => (
                   <Link key={item.id} href={postDetailHref(item.id)} className="rounded-2xl border border-border bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-sm">
