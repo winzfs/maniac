@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/shared/components/ui/Badge";
@@ -9,6 +9,7 @@ import { Card } from "@/shared/components/ui/Card";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
 import { getEquipmentCategory } from "@/shared/data/equipment-categories";
 import { sanitizePostHtml } from "@/features/boards/utils/html";
+import { UserActionMenu } from "@/features/users/components/UserActionMenu";
 
 const SITE_ORIGIN = "https://maniac-c7d.pages.dev";
 
@@ -39,6 +40,16 @@ type PublicComment = {
   created_at: number;
 };
 
+type RelatedPost = {
+  id: string;
+  board_title: string;
+  title: string;
+  author_id: string;
+  author_nickname: string | null;
+  created_at: number;
+  comment_count: number;
+};
+
 type State =
   | { status: "loading" }
   | { status: "ready"; post: PublicPost; comments: PublicComment[] }
@@ -55,6 +66,13 @@ async function readPost(id: string) {
   const data = await response.json() as { ok: true; post: PublicPost; comments: PublicComment[] } | { ok: false; error?: string };
   if (!response.ok || !data.ok) throw new Error(data.ok === false ? data.error ?? "게시글을 불러오지 못했습니다." : "게시글을 불러오지 못했습니다.");
   return data;
+}
+
+async function readRelatedPosts(category: string) {
+  const response = await fetch(`/api/public/posts?category=${encodeURIComponent(category)}&limit=8`, { cache: "no-store" });
+  const data = await response.json().catch(() => null) as { ok?: boolean; posts?: RelatedPost[] } | null;
+  if (!response.ok || !data?.ok) return [];
+  return data.posts ?? [];
 }
 
 async function createComment(postId: string, body: string) {
@@ -152,10 +170,15 @@ function toneForBoard(type: string) {
   return "muted";
 }
 
+function postDetailHref(id: string) {
+  return `/explore/post/?id=${encodeURIComponent(id)}`;
+}
+
 export function PublicPostDetailClient({ id }: { id: string }) {
   const router = useRouter();
   const [state, setState] = useState<State>({ status: "loading" });
   const [me, setMe] = useState<User | null>(null);
+  const [relatedPosts, setRelatedPosts] = useState<RelatedPost[]>([]);
   const [commentBody, setCommentBody] = useState("");
   const [commentStatus, setCommentStatus] = useState("");
   const [ownerStatus, setOwnerStatus] = useState("");
@@ -181,7 +204,13 @@ export function PublicPostDetailClient({ id }: { id: string }) {
   }, [id]);
 
   useEffect(() => {
-    if (state.status === "ready") updatePostSeo(state.post, state.comments.length);
+    if (state.status !== "ready") return;
+    updatePostSeo(state.post, state.comments.length);
+    let mounted = true;
+    readRelatedPosts(state.post.category).then((posts) => {
+      if (mounted) setRelatedPosts(posts.filter((post) => post.id !== state.post.id).slice(0, 5));
+    });
+    return () => { mounted = false; };
   }, [state]);
 
   async function handleCommentSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -241,42 +270,48 @@ export function PublicPostDetailClient({ id }: { id: string }) {
   const category = getEquipmentCategory(post.category);
   const categoryLabel = category?.label ?? post.category;
   const categoryHref = `/explore/${post.category}/`;
+  const related = useMemo(() => relatedPosts, [relatedPosts]);
 
   return (
     <>
-      <PageHeader
-        breadcrumbs={[{ label: "홈", href: "/" }, { label: categoryLabel, href: categoryHref }]}
-        title="게시글 상세"
-        description={`${categoryLabel} 게시글`}
-      />
+      <PageHeader breadcrumbs={[{ label: "홈", href: "/" }, { label: categoryLabel, href: categoryHref }]} title="게시글 상세" description={`${categoryLabel} 게시글`} />
 
       <article className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start">
         <div className="min-w-0 space-y-5">
           <Card className="space-y-6 p-5 sm:p-7">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
               <Badge label={post.board_title} tone={toneForBoard(post.board_type)} />
-              <span>{post.author_nickname ?? "GearDuck"}</span><span>·</span><span>{formatDate(post.created_at)}</span><span>·</span><span>{comments.length} comments</span>
+              <UserActionMenu userId={post.author_id} nickname={post.author_nickname} />
+              <span>·</span><span>{formatDate(post.created_at)}</span><span>·</span><span>{comments.length} comments</span>
             </div>
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <h1 className="min-w-0 text-3xl font-black tracking-[-0.05em] sm:text-5xl">{post.title}</h1>
-              {isPostOwner ? (
-                <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:justify-end">
-                  <Link href={`/me/posts/edit/?id=${encodeURIComponent(post.id)}`}><Button variant="secondary" className="w-full sm:w-auto">수정</Button></Link>
-                  <Button variant="ghost" className="w-full sm:w-auto" onClick={handleRemovePost} disabled={removingPost}>{removingPost ? "삭제 중..." : "삭제"}</Button>
-                </div>
-              ) : null}
+              {isPostOwner ? <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:justify-end"><Link href={`/me/posts/edit/?id=${encodeURIComponent(post.id)}`}><Button variant="secondary" className="w-full sm:w-auto">수정</Button></Link><Button variant="ghost" className="w-full sm:w-auto" onClick={handleRemovePost} disabled={removingPost}>{removingPost ? "삭제 중..." : "삭제"}</Button></div> : null}
             </div>
             {ownerStatus ? <p className="rounded-2xl bg-surface p-3 text-sm leading-6 text-text-secondary">{ownerStatus}</p> : null}
             <div className="post-body text-sm leading-7 text-text-secondary sm:text-base sm:leading-8 [&_a]:font-bold [&_a]:text-garage-orange [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-garage-orange [&_blockquote]:bg-surface [&_blockquote]:py-2 [&_blockquote]:pl-4 [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-2xl [&_h2]:font-black [&_img]:my-5 [&_img]:max-w-full [&_img]:rounded-2xl [&_li]:ml-5 [&_li]:list-disc [&_p]:my-3" dangerouslySetInnerHTML={{ __html: sanitizePostHtml(post.body) }} />
           </Card>
 
-          <Card className="space-y-5 p-5 sm:p-6">
-            <div>
-              <h2 className="text-xl font-black tracking-[-0.04em]">댓글</h2>
-              <p className="mt-1 text-sm leading-6 text-text-secondary">달린 댓글을 확인하고 새 댓글을 남겨보세요.</p>
-            </div>
+          {related.length > 0 ? (
+            <Card className="space-y-3 p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-xl font-black tracking-[-0.04em]">같은 {categoryLabel} 글</h2>
+                <Link className="text-sm font-black text-orange-600" href={categoryHref}>목록으로</Link>
+              </div>
+              <div className="grid gap-2">
+                {related.map((item) => (
+                  <Link key={item.id} href={postDetailHref(item.id)} className="rounded-2xl border border-border bg-white p-3 transition hover:-translate-y-0.5 hover:shadow-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary"><Badge label={item.board_title} tone="muted" /><span>댓글 {item.comment_count}</span></div>
+                    <p className="mt-1 line-clamp-1 text-sm font-black text-text-primary">{item.title}</p>
+                  </Link>
+                ))}
+              </div>
+            </Card>
+          ) : null}
 
+          <Card className="space-y-5 p-5 sm:p-6">
+            <div><h2 className="text-xl font-black tracking-[-0.04em]">댓글</h2><p className="mt-1 text-sm leading-6 text-text-secondary">달린 댓글을 확인하고 새 댓글을 남겨보세요.</p></div>
             {comments.length === 0 ? <p className="text-sm text-text-secondary">아직 공개된 댓글이 없습니다.</p> : null}
             <div className="space-y-3">
               {comments.map((comment) => {
@@ -284,7 +319,7 @@ export function PublicPostDetailClient({ id }: { id: string }) {
                 return (
                   <div key={comment.id} className="rounded-2xl border border-border bg-white p-4 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary">
-                      <div className="flex flex-wrap items-center gap-2"><span>{comment.author_nickname ?? "GearDuck"}</span><span>·</span><span>{formatDate(comment.created_at)}</span></div>
+                      <div className="flex flex-wrap items-center gap-2"><UserActionMenu userId={comment.author_id} nickname={comment.author_nickname} compact /><span>·</span><span>{formatDate(comment.created_at)}</span></div>
                       {isCommentOwner ? <button type="button" className="font-bold text-red-600 disabled:opacity-50" onClick={() => handleRemoveComment(comment.id)} disabled={busyCommentId === comment.id}>{busyCommentId === comment.id ? "삭제 중..." : "삭제"}</button> : null}
                     </div>
                     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-text-secondary">{comment.body}</p>
@@ -292,27 +327,16 @@ export function PublicPostDetailClient({ id }: { id: string }) {
                 );
               })}
             </div>
-
             <form onSubmit={handleCommentSubmit} className="space-y-3 border-t border-border pt-4">
-              <textarea
-                value={commentBody}
-                onChange={(event) => setCommentBody(event.target.value)}
-                className="min-h-20 w-full rounded-2xl border border-zinc-300 bg-white p-4 text-sm leading-6 outline-none transition focus:border-graphite focus:bg-white focus:ring-2 focus:ring-graphite/10"
-                placeholder="댓글을 입력하세요"
-                maxLength={1000}
-              />
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs leading-5 text-text-secondary">{commentStatus || `${commentBody.length}/1000`}</p>
-                <Button type="submit" disabled={submitting}>{submitting ? "저장 중..." : "댓글 저장"}</Button>
-              </div>
+              <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} className="min-h-20 w-full rounded-2xl border border-zinc-300 bg-white p-4 text-sm leading-6 outline-none transition focus:border-graphite focus:bg-white focus:ring-2 focus:ring-graphite/10" placeholder="댓글을 입력하세요" maxLength={1000} />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-text-secondary">{commentStatus || `${commentBody.length}/1000`}</p><Button type="submit" disabled={submitting}>{submitting ? "저장 중..." : "댓글 저장"}</Button></div>
             </form>
           </Card>
         </div>
 
-        <aside className="min-w-0">
-          <Link href={categoryHref} className="inline-flex w-full items-center justify-center rounded-full bg-graphite px-5 py-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-            {categoryLabel}로 돌아가기
-          </Link>
+        <aside className="min-w-0 space-y-3">
+          <Link href={categoryHref} className="inline-flex w-full items-center justify-center rounded-full bg-graphite px-5 py-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">{categoryLabel}로 돌아가기</Link>
+          <Link href={categoryHref} className="inline-flex w-full items-center justify-center rounded-full border border-border bg-white px-5 py-4 text-sm font-black text-text-primary shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">목록으로</Link>
         </aside>
       </article>
     </>
