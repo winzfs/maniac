@@ -45,8 +45,10 @@ type NewsSearchRow = {
   source: string | null;
   category: string | null;
   link: string;
-  published_at_ms: number | null;
+  published_at: number | null;
 };
+
+type SearchBucket = "equipment" | "post" | "news";
 
 const categoryAliases: Record<string, string[]> = {
   motorcycle: ["motorcycle", "bike", "바이크", "오토바이", "이륜차", "모터사이클"],
@@ -120,6 +122,15 @@ function postCategoryExpression() {
   return "COALESCE(NULLIF(boards.category, ''), substr(boards.slug, 1, instr(boards.slug || '-', '-') - 1))";
 }
 
+async function safeSearch(bucket: SearchBucket, task: () => Promise<SearchResult[]>) {
+  try {
+    return { bucket, results: await task(), warning: null as string | null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "검색 중 오류가 발생했습니다.";
+    return { bucket, results: [] as SearchResult[], warning: `${bucket}: ${message}` };
+  }
+}
+
 async function searchEquipments(db: D1Database, searchPatterns: string[], limit: number): Promise<SearchResult[]> {
   const columns = ["category", "brand", "model", "nickname", "description", "slug"];
   const rows = await db.prepare(
@@ -186,11 +197,11 @@ async function searchPosts(db: D1Database, searchPatterns: string[], limit: numb
 async function searchNews(db: D1Database, searchPatterns: string[], limit: number): Promise<SearchResult[]> {
   const columns = ["title", "source", "category", "link"];
   const rows = await db.prepare(
-    `SELECT id, title, source, category, link, published_at_ms
+    `SELECT id, title, source, category, link, published_at
      FROM news_items
      WHERE hidden_at IS NULL
        AND (${orClause(columns, searchPatterns.length)})
-     ORDER BY COALESCE(published_at_ms, created_at) DESC
+     ORDER BY COALESCE(published_at, created_at) DESC
      LIMIT ?`,
   ).bind(...bindValues(columns, searchPatterns), limit).all<NewsSearchRow>();
 
@@ -201,7 +212,7 @@ async function searchNews(db: D1Database, searchPatterns: string[], limit: numbe
     description: row.source,
     href: row.link,
     label: row.category ? `뉴스 · ${row.category}` : "장비 뉴스",
-    createdAt: row.published_at_ms,
+    createdAt: row.published_at,
   }));
 }
 
@@ -214,16 +225,21 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const limit = parseLimit(url.searchParams.get("limit"));
 
   if (query.length < 1) {
-    return jsonResponse({ ok: true, query, type, results: [], groups: { equipments: [], posts: [], news: [] } });
+    return jsonResponse({ ok: true, query, type, results: [], groups: { equipments: [], posts: [], news: [] }, warnings: [] });
   }
 
   const searchPatterns = patterns(query);
-  const [equipments, posts, news] = await Promise.all([
-    type === "all" || type === "equipment" ? searchEquipments(env.DB, searchPatterns, limit) : Promise.resolve([]),
-    type === "all" || type === "post" ? searchPosts(env.DB, searchPatterns, limit) : Promise.resolve([]),
-    type === "all" || type === "news" ? searchNews(env.DB, searchPatterns, limit) : Promise.resolve([]),
-  ]);
+  const tasks = [
+    type === "all" || type === "equipment" ? safeSearch("equipment", () => searchEquipments(env.DB, searchPatterns, limit)) : null,
+    type === "all" || type === "post" ? safeSearch("post", () => searchPosts(env.DB, searchPatterns, limit)) : null,
+    type === "all" || type === "news" ? safeSearch("news", () => searchNews(env.DB, searchPatterns, limit)) : null,
+  ].filter((task): task is Promise<{ bucket: SearchBucket; results: SearchResult[]; warning: string | null }> => Boolean(task));
 
+  const settled = await Promise.all(tasks);
+  const equipments = settled.find((item) => item.bucket === "equipment")?.results ?? [];
+  const posts = settled.find((item) => item.bucket === "post")?.results ?? [];
+  const news = settled.find((item) => item.bucket === "news")?.results ?? [];
+  const warnings = settled.map((item) => item.warning).filter(Boolean);
   const results = [...equipments, ...posts, ...news].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 
   return jsonResponse({
@@ -232,5 +248,6 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     type,
     results,
     groups: { equipments, posts, news },
+    warnings,
   });
 };
