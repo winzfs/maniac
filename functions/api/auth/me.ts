@@ -1,5 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 
+import { isAdminUser } from "../../_shared/admin";
 import { getCurrentUser } from "../../_shared/auth-session";
 import { errorResponse, jsonResponse } from "../../_shared/http";
 
@@ -11,5 +12,5 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const user = await getCurrentUser(request, env);
   if (!user) return jsonResponse({ ok: true, user: null });
 
-  return jsonResponse({ ok: true, user });
+  return jsonResponse({ ok: true, user: { ...user, isAdmin: isAdminUser(user) } });
 };
