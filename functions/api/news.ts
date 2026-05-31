@@ -1,7 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
 
-import { fetchExternalNews } from "../_shared/news";
-
 type Env = { DB?: D1Database };
 
 type NewsRow = {
@@ -11,6 +9,7 @@ type NewsRow = {
   source: string;
   category: string;
   published_at: number;
+  image_url: string | null;
 };
 
 const categoryLabels = new Map([
@@ -34,22 +33,15 @@ function json(data: unknown, status = 200) {
 }
 
 function parseLimit(request: Request) {
-  const url = new URL(request.url);
-  const value = Number(url.searchParams.get("limit") ?? 12);
+  const value = Number(new URL(request.url).searchParams.get("limit") ?? 12);
   if (!Number.isFinite(value)) return 12;
   return Math.min(Math.max(Math.trunc(value), 1), 50);
 }
 
 function parseCategory(request: Request) {
-  const url = new URL(request.url);
-  const raw = url.searchParams.get("category")?.trim();
+  const raw = new URL(request.url).searchParams.get("category")?.trim();
   if (!raw || raw === "all") return null;
   return categoryLabels.get(raw) ?? raw;
-}
-
-function shouldUseRssFallback(request: Request) {
-  const url = new URL(request.url);
-  return url.searchParams.get("fallback") === "rss";
 }
 
 function dbItem(row: NewsRow) {
@@ -60,51 +52,42 @@ function dbItem(row: NewsRow) {
     source: row.source,
     category: row.category,
     publishedAt: new Date(row.published_at).toUTCString(),
+    imageUrl: row.image_url,
   };
 }
 
 async function readCachedNews(db: D1Database, limit: number, category: string | null) {
   if (category) {
     const rows = await db.prepare(
-      `SELECT id, title, link, source, category, published_at
+      `SELECT id, title, link, source, category, published_at, image_url
        FROM news_items
        WHERE hidden_at IS NULL AND category = ?
        ORDER BY published_at DESC
        LIMIT ?`,
     ).bind(category, limit).all<NewsRow>();
-
     return rows.results ?? [];
   }
 
   const rows = await db.prepare(
-    `SELECT id, title, link, source, category, published_at
+    `SELECT id, title, link, source, category, published_at, image_url
      FROM news_items
      WHERE hidden_at IS NULL
      ORDER BY published_at DESC
      LIMIT ?`,
   ).bind(limit).all<NewsRow>();
-
   return rows.results ?? [];
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const limit = parseLimit(request);
   const category = parseCategory(request);
-  const fallback = shouldUseRssFallback(request);
 
-  if (env.DB) {
-    try {
-      const cached = await readCachedNews(env.DB, limit, category);
-      return json({ ok: true, source: "db", category, items: cached.map(dbItem), errors: [] });
-    } catch {
-      if (!fallback) return json({ ok: true, source: "db", category, items: [], errors: ["news_items table is not ready"] });
-    }
+  if (!env.DB) return json({ ok: true, source: "db", category, items: [], errors: ["D1 binding DB is not configured."] });
+
+  try {
+    const cached = await readCachedNews(env.DB, limit, category);
+    return json({ ok: true, source: "db", category, items: cached.map(dbItem), errors: [] });
+  } catch {
+    return json({ ok: true, source: "db", category, items: [], errors: ["news_items table is not ready"] });
   }
-
-  if (!fallback) return json({ ok: true, source: "db", category, items: [], errors: [] });
-
-  const externalLimit = category ? Math.min(50, Math.max(limit * 2, 36)) : limit;
-  const external = await fetchExternalNews(externalLimit);
-  const items = category ? external.items.filter((item) => item.category === category).slice(0, limit) : external.items;
-  return json({ ok: true, source: "rss", category, items, errors: external.errors });
 };
