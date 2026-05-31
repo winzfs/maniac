@@ -12,6 +12,7 @@ type NewsItem = {
   source?: string | null;
   category?: string | null;
   publishedAt?: string | null;
+  imageUrl?: string | null;
 };
 
 type NewsResponse = {
@@ -41,6 +42,11 @@ const categories = [
 function text(value: string | null | undefined, fallback: string) {
   const normalized = value?.replace(/\s+/g, " ").trim();
   return normalized && normalized.length > 0 ? normalized : fallback;
+}
+
+function imageSrc(value: string | null | undefined) {
+  const normalized = value?.trim();
+  return normalized && /^https?:\/\//i.test(normalized) ? normalized : null;
 }
 
 function formatDate(value: string | null | undefined) {
@@ -124,12 +130,12 @@ export function NewsBoardClient() {
         {state.status === "loading" ? (
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Card key={index} className="min-h-48 space-y-4 p-5">
+              <Card key={index} className="min-h-64 space-y-4 p-5">
+                <div className="aspect-video w-full animate-pulse rounded-2xl bg-zinc-200" />
                 <div className="h-5 w-24 animate-pulse rounded-full bg-zinc-200" />
                 <div className="space-y-2">
                   <div className="h-5 w-11/12 animate-pulse rounded-full bg-zinc-200" />
                   <div className="h-5 w-9/12 animate-pulse rounded-full bg-zinc-200" />
-                  <div className="h-5 w-7/12 animate-pulse rounded-full bg-zinc-200" />
                 </div>
                 <div className="h-4 w-32 animate-pulse rounded-full bg-zinc-200" />
               </Card>
@@ -148,21 +154,29 @@ export function NewsBoardClient() {
               const title = text(item.title, "제목 없는 뉴스");
               const category = text(item.category, activeLabel);
               const source = shortSource(item.source);
+              const thumbnail = imageSrc(item.imageUrl);
               const disabled = href === "#";
 
               return (
                 <a key={itemKey(item, index)} href={href} target={disabled ? undefined : "_blank"} rel={disabled ? undefined : "noreferrer"} className="block">
-                  <Card className="flex h-full min-h-48 flex-col justify-between space-y-4 p-5 transition hover:-translate-y-0.5 hover:shadow-sm">
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge label={category} tone="muted" />
-                        <span className="text-xs font-semibold text-text-secondary">{formatDate(item.publishedAt)}</span>
+                  <Card className="flex h-full min-h-72 flex-col justify-between space-y-4 overflow-hidden p-0 transition hover:-translate-y-0.5 hover:shadow-sm">
+                    {thumbnail ? (
+                      <img src={thumbnail} alt="" className="aspect-video w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="flex aspect-video w-full items-center justify-center bg-background text-sm font-black text-text-secondary">{category}</div>
+                    )}
+                    <div className="flex flex-1 flex-col justify-between gap-4 p-5 pt-0">
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge label={category} tone="muted" />
+                          <span className="text-xs font-semibold text-text-secondary">{formatDate(item.publishedAt)}</span>
+                        </div>
+                        <h3 className="line-clamp-3 text-lg font-black leading-snug tracking-[-0.03em] text-text-primary">{title}</h3>
                       </div>
-                      <h3 className="line-clamp-3 text-lg font-black leading-snug tracking-[-0.03em] text-text-primary">{title}</h3>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 border-t border-border pt-3 text-xs font-semibold text-text-secondary">
-                      <span className="truncate">{source}</span>
-                      <span className="shrink-0 text-orange-600">{disabled ? "링크 없음" : "원문 보기 →"}</span>
+                      <div className="flex items-center justify-between gap-3 border-t border-border pt-3 text-xs font-semibold text-text-secondary">
+                        <span className="truncate">{source}</span>
+                        <span className="shrink-0 text-orange-600">{disabled ? "링크 없음" : "원문 보기 →"}</span>
+                      </div>
                     </div>
                   </Card>
                 </a>
