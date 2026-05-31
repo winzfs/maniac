@@ -4,7 +4,7 @@ export type CategoryBoard = {
   slug: string;
   title: string;
   description: string;
-  type: "showcase" | "maintenance" | "parts" | "qna" | "trade";
+  type: "showcase" | "review" | "free" | "qna" | "trade";
   postCount: number;
 };
 
@@ -26,22 +26,23 @@ export type CommunityBoardTopic = {
 };
 
 export const communityBoardTopics: CommunityBoardTopic[] = [
-  { slug: "showcase", title: "장비 자랑", shortLabel: "자랑", description: "바이크, 키보드, PC, 카메라 등 내 장비 사진과 세팅을 공유하는 공간입니다.", writeLabel: "장비 자랑 글쓰기" },
-  { slug: "maintenance", title: "정비·관리", shortLabel: "정비", description: "정비 이력, 소모품 교체, 관리 팁, 문제 해결 경험을 공유합니다.", writeLabel: "정비 기록 쓰기" },
-  { slug: "parts", title: "부품·튜닝", shortLabel: "부품", description: "튜닝 파츠, 부품 교체, 구매 후기, 세팅 변화를 리뷰합니다.", writeLabel: "부품 리뷰 쓰기" },
-  { slug: "qna", title: "질문·상담", shortLabel: "질문", description: "구매, 세팅, 고장, 관리 방법에 대해 다른 마니아들과 상담합니다.", writeLabel: "질문 올리기" },
+  { slug: "showcase", title: "장비 자랑", shortLabel: "자랑", description: "내 장비 사진과 세팅을 공유하는 공간입니다.", writeLabel: "장비 자랑 글쓰기" },
+  { slug: "review", title: "리뷰", shortLabel: "리뷰", description: "장비, 부품, 세팅, 사용 경험을 리뷰합니다.", writeLabel: "리뷰 쓰기" },
+  { slug: "free", title: "자유", shortLabel: "자유", description: "장비 이야기를 자유롭게 나누는 게시판입니다.", writeLabel: "자유 글쓰기" },
+  { slug: "qna", title: "질문·상담", shortLabel: "질문", description: "구매, 세팅, 고장, 관리 방법에 대해 다른 덕후들과 상담합니다.", writeLabel: "질문 올리기" },
   { slug: "trade", title: "중고·나눔", shortLabel: "거래", description: "장비와 부품 거래, 나눔, 구매 희망 글을 모아봅니다.", writeLabel: "거래 글쓰기" },
 ];
 
 const commonBoards = (prefix: string): CategoryBoard[] => [
   { slug: `${prefix}-showcase`, title: "장비 자랑", description: "내 장비 사진과 세팅을 공유하는 공간", type: "showcase", postCount: 18 },
-  { slug: `${prefix}-maintenance`, title: "정비/관리 기록", description: "정비 이력, 관리 팁, 소모품 교체 경험", type: "maintenance", postCount: 12 },
-  { slug: `${prefix}-parts`, title: "부품/튜닝 리뷰", description: "사용한 부품, 튜닝 파츠, 만족도 리뷰", type: "parts", postCount: 9 },
+  { slug: `${prefix}-review`, title: "리뷰", description: "장비, 부품, 세팅, 사용 경험 리뷰", type: "review", postCount: 9 },
+  { slug: `${prefix}-free`, title: "자유", description: "장비 이야기를 자유롭게 나누는 공간", type: "free", postCount: 8 },
   { slug: `${prefix}-qna`, title: "질문/상담", description: "구매, 세팅, 관리에 대한 질문 게시판", type: "qna", postCount: 7 },
+  { slug: `${prefix}-trade`, title: "중고/나눔", description: "장비와 부품 거래, 나눔 정보", type: "trade", postCount: 3 },
 ];
 
 export const equipmentCategories: EquipmentCategory[] = [
-  { slug: "motorcycle", label: "바이크", shortLabel: "Bike", description: "오토바이 정비, 튜닝, 투어링 기록을 모아보세요.", accent: "Garage Orange", boards: [...commonBoards("motorcycle"), { slug: "motorcycle-trade", title: "중고 부품", description: "바이크 부품 거래 준비 게시판", type: "trade", postCount: 3 }] },
+  { slug: "motorcycle", label: "바이크", shortLabel: "Bike", description: "오토바이 정비, 튜닝, 투어링 기록을 모아보세요.", accent: "Garage Orange", boards: commonBoards("motorcycle") },
   { slug: "pc", label: "커스텀 PC", shortLabel: "PC", description: "부품 조합, 벤치마크, 수랭/쿨링 관리 기록.", accent: "Electric Blue", boards: commonBoards("pc") },
   { slug: "keyboard", label: "기계식 키보드", shortLabel: "Keys", description: "키캡, 스위치, 윤활, 흡음 빌드 로그.", accent: "Metal Purple", boards: commonBoards("keyboard") },
   { slug: "bicycle", label: "자전거", shortLabel: "Cycle", description: "라이딩 장비, 소모품, 피팅과 정비 기록.", accent: "Racing Lime", boards: commonBoards("bicycle") },
