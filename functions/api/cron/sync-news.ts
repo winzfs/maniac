@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { fetchExternalNews } from "../../_shared/news";
+import { getNewsFeedSettings } from "../../_shared/news-feed-settings";
 
 type Env = {
   DB: D1Database;
@@ -93,7 +94,8 @@ async function syncNews(request: Request, env: Env) {
   await ensureNewsSchema(env.DB);
 
   const limit = parseLimit(request);
-  const fetched = await fetchExternalNews(limit);
+  const feeds = await getNewsFeedSettings(env.DB);
+  const fetched = await fetchExternalNews(limit, feeds);
   const now = Date.now();
 
   const pruned = await pruneOldNews(env.DB, now);
@@ -136,6 +138,7 @@ async function syncNews(request: Request, env: Env) {
     pruned,
     retentionDays: NEWS_RETENTION_DAYS,
     totalStored: total?.count ?? 0,
+    feeds: feeds.map((feed) => ({ category: feed.category, label: feed.label, queries: feed.queries })),
     errors: fetched.errors,
   });
 }
