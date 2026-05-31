@@ -34,22 +34,30 @@ HttpOnly 쿠키 기반 세션 ✅
 커뮤니티 boards/posts/comments D1 테이블 ✅
 /explore DB API 기반 전환 ✅
 탐색 메뉴명: 기어 둘러보기 ✅
+게시판 세부 카테고리: 자랑 / 리뷰 / 자유 / 질문 / 거래 ✅
+정비/부품 게시판 세부 카테고리 제거 ✅
+카테고리 단위 글쓰기 ✅ /explore/[category]/write/
+글쓰기 화면 세부 카테고리 선택 ✅
 게시글 작성/상세/수정/삭제 ✅
 게시글 본문 이미지 업로드 ✅ Cloudinary
 게시글 상세 client-side SEO 메타 갱신 ✅
-게시글 상세 화면 작성자 수정/삭제 ✅
+게시글 상세 breadcrumb 단순화 ✅ 홈 > 카테고리
+게시글 상세 하단 돌아가기 버튼 단순화 ✅
 댓글 작성/삭제 ✅
 댓글 상세 화면 내 댓글 삭제 ✅
+댓글 목록 상단 표시 + compact 입력폼 ✅
+홈 상단 중앙 로고/오른쪽 사이드 네비게이션 ✅
+공개 장비/게시글/뉴스 통합 검색 ✅ /search/
+검색 매칭 엄격화 ✅ 게시글 제목/본문 중심
+런타임 기본 게시판 self-healing ✅
+런타임 샘플 커뮤니티 게시글 seed ✅
+외부 장비 뉴스 표시 ✅
+외부 뉴스 DB 캐시/동기화 ✅
 내 정보 페이지 ✅
 프로필 설정 페이지 ✅
 프로필 이미지 업로드 ✅ Cloudinary
 provider 추상화 image_assets ✅ R2 이전 가능 구조
 D1 garage schema self-healing ✅
-홈 콘텐츠 피드화 ✅
-홈 히어로 내 장비 카드 ✅
-홈 상단 중앙 로고/오른쪽 사이드 네비게이션 ✅
-공개 장비/게시글/뉴스 통합 검색 ✅ /search/
-샘플 콘텐츠 seed endpoint ✅
 개발용 /api/dev/* endpoint 보호 ✅
 R2 직접 업로드 ❌ 보류
 결제/구독 ❌ 미구현
@@ -88,6 +96,38 @@ docs/ui-navigation-status.md
 
 ---
 
+## 주요 페이지
+
+```txt
+/
+/search/
+/explore/
+/explore/news/
+/explore/[category]/
+/explore/[category]/write/
+/explore/[category]/[board]/
+/explore/[category]/[board]/write/ // 기존 직접 게시판 글쓰기 호환
+/explore/post/?id=게시글ID
+
+/login/
+/signup/
+/me/
+/me/settings/
+/me/posts/
+/me/posts/edit/?id=게시글ID
+/me/comments/
+
+/garage/
+/garage/new/
+/garage/edit/?id=장비ID
+/garage/view/?id=장비ID
+/garage/view/?slug=장비slug // 기존 링크 fallback
+
+/admin/
+```
+
+---
+
 ## 브랜드/용어 기준
 
 ```txt
@@ -103,6 +143,7 @@ docs/ui-navigation-status.md
 브랜드/상단 카피/SEO: GEAR DUCK, 기어덕, 장비 덕후들의 커뮤니티
 기능 용어: 장비, 내 차고, 정비 기록, 부품 기록, 게시글, 댓글, 공개 페이지
 탐색 메뉴: 기어 둘러보기
+게시판 세부 카테고리: 자랑, 리뷰, 자유, 질문, 거래
 ```
 
 주의:
@@ -111,6 +152,7 @@ docs/ui-navigation-status.md
 기능명을 과하게 브랜드화하지 않습니다.
 예: 부품 기록을 덕템 기록으로 바꾸지 않습니다.
 예: 정비 기록을 관리 기록으로 일괄 치환하지 않습니다.
+장비의 정비/부품 기록 기능은 유지하지만, 커뮤니티 세부 게시판에서는 정비/부품 탭을 쓰지 않습니다.
 ```
 
 ---
