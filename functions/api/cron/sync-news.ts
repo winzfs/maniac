@@ -7,6 +7,7 @@ type Env = {
   DB: D1Database;
   DEV_TOOLS_SECRET?: string;
   NEWS_SYNC_SECRET?: string;
+  GNEWS_API_KEY?: string;
 };
 
 const NEWS_RETENTION_DAYS = 30;
@@ -95,7 +96,7 @@ async function syncNews(request: Request, env: Env) {
 
   const limit = parseLimit(request);
   const feeds = await getNewsFeedSettings(env.DB);
-  const fetched = await fetchExternalNews(limit, feeds);
+  const fetched = await fetchExternalNews(limit, feeds, { gnewsApiKey: env.GNEWS_API_KEY });
   const now = Date.now();
 
   const pruned = await pruneOldNews(env.DB, now);
@@ -133,6 +134,7 @@ async function syncNews(request: Request, env: Env) {
 
   return json({
     ok: true,
+    provider: fetched.provider,
     fetched: fetched.items.length,
     attemptedInsert: statements.length,
     pruned,
