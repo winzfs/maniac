@@ -46,12 +46,22 @@ type NewsFeedSetting = {
   queries: string[];
 };
 
+type NewsPagination = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasPreviousPage?: boolean;
+  hasNextPage?: boolean;
+};
+
 type OverviewResponse = {
   ok?: boolean;
   error?: string;
   posts?: AdminPost[];
   comments?: AdminComment[];
   news?: AdminNews[];
+  newsPagination?: NewsPagination;
 };
 
 type NewsFeedsResponse = {
@@ -64,8 +74,11 @@ type Tab = "posts" | "comments" | "news" | "keywords" | "design";
 
 type State =
   | { status: "loading" }
-  | { status: "ready"; posts: AdminPost[]; comments: AdminComment[]; news: AdminNews[] }
+  | { status: "ready"; posts: AdminPost[]; comments: AdminComment[]; news: AdminNews[]; newsPagination: NewsPagination }
   | { status: "error"; message: string };
+
+const newsPageSize = 12;
+const defaultNewsPagination: NewsPagination = { page: 1, pageSize: newsPageSize, total: 0, totalPages: 1 };
 
 function formatDate(value: number) {
   return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
@@ -93,14 +106,23 @@ function draftMapFromFeeds(feeds: NewsFeedSetting[]) {
   return Object.fromEntries(feeds.map((feed) => [feed.category, queriesToText(feed.queries)]));
 }
 
-async function readOverview() {
-  const response = await fetch("/api/admin/overview?limit=50", { cache: "no-store", credentials: "same-origin" });
+function pageNumbers(currentPage: number, totalPages: number) {
+  const start = Math.max(currentPage - 2, 1);
+  const end = Math.min(start + 4, totalPages);
+  const normalizedStart = Math.max(end - 4, 1);
+  return Array.from({ length: end - normalizedStart + 1 }, (_, index) => normalizedStart + index);
+}
+
+async function readOverview(newsPage = 1) {
+  const params = new URLSearchParams({ limit: "50", newsLimit: String(newsPageSize), newsPage: String(newsPage) });
+  const response = await fetch(`/api/admin/overview?${params.toString()}`, { cache: "no-store", credentials: "same-origin" });
   const data = (await response.json().catch(() => null)) as OverviewResponse | null;
   if (!response.ok || !data?.ok) throw new Error(data?.error ?? "관리자 데이터를 불러오지 못했습니다.");
   return {
     posts: data.posts ?? [],
     comments: data.comments ?? [],
     news: data.news ?? [],
+    newsPagination: data.newsPagination ?? defaultNewsPagination,
   };
 }
 
@@ -141,12 +163,14 @@ export function AdminDashboardClient() {
   const [feedDrafts, setFeedDrafts] = useState<Record<string, string>>({});
   const [feedsLoaded, setFeedsLoaded] = useState(false);
   const [feedsSaving, setFeedsSaving] = useState(false);
+  const [newsPage, setNewsPage] = useState(1);
 
-  async function load() {
+  async function load(page = newsPage) {
     setState({ status: "loading" });
     setStatus("");
     try {
-      const data = await readOverview();
+      const data = await readOverview(page);
+      setNewsPage(data.newsPagination.page);
       setState({ status: "ready", ...data });
     } catch (error) {
       setState({ status: "error", message: error instanceof Error ? error.message : "관리자 데이터를 불러오지 못했습니다." });
@@ -166,7 +190,7 @@ export function AdminDashboardClient() {
   }
 
   useEffect(() => {
-    void load();
+    void load(1);
   }, []);
 
   useEffect(() => {
@@ -175,20 +199,33 @@ export function AdminDashboardClient() {
 
   const counts = useMemo(() => {
     if (state.status !== "ready") return { posts: 0, comments: 0, news: 0 };
-    return { posts: state.posts.length, comments: state.comments.length, news: state.news.length };
+    return { posts: state.posts.length, comments: state.comments.length, news: state.newsPagination.total };
   }, [state]);
 
+  async function changeNewsPage(page: number) {
+    if (state.status !== "ready") return;
+    const nextPage = Math.min(Math.max(page, 1), state.newsPagination.totalPages);
+    setNewsPage(nextPage);
+    await load(nextPage);
+  }
+
   async function handleDelete(kind: "posts" | "comments" | "news", id: string, label: string) {
-    if (!window.confirm(`${label}을(를) DB에서 실제 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
+    const message = kind === "news"
+      ? `${label}을(를) 목록에서 숨길까요? 같은 링크가 다시 수집되어도 되살아나지 않습니다.`
+      : `${label}을(를) DB에서 실제 삭제할까요? 이 작업은 되돌릴 수 없습니다.`;
+    if (!window.confirm(message)) return;
     setBusyId(id);
     setStatus("처리 중입니다...");
     try {
       await removeAdminItem(kind, id);
-      setStatus("삭제되었습니다.");
+      setStatus(kind === "news" ? "뉴스를 숨겼습니다." : "삭제되었습니다.");
+      if (kind === "news") {
+        await load(newsPage);
+        return;
+      }
       if (state.status === "ready") {
         if (kind === "posts") setState({ ...state, posts: state.posts.filter((item) => item.id !== id) });
         if (kind === "comments") setState({ ...state, comments: state.comments.filter((item) => item.id !== id) });
-        if (kind === "news") setState({ ...state, news: state.news.filter((item) => item.id !== id) });
       }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "처리 실패");
@@ -234,6 +271,8 @@ export function AdminDashboardClient() {
       </Card>
     );
   }
+
+  const newsPagination = state.newsPagination;
 
   return (
     <div className="space-y-6">
@@ -312,7 +351,7 @@ export function AdminDashboardClient() {
 
       {activeTab === "news" ? (
         <section className="space-y-4">
-          <SectionHeader title="뉴스" description="뉴스는 DB에서 실제 삭제됩니다. 다음 수집 때 같은 링크가 다시 잡히면 다시 들어올 수 있습니다." />
+          <SectionHeader title="뉴스" description="뉴스는 삭제 대신 숨김 처리됩니다. 다음 수집 때 같은 링크가 다시 잡혀도 되살아나지 않습니다." />
           <div className="grid gap-3">
             {state.news.map((item) => (
               <Card key={item.id} className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 p-3 sm:grid-cols-[7rem_minmax(0,1fr)]">
@@ -321,11 +360,29 @@ export function AdminDashboardClient() {
                   <div className="flex flex-wrap items-center gap-2"><Badge label={item.category} tone="muted" /><span className="text-xs text-text-secondary">{formatDate(item.published_at)}</span></div>
                   <h3 className="line-clamp-2 font-bold leading-tight">{item.title}</h3>
                   <p className="truncate text-xs text-text-secondary">{item.source}</p>
-                  <div className="flex gap-2"><a href={item.link} target="_blank" rel="noreferrer"><Button variant="secondary">원문</Button></a><Button variant="ghost" disabled={busyId === item.id} onClick={() => handleDelete("news", item.id, "뉴스")}>{busyId === item.id ? "처리 중" : "삭제"}</Button></div>
+                  <div className="flex gap-2"><a href={item.link} target="_blank" rel="noreferrer"><Button variant="secondary">원문</Button></a><Button variant="ghost" disabled={busyId === item.id} onClick={() => handleDelete("news", item.id, "뉴스")}>{busyId === item.id ? "처리 중" : "숨김"}</Button></div>
                 </div>
               </Card>
             ))}
           </div>
+
+          {newsPagination.totalPages > 1 ? (
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              <Button variant="secondary" disabled={newsPagination.page <= 1} onClick={() => changeNewsPage(newsPagination.page - 1)}>이전</Button>
+              {pageNumbers(newsPagination.page, newsPagination.totalPages).map((page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => changeNewsPage(page)}
+                  className={`rounded-full px-4 py-2 text-sm font-black transition ${page === newsPagination.page ? "bg-graphite text-white" : "bg-surface text-text-secondary hover:bg-background"}`}
+                >
+                  {page}
+                </button>
+              ))}
+              <Button variant="secondary" disabled={newsPagination.page >= newsPagination.totalPages} onClick={() => changeNewsPage(newsPagination.page + 1)}>다음</Button>
+              <span className="basis-full text-center text-xs font-semibold text-text-secondary">{newsPagination.page} / {newsPagination.totalPages} 페이지 · 총 {newsPagination.total.toLocaleString()}개</span>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
