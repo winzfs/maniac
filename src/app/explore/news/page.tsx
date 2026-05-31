@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
+import { Card } from "@/shared/components/ui/Card";
 import { NewsBoardClient } from "@/features/news/components/NewsBoardClient";
 
 export const metadata: Metadata = {
@@ -22,7 +24,9 @@ export default function NewsBoardPage() {
         description="바이크, PC, 키보드, 자전거, 카메라, 캠핑, 오디오 장비 뉴스를 카테고리별로 둘러보세요."
       />
 
-      <NewsBoardClient />
+      <Suspense fallback={<Card className="p-6 text-sm text-text-secondary">뉴스 게시판을 불러오는 중입니다...</Card>}>
+        <NewsBoardClient />
+      </Suspense>
     </main>
   );
 }
