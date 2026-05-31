@@ -22,8 +22,8 @@ export async function listPublicBoards(db: D1Database) {
          NULLIF(boards.type, ''),
          CASE
            WHEN boards.slug LIKE '%-showcase' THEN 'showcase'
-           WHEN boards.slug LIKE '%-maintenance' THEN 'maintenance'
-           WHEN boards.slug LIKE '%-parts' THEN 'parts'
+           WHEN boards.slug LIKE '%-review' THEN 'review'
+           WHEN boards.slug LIKE '%-free' THEN 'free'
            WHEN boards.slug LIKE '%-qna' THEN 'qna'
            WHEN boards.slug LIKE '%-trade' THEN 'trade'
            ELSE 'showcase'
@@ -33,11 +33,11 @@ export async function listPublicBoards(db: D1Database) {
          NULLIF(boards.description, ''),
          CASE
            WHEN boards.slug LIKE '%-showcase' THEN '내 장비 사진과 세팅을 공유하는 공간'
-           WHEN boards.slug LIKE '%-maintenance' THEN '정비 이력, 관리 팁, 소모품 교체 경험'
-           WHEN boards.slug LIKE '%-parts' THEN '사용한 부품, 튜닝 파츠, 만족도 리뷰'
+           WHEN boards.slug LIKE '%-review' THEN '장비, 부품, 세팅, 사용 경험 리뷰'
+           WHEN boards.slug LIKE '%-free' THEN '장비 이야기를 자유롭게 나누는 공간'
            WHEN boards.slug LIKE '%-qna' THEN '구매, 세팅, 관리에 대한 질문 게시판'
-           WHEN boards.slug LIKE '%-trade' THEN '부품 거래와 양도 정보를 나누는 공간'
-           ELSE '장비 마니아를 위한 게시판'
+           WHEN boards.slug LIKE '%-trade' THEN '장비와 부품 거래, 나눔 정보'
+           ELSE '장비 덕후를 위한 게시판'
          END
        ) AS description,
        boards.status,
@@ -45,8 +45,8 @@ export async function listPublicBoards(db: D1Database) {
        COALESCE(NULLIF(boards.sort_order, 0),
          CASE
            WHEN boards.slug LIKE '%-showcase' THEN 10
-           WHEN boards.slug LIKE '%-maintenance' THEN 20
-           WHEN boards.slug LIKE '%-parts' THEN 30
+           WHEN boards.slug LIKE '%-review' THEN 20
+           WHEN boards.slug LIKE '%-free' THEN 30
            WHEN boards.slug LIKE '%-qna' THEN 40
            WHEN boards.slug LIKE '%-trade' THEN 50
            ELSE 90
@@ -62,6 +62,17 @@ export async function listPublicBoards(db: D1Database) {
       AND posts.moderation_status = 'normal'
      WHERE boards.status = 'active'
        AND boards.permission = 'public'
+       AND COALESCE(
+         NULLIF(boards.type, ''),
+         CASE
+           WHEN boards.slug LIKE '%-showcase' THEN 'showcase'
+           WHEN boards.slug LIKE '%-review' THEN 'review'
+           WHEN boards.slug LIKE '%-free' THEN 'free'
+           WHEN boards.slug LIKE '%-qna' THEN 'qna'
+           WHEN boards.slug LIKE '%-trade' THEN 'trade'
+           ELSE 'showcase'
+         END
+       ) IN ('showcase', 'review', 'free', 'qna', 'trade')
      GROUP BY boards.id
      ORDER BY category ASC, sort_order ASC, boards.slug ASC`,
   ).all<PublicBoardRow>();
