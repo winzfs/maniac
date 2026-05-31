@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { communityBoardTopics, getEquipmentCategory } from "@/shared/data/equipment-categories";
 import { excerptFromHtml } from "@/features/boards/utils/html";
@@ -54,13 +55,14 @@ function postDetailHref(id: string) {
 }
 
 function toneForType(type?: string) {
-  return type === "trade" ? "orange" : "muted";
+  return type === "trade" ? "orange" : type === "review" ? "lime" : "muted";
 }
 
 export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const [activeType, setActiveType] = useState("all");
   const category = getEquipmentCategory(categorySlug);
+  const writeHref = `/explore/${categorySlug}/write/`;
 
   useEffect(() => {
     let mounted = true;
@@ -86,6 +88,12 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
     load();
     return () => { mounted = false; };
   }, [categorySlug]);
+
+  const visibleTopics = useMemo(() => {
+    if (state.status !== "ready") return communityBoardTopics;
+    const boardTypes = new Set(state.boards.map((board) => board.type));
+    return communityBoardTopics.filter((topic) => boardTypes.has(topic.slug));
+  }, [state]);
 
   const filteredPosts = useMemo(() => {
     if (state.status !== "ready") return [];
@@ -114,9 +122,16 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
       </section>
 
       <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <Link href={writeHref} className="shrink-0">
+            <Button>글쓰기</Button>
+          </Link>
+          <p className="text-xs font-semibold text-text-secondary">세부 카테고리는 글쓰기 화면에서 선택할 수 있어요.</p>
+        </div>
+
         <div className="flex gap-2 overflow-x-auto pb-1">
           <button type="button" onClick={() => setActiveType("all")} className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold ${activeType === "all" ? "bg-graphite text-white" : "bg-surface text-text-secondary"}`}>전체</button>
-          {communityBoardTopics.map((topic) => (
+          {visibleTopics.map((topic) => (
             <button key={topic.slug} type="button" onClick={() => setActiveType(topic.slug)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold ${activeType === topic.slug ? "bg-graphite text-white" : "bg-surface text-text-secondary"}`}>{topic.shortLabel}</button>
           ))}
         </div>
