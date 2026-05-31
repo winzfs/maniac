@@ -14,6 +14,7 @@ type NewsItem = {
   source: string;
   category: string;
   publishedAt: string;
+  imageUrl?: string | null;
 };
 
 type NewsResponse = {
@@ -26,6 +27,11 @@ type State =
   | { status: "loading" }
   | { status: "success"; items: NewsItem[] }
   | { status: "error"; message: string };
+
+function imageSrc(value: string | null | undefined) {
+  const normalized = value?.trim();
+  return normalized && /^https?:\/\//i.test(normalized) ? normalized : null;
+}
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -88,6 +94,7 @@ export function HomeNewsSection() {
   }
 
   const [lead, ...rest] = state.items;
+  const leadImage = imageSrc(lead.imageUrl);
 
   return (
     <section className="space-y-5">
@@ -99,34 +106,49 @@ export function HomeNewsSection() {
       </div>
       <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
         <a href={lead.link} target="_blank" rel="noreferrer" className="block">
-          <Card variant="dark" className="flex h-full min-h-64 flex-col justify-between p-6 transition hover:-translate-y-0.5 hover:shadow-lg">
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge label={lead.category} tone="lime" />
-                <span className="text-xs text-zinc-300">{formatDate(lead.publishedAt)}</span>
+          <Card variant="dark" className="flex h-full min-h-64 flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:shadow-lg">
+            {leadImage ? (
+              <img src={leadImage} alt="" className="aspect-video w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+            ) : null}
+            <div className="flex flex-1 flex-col justify-between p-6">
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge label={lead.category} tone="lime" />
+                  <span className="text-xs text-zinc-300">{formatDate(lead.publishedAt)}</span>
+                </div>
+                <h3 className="text-2xl font-black leading-tight tracking-tight sm:text-3xl">{lead.title}</h3>
               </div>
-              <h3 className="text-2xl font-black leading-tight tracking-tight sm:text-3xl">{lead.title}</h3>
-            </div>
-            <div className="mt-6 flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-sm text-zinc-300">
-              <span>{lead.source}</span>
-              <span className="font-semibold text-lime-200">뉴스 보기 →</span>
+              <div className="mt-6 flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-sm text-zinc-300">
+                <span>{lead.source}</span>
+                <span className="font-semibold text-lime-200">뉴스 보기 →</span>
+              </div>
             </div>
           </Card>
         </a>
 
         <div className="grid gap-3">
-          {rest.slice(0, 6).map((item) => (
-            <a key={item.id} href={item.link} target="_blank" rel="noreferrer" className="block">
-              <Card className="space-y-2 p-4 transition hover:-translate-y-0.5 hover:shadow-md">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge label={item.category} tone="muted" />
-                  <span className="text-xs text-text-secondary">{formatDate(item.publishedAt)}</span>
-                </div>
-                <h3 className="line-clamp-2 font-bold leading-tight">{item.title}</h3>
-                <p className="text-xs text-text-secondary">{item.source}</p>
-              </Card>
-            </a>
-          ))}
+          {rest.slice(0, 6).map((item) => {
+            const thumbnail = imageSrc(item.imageUrl);
+            return (
+              <a key={item.id} href={item.link} target="_blank" rel="noreferrer" className="block">
+                <Card className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 p-3 transition hover:-translate-y-0.5 hover:shadow-md sm:grid-cols-[7rem_minmax(0,1fr)]">
+                  {thumbnail ? (
+                    <img src={thumbnail} alt="" className="aspect-square h-full w-full rounded-2xl object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="flex aspect-square h-full w-full items-center justify-center rounded-2xl bg-background text-xs font-black text-text-secondary">{item.category}</div>
+                  )}
+                  <div className="min-w-0 space-y-2 py-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge label={item.category} tone="muted" />
+                      <span className="text-xs text-text-secondary">{formatDate(item.publishedAt)}</span>
+                    </div>
+                    <h3 className="line-clamp-2 font-bold leading-tight">{item.title}</h3>
+                    <p className="truncate text-xs text-text-secondary">{item.source}</p>
+                  </div>
+                </Card>
+              </a>
+            );
+          })}
         </div>
       </div>
     </section>
