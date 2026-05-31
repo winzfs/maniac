@@ -8,6 +8,8 @@ type Env = {
   NEWS_SYNC_SECRET?: string;
 };
 
+const NEWS_RETENTION_DAYS = 30;
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
     status,
@@ -71,6 +73,12 @@ async function ensureNewsSchema(db: D1Database) {
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_news_items_hidden_at ON news_items(hidden_at)").run();
 }
 
+async function pruneOldNews(db: D1Database, now: number) {
+  const cutoff = now - NEWS_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const result = await db.prepare("DELETE FROM news_items WHERE published_at < ?").bind(cutoff).run();
+  return result.meta.changes ?? 0;
+}
+
 async function syncNews(request: Request, env: Env) {
   if (!isAuthorized(request, env)) return json({ ok: false, error: "News sync authorization failed." }, 401);
   if (!env.DB) return json({ ok: false, error: "D1 binding DB is not configured." }, 500);
@@ -80,6 +88,8 @@ async function syncNews(request: Request, env: Env) {
   const limit = parseLimit(request);
   const fetched = await fetchExternalNews(limit);
   const now = Date.now();
+
+  const pruned = await pruneOldNews(env.DB, now);
 
   const statements = fetched.items.map((item) => env.DB.prepare(
     `INSERT OR IGNORE INTO news_items
@@ -108,6 +118,8 @@ async function syncNews(request: Request, env: Env) {
     ok: true,
     fetched: fetched.items.length,
     attemptedInsert: statements.length,
+    pruned,
+    retentionDays: NEWS_RETENTION_DAYS,
     totalStored: total?.count ?? 0,
     errors: fetched.errors,
   });
