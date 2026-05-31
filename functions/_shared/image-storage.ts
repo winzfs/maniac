@@ -66,6 +66,10 @@ function buildSignatureBase(params: Record<string, string | number | boolean>) {
     .join("&");
 }
 
+function normalizeProvider(value: string | undefined) {
+  return value?.trim().toLowerCase();
+}
+
 export class CloudinaryImageStorageProvider implements ImageStorageProvider {
   readonly provider = "cloudinary" as const;
   private readonly cloudName: string;
@@ -175,9 +179,16 @@ export class SupabaseImageStorageProvider implements ImageStorageProvider {
 }
 
 export function createImageStorageProvider(env: ImageStorageEnv): ImageStorageProvider {
-  if (env.IMAGE_STORAGE_PROVIDER === "supabase") return new SupabaseImageStorageProvider(env);
-  if (env.IMAGE_STORAGE_PROVIDER === "cloudinary" || env.CLOUDINARY_CLOUD_NAME) return new CloudinaryImageStorageProvider(env);
-  return new SupabaseImageStorageProvider(env);
+  const provider = normalizeProvider(env.IMAGE_STORAGE_PROVIDER);
+
+  if (!provider) {
+    throw new Error("IMAGE_STORAGE_PROVIDER is not configured. Set IMAGE_STORAGE_PROVIDER=cloudinary or IMAGE_STORAGE_PROVIDER=supabase.");
+  }
+
+  if (provider === "cloudinary") return new CloudinaryImageStorageProvider(env);
+  if (provider === "supabase") return new SupabaseImageStorageProvider(env);
+
+  throw new Error(`Unsupported IMAGE_STORAGE_PROVIDER: ${env.IMAGE_STORAGE_PROVIDER}. Supported values are cloudinary and supabase.`);
 }
 
 export function createImageObjectKey(input: { userId: string; purpose: string; originalName?: string; contentType: string }) {
