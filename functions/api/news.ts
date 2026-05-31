@@ -97,7 +97,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     }
   }
 
-  const external = await fetchExternalNews(limit);
-  const items = category ? external.items.filter((item) => item.category === category) : external.items;
+  const externalLimit = category ? Math.min(50, Math.max(limit * 2, 36)) : limit;
+  const external = await fetchExternalNews(externalLimit);
+  const items = category ? external.items.filter((item) => item.category === category).slice(0, limit) : external.items;
   return json({ ok: true, source: "rss", category, items, errors: external.errors });
 };
