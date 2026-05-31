@@ -56,7 +56,6 @@ const categoryAliases: Record<string, string[]> = {
   camera: ["camera", "카메라", "미러리스", "렌즈", "촬영", "소니", "캐논", "후지"],
   camping: ["camping", "캠핑", "텐트", "랜턴", "아웃도어"],
   audio: ["audio", "오디오", "헤드폰", "스피커", "dac", "앰프", "이어폰"],
-  custom: ["custom", "기타", "취미", "장비"],
 };
 
 function normalizeQuery(value: string | null) {
@@ -69,8 +68,8 @@ function parseType(value: string | null): SearchType {
 }
 
 function parseLimit(value: string | null) {
-  const parsed = Number(value ?? 12);
-  if (!Number.isFinite(parsed)) return 12;
+  const parsed = Number(value ?? 20);
+  if (!Number.isFinite(parsed)) return 20;
   return Math.min(Math.max(Math.trunc(parsed), 1), 30);
 }
 
@@ -80,8 +79,12 @@ function unique(values: string[]) {
 
 function matchedCategorySlugs(query: string) {
   const compactQuery = query.toLowerCase().replace(/\s+/g, "");
+
   return Object.entries(categoryAliases)
-    .filter(([slug, aliases]) => slug.includes(compactQuery) || aliases.some((alias) => alias.toLowerCase().replace(/\s+/g, "").includes(compactQuery) || compactQuery.includes(alias.toLowerCase().replace(/\s+/g, ""))))
+    .filter(([slug, aliases]) => {
+      if (compactQuery === slug) return true;
+      return aliases.some((alias) => compactQuery === alias.toLowerCase().replace(/\s+/g, ""));
+    })
     .map(([slug]) => slug);
 }
 
@@ -180,46 +183,6 @@ async function searchPosts(db: D1Database, searchPatterns: string[], limit: numb
   }));
 }
 
-async function searchPostsByCategory(db: D1Database, slugs: string[], limit: number): Promise<SearchResult[]> {
-  if (slugs.length === 0) return [];
-
-  const categoryExpr = postCategoryExpression();
-  const placeholders = slugs.map(() => "?").join(", ");
-  const rows = await db.prepare(
-    `SELECT
-       posts.id,
-       posts.title,
-       posts.body,
-       boards.title AS board_title,
-       boards.slug AS board_slug,
-       ${categoryExpr} AS category,
-       COALESCE(users.nickname, posts.author_id) AS author_nickname,
-       posts.created_at
-     FROM posts
-     INNER JOIN boards ON boards.id = posts.board_id
-     LEFT JOIN users ON users.id = posts.author_id
-     WHERE posts.deleted_at IS NULL
-       AND posts.status = 'published'
-       AND posts.visibility = 'public'
-       AND posts.moderation_status = 'normal'
-       AND boards.status = 'active'
-       AND boards.permission = 'public'
-       AND ${categoryExpr} IN (${placeholders})
-     ORDER BY posts.created_at DESC
-     LIMIT ?`,
-  ).bind(...slugs, limit).all<PostSearchRow>();
-
-  return (rows.results ?? []).map((row) => ({
-    type: "post",
-    id: row.id,
-    title: row.title,
-    description: stripHtml(row.body).slice(0, 140) || `${row.board_title} · ${row.author_nickname}`,
-    href: `/explore/post/?id=${encodeURIComponent(row.id)}`,
-    label: row.board_title,
-    createdAt: row.created_at,
-  }));
-}
-
 async function searchNews(db: D1Database, searchPatterns: string[], limit: number): Promise<SearchResult[]> {
   const columns = ["title", "source", "category", "link"];
   const rows = await db.prepare(
@@ -255,22 +218,19 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const searchPatterns = patterns(query);
-  const categorySlugs = matchedCategorySlugs(query);
-  const [equipments, posts, categoryPosts, news] = await Promise.all([
+  const [equipments, posts, news] = await Promise.all([
     type === "all" || type === "equipment" ? searchEquipments(env.DB, searchPatterns, limit) : Promise.resolve([]),
     type === "all" || type === "post" ? searchPosts(env.DB, searchPatterns, limit) : Promise.resolve([]),
-    type === "all" || type === "post" ? searchPostsByCategory(env.DB, categorySlugs, limit) : Promise.resolve([]),
     type === "all" || type === "news" ? searchNews(env.DB, searchPatterns, limit) : Promise.resolve([]),
   ]);
 
-  const dedupedPosts = [...posts, ...categoryPosts].filter((post, index, list) => list.findIndex((item) => item.id === post.id) === index);
-  const results = [...equipments, ...dedupedPosts, ...news].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  const results = [...equipments, ...posts, ...news].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 
   return jsonResponse({
     ok: true,
     query,
     type,
     results,
-    groups: { equipments, posts: dedupedPosts, news },
+    groups: { equipments, posts, news },
   });
 };
