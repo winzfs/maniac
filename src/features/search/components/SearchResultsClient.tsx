@@ -102,7 +102,7 @@ export function SearchResultsClient() {
     let mounted = true;
 
     async function loadResults() {
-      if (normalizedQuery.length < 2) {
+      if (!normalizedQuery) {
         setResults([]);
         setError("");
         setLoading(false);
@@ -113,7 +113,7 @@ export function SearchResultsClient() {
       setError("");
 
       try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(normalizedQuery)}&type=${encodeURIComponent(type)}&limit=12`, { cache: "no-store" });
+        const response = await fetch(`/api/search?q=${encodeURIComponent(normalizedQuery)}&type=${encodeURIComponent(type)}&limit=20`, { cache: "no-store" });
         const data = (await response.json().catch(() => null)) as SearchResponse | null;
         if (!response.ok || !data?.ok) throw new Error(data?.error ?? "검색 결과를 불러오지 못했습니다.");
         if (mounted) setResults(data.results ?? []);
@@ -151,7 +151,7 @@ export function SearchResultsClient() {
   return (
     <section className="space-y-5">
       <form onSubmit={submitSearch} className="flex gap-2">
-        <SearchBar value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1" placeholder="장비, 게시글, 뉴스 검색" />
+        <SearchBar value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1" placeholder="게시글 제목·본문·장비·뉴스 검색" />
         <button type="submit" className="h-12 shrink-0 rounded-full bg-graphite px-5 text-sm font-black text-white transition hover:opacity-90">검색</button>
       </form>
 
@@ -168,14 +168,14 @@ export function SearchResultsClient() {
         ))}
       </div>
 
-      {normalizedQuery.length < 2 ? (
-        <Card className="p-5 text-sm leading-6 text-text-secondary">두 글자 이상 입력하면 공개 장비, 게시글, 장비 뉴스를 한 번에 검색합니다.</Card>
+      {!normalizedQuery ? (
+        <Card className="p-5 text-sm leading-6 text-text-secondary">검색어를 입력하면 게시글 제목과 본문, 공개 장비, 장비 뉴스를 한 번에 검색합니다.</Card>
       ) : null}
 
       {loading ? <Card className="h-28 animate-pulse" /> : null}
       {error ? <Card className="p-5 text-sm text-text-secondary">{error}</Card> : null}
 
-      {!loading && !error && normalizedQuery.length >= 2 ? (
+      {!loading && !error && normalizedQuery ? (
         <div className="space-y-3">
           <p className="text-sm font-semibold text-text-secondary">“{normalizedQuery}” 검색 결과 {results.length}개</p>
           {results.length > 0 ? (
@@ -185,7 +185,7 @@ export function SearchResultsClient() {
           ) : (
             <Card className="space-y-1 p-5">
               <h2 className="font-black">검색 결과가 없습니다.</h2>
-              <p className="text-sm leading-6 text-text-secondary">다른 장비명, 브랜드, 게시글 제목, 뉴스 키워드로 다시 검색해보세요.</p>
+              <p className="text-sm leading-6 text-text-secondary">게시글 본문에 있는 정확한 단어, 제목, 장비명 또는 브랜드명으로 다시 검색해보세요.</p>
             </Card>
           )}
         </div>
