@@ -14,12 +14,7 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   const id = paramValue(params, "id");
   if (!id) return errorResponse("댓글 id가 필요합니다.", 400);
 
-  const now = Date.now();
-  await env.DB.prepare(
-    `UPDATE comments
-     SET deleted_at = ?, updated_at = ?
-     WHERE id = ? AND deleted_at IS NULL`,
-  ).bind(now, now, id).run();
+  await env.DB.prepare("DELETE FROM comments WHERE id = ?").bind(id).run();
 
   return jsonResponse({ ok: true });
 };
