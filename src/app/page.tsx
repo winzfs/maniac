@@ -8,9 +8,9 @@ import Link from "next/link";
 
 export default function HomePage() {
   return <main className="container-shell max-w-full space-y-12 overflow-x-hidden py-5 sm:py-8 lg:space-y-16 lg:py-10">
-    <header className="relative flex min-h-28 items-center justify-center sm:min-h-32 lg:min-h-36">
+    <header className="relative flex min-h-32 items-center justify-center sm:min-h-36 lg:min-h-40">
       <Link href="/" aria-label="홈으로 이동" className="inline-flex items-center justify-center">
-        <img src="/img/logo.png" alt="GearDuck" className="h-24 w-auto sm:h-28 lg:h-32" />
+        <img src="/img/logo.png" alt="GearDuck" className="h-28 w-auto sm:h-32 lg:h-36" />
       </Link>
       <div className="absolute right-0 top-[calc(50%-1.5rem)] sm:top-[calc(50%-1.75rem)]">
         <MenuButton />
