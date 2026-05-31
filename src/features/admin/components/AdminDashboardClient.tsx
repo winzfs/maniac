@@ -40,6 +40,12 @@ type AdminNews = {
   image_url: string | null;
 };
 
+type NewsFeedSetting = {
+  category: string;
+  label: string;
+  queries: string[];
+};
+
 type OverviewResponse = {
   ok?: boolean;
   error?: string;
@@ -48,7 +54,13 @@ type OverviewResponse = {
   news?: AdminNews[];
 };
 
-type Tab = "posts" | "comments" | "news" | "design";
+type NewsFeedsResponse = {
+  ok?: boolean;
+  error?: string;
+  feeds?: NewsFeedSetting[];
+};
+
+type Tab = "posts" | "comments" | "news" | "keywords" | "design";
 
 type State =
   | { status: "loading" }
@@ -65,6 +77,18 @@ function snippet(value: string, max = 120) {
   return `${text.slice(0, max - 3)}...`;
 }
 
+function queriesToText(queries: string[]) {
+  return queries.join(", ");
+}
+
+function textToQueries(value: string) {
+  return value
+    .split(/[\n,]/g)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+    .slice(0, 10);
+}
+
 async function readOverview() {
   const response = await fetch("/api/admin/overview?limit=50", { cache: "no-store", credentials: "same-origin" });
   const data = (await response.json().catch(() => null)) as OverviewResponse | null;
@@ -74,6 +98,25 @@ async function readOverview() {
     comments: data.comments ?? [],
     news: data.news ?? [],
   };
+}
+
+async function readNewsFeeds() {
+  const response = await fetch("/api/admin/news-feeds", { cache: "no-store", credentials: "same-origin" });
+  const data = (await response.json().catch(() => null)) as NewsFeedsResponse | null;
+  if (!response.ok || !data?.ok) throw new Error(data?.error ?? "뉴스 키워드를 불러오지 못했습니다.");
+  return data.feeds ?? [];
+}
+
+async function saveNewsFeeds(feeds: NewsFeedSetting[]) {
+  const response = await fetch("/api/admin/news-feeds", {
+    method: "PUT",
+    credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ feeds }),
+  });
+  const data = (await response.json().catch(() => null)) as NewsFeedsResponse | null;
+  if (!response.ok || !data?.ok) throw new Error(data?.error ?? "뉴스 키워드 저장에 실패했습니다.");
+  return data.feeds ?? feeds;
 }
 
 async function removeAdminItem(kind: "posts" | "comments" | "news", id: string) {
@@ -90,6 +133,9 @@ export function AdminDashboardClient() {
   const [state, setState] = useState<State>({ status: "loading" });
   const [status, setStatus] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [feeds, setFeeds] = useState<NewsFeedSetting[]>([]);
+  const [feedsLoaded, setFeedsLoaded] = useState(false);
+  const [feedsSaving, setFeedsSaving] = useState(false);
 
   async function load() {
     setState({ status: "loading" });
@@ -102,9 +148,24 @@ export function AdminDashboardClient() {
     }
   }
 
+  async function loadFeeds() {
+    if (feedsLoaded) return;
+    try {
+      const data = await readNewsFeeds();
+      setFeeds(data);
+      setFeedsLoaded(true);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "뉴스 키워드를 불러오지 못했습니다.");
+    }
+  }
+
   useEffect(() => {
     void load();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "keywords") void loadFeeds();
+  }, [activeTab]);
 
   const counts = useMemo(() => {
     if (state.status !== "ready") return { posts: 0, comments: 0, news: 0 };
@@ -112,12 +173,12 @@ export function AdminDashboardClient() {
   }, [state]);
 
   async function handleDelete(kind: "posts" | "comments" | "news", id: string, label: string) {
-    if (!window.confirm(`${label}을(를) 삭제/숨김 처리할까요?`)) return;
+    if (!window.confirm(`${label}을(를) DB에서 실제 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
     setBusyId(id);
     setStatus("처리 중입니다...");
     try {
       await removeAdminItem(kind, id);
-      setStatus("처리되었습니다.");
+      setStatus("삭제되었습니다.");
       if (state.status === "ready") {
         if (kind === "posts") setState({ ...state, posts: state.posts.filter((item) => item.id !== id) });
         if (kind === "comments") setState({ ...state, comments: state.comments.filter((item) => item.id !== id) });
@@ -127,6 +188,25 @@ export function AdminDashboardClient() {
       setStatus(error instanceof Error ? error.message : "처리 실패");
     } finally {
       setBusyId(null);
+    }
+  }
+
+  function updateFeedQueries(category: string, value: string) {
+    setFeeds((current) => current.map((feed) => feed.category === category ? { ...feed, queries: textToQueries(value) } : feed));
+  }
+
+  async function handleSaveFeeds() {
+    setFeedsSaving(true);
+    setStatus("뉴스 키워드를 저장 중입니다...");
+    try {
+      const saved = await saveNewsFeeds(feeds);
+      setFeeds(saved);
+      setFeedsLoaded(true);
+      setStatus("뉴스 키워드가 저장되었습니다. 다음 뉴스 동기화부터 적용됩니다.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "뉴스 키워드 저장에 실패했습니다.");
+    } finally {
+      setFeedsSaving(false);
     }
   }
 
@@ -150,7 +230,7 @@ export function AdminDashboardClient() {
         <div><p className="text-sm text-zinc-300">게시글</p><b className="text-2xl">{counts.posts}</b></div>
         <div><p className="text-sm text-zinc-300">댓글</p><b className="text-2xl">{counts.comments}</b></div>
         <div><p className="text-sm text-zinc-300">뉴스</p><b className="text-2xl">{counts.news}</b></div>
-        <div><p className="text-sm text-zinc-300">디자인</p><b className="text-2xl">준비중</b></div>
+        <div><p className="text-sm text-zinc-300">뉴스 키워드</p><b className="text-2xl">{feeds.length || "관리"}</b></div>
       </Card>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -158,6 +238,7 @@ export function AdminDashboardClient() {
           ["posts", `게시글 ${counts.posts}`],
           ["comments", `댓글 ${counts.comments}`],
           ["news", `뉴스 ${counts.news}`],
+          ["keywords", "뉴스 키워드"],
           ["design", "디자인/레이아웃"],
         ] as [Tab, string][]).map(([tab, label]) => (
           <button
@@ -175,7 +256,7 @@ export function AdminDashboardClient() {
 
       {activeTab === "posts" ? (
         <section className="space-y-4">
-          <SectionHeader title="모든 게시글" description="관리자는 작성자와 관계없이 게시글을 삭제 처리할 수 있습니다." />
+          <SectionHeader title="모든 게시글" description="관리자는 작성자와 관계없이 게시글을 DB에서 실제 삭제할 수 있습니다." />
           <div className="grid gap-3">
             {state.posts.map((post) => (
               <Card key={post.id} className="space-y-3 p-4">
@@ -199,7 +280,7 @@ export function AdminDashboardClient() {
 
       {activeTab === "comments" ? (
         <section className="space-y-4">
-          <SectionHeader title="모든 댓글" description="관리자는 작성자와 관계없이 댓글을 삭제 처리할 수 있습니다." />
+          <SectionHeader title="모든 댓글" description="관리자는 작성자와 관계없이 댓글을 DB에서 실제 삭제할 수 있습니다." />
           <div className="grid gap-3">
             {state.comments.map((comment) => (
               <Card key={comment.id} className="space-y-3 p-4">
@@ -220,7 +301,7 @@ export function AdminDashboardClient() {
 
       {activeTab === "news" ? (
         <section className="space-y-4">
-          <SectionHeader title="뉴스" description="뉴스는 삭제 대신 숨김 처리됩니다." />
+          <SectionHeader title="뉴스" description="뉴스는 DB에서 실제 삭제됩니다. 다음 수집 때 같은 링크가 다시 잡히면 다시 들어올 수 있습니다." />
           <div className="grid gap-3">
             {state.news.map((item) => (
               <Card key={item.id} className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 p-3 sm:grid-cols-[7rem_minmax(0,1fr)]">
@@ -229,11 +310,41 @@ export function AdminDashboardClient() {
                   <div className="flex flex-wrap items-center gap-2"><Badge label={item.category} tone="muted" /><span className="text-xs text-text-secondary">{formatDate(item.published_at)}</span></div>
                   <h3 className="line-clamp-2 font-bold leading-tight">{item.title}</h3>
                   <p className="truncate text-xs text-text-secondary">{item.source}</p>
-                  <div className="flex gap-2"><a href={item.link} target="_blank" rel="noreferrer"><Button variant="secondary">원문</Button></a><Button variant="ghost" disabled={busyId === item.id} onClick={() => handleDelete("news", item.id, "뉴스")}>{busyId === item.id ? "처리 중" : "숨김"}</Button></div>
+                  <div className="flex gap-2"><a href={item.link} target="_blank" rel="noreferrer"><Button variant="secondary">원문</Button></a><Button variant="ghost" disabled={busyId === item.id} onClick={() => handleDelete("news", item.id, "뉴스")}>{busyId === item.id ? "처리 중" : "삭제"}</Button></div>
                 </div>
               </Card>
             ))}
           </div>
+        </section>
+      ) : null}
+
+      {activeTab === "keywords" ? (
+        <section className="space-y-4">
+          <SectionHeader title="뉴스 키워드" description="쉼표 또는 줄바꿈으로 검색어를 입력하세요. 저장 후 다음 뉴스 동기화부터 적용됩니다." />
+          {!feedsLoaded ? <Card className="p-6 text-sm text-text-secondary">뉴스 키워드를 불러오는 중입니다...</Card> : null}
+          {feedsLoaded ? (
+            <div className="grid gap-4">
+              {feeds.map((feed) => (
+                <Card key={feed.category} className="space-y-3 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div><Badge label={feed.label} tone="muted" /><p className="mt-2 text-xs text-text-secondary">category: {feed.category}</p></div>
+                    <span className="text-xs text-text-secondary">최대 10개</span>
+                  </div>
+                  <textarea
+                    value={queriesToText(feed.queries)}
+                    onChange={(event) => updateFeedQueries(feed.category, event.target.value)}
+                    rows={3}
+                    className="w-full rounded-2xl border border-border bg-surface px-4 py-3 text-sm font-semibold outline-none focus:border-orange-500"
+                    placeholder="검색어를 쉼표 또는 줄바꿈으로 입력"
+                  />
+                </Card>
+              ))}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button disabled={feedsSaving} onClick={handleSaveFeeds}>{feedsSaving ? "저장 중" : "뉴스 키워드 저장"}</Button>
+                <p className="text-xs leading-5 text-text-secondary">저장 즉시 기존 뉴스가 바뀌지는 않고, 다음 GitHub Actions 뉴스 동기화부터 새 키워드로 수집됩니다.</p>
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
