@@ -58,6 +58,11 @@ function sourceValue(itemXml: string) {
   return parts.length > 1 ? parts.at(-1)?.trim() || "News" : "News";
 }
 
+function sourceUrlValue(itemXml: string) {
+  const sourceTag = itemXml.match(/<source[^>]+>/i)?.[0];
+  return sourceTag ? attrValue(sourceTag, "url") : "";
+}
+
 function normalizeImageUrl(value: string | null | undefined, baseUrl?: string) {
   const raw = value?.trim();
   if (!raw) return null;
@@ -67,6 +72,33 @@ function normalizeImageUrl(value: string | null | undefined, baseUrl?: string) {
   } catch {
     return null;
   }
+}
+
+function isGoogleNewsUrl(value: string) {
+  try {
+    const host = new URL(value).hostname.replace(/^www\./, "");
+    return host === "news.google.com";
+  } catch {
+    return false;
+  }
+}
+
+function extractUrlParameter(value: string) {
+  try {
+    const url = new URL(value);
+    const candidate = url.searchParams.get("url") || url.searchParams.get("q") || url.searchParams.get("u");
+    return candidate && /^https?:\/\//i.test(candidate) ? candidate : "";
+  } catch {
+    return "";
+  }
+}
+
+function descriptionArticleUrl(itemXml: string) {
+  const description = tagValue(itemXml, "description");
+  const links = Array.from(description.matchAll(/href=["']([^"']+)["']/gi))
+    .map((match) => decodeXml(match[1]))
+    .filter((value) => /^https?:\/\//i.test(value));
+  return links.find((value) => !isGoogleNewsUrl(value)) ?? "";
 }
 
 function imageValue(itemXml: string) {
@@ -99,9 +131,47 @@ function metaContent(html: string, property: string) {
   return "";
 }
 
-async function fetchArticleImage(link: string) {
+async function resolveArticleUrl(link: string, fallbackUrl = "") {
+  const explicit = extractUrlParameter(link);
+  if (explicit) return explicit;
+  if (fallbackUrl && !isGoogleNewsUrl(fallbackUrl)) return fallbackUrl;
+  if (!isGoogleNewsUrl(link)) return link;
+
   try {
     const response = await fetch(link, {
+      method: "HEAD",
+      redirect: "follow",
+      headers: { "user-agent": "GearDuckBot/1.0" },
+    });
+    if (response.url && !isGoogleNewsUrl(response.url)) return response.url;
+  } catch {
+    // Some publishers or Google redirects do not allow HEAD.
+  }
+
+  try {
+    const response = await fetch(link, {
+      redirect: "follow",
+      headers: {
+        accept: "text/html,application/xhtml+xml",
+        "user-agent": "GearDuckBot/1.0",
+      },
+    });
+    if (response.url && !isGoogleNewsUrl(response.url)) return response.url;
+    const html = (await response.text()).slice(0, 80_000);
+    const canonical = metaContent(html, "og:url");
+    const canonicalUrl = normalizeImageUrl(canonical, response.url || link);
+    if (canonicalUrl && !isGoogleNewsUrl(canonicalUrl)) return canonicalUrl;
+  } catch {
+    // Keep the original link.
+  }
+
+  return fallbackUrl || link;
+}
+
+async function fetchArticleImage(link: string, fallbackUrl = "") {
+  try {
+    const articleUrl = await resolveArticleUrl(link, fallbackUrl);
+    const response = await fetch(articleUrl, {
       redirect: "follow",
       headers: {
         accept: "text/html,application/xhtml+xml",
@@ -112,7 +182,7 @@ async function fetchArticleImage(link: string) {
     const contentType = response.headers.get("content-type") ?? "";
     if (!contentType.includes("text/html")) return null;
     const html = (await response.text()).slice(0, 180_000);
-    const resolvedUrl = response.url || link;
+    const resolvedUrl = response.url || articleUrl;
     const candidate = [
       metaContent(html, "og:image"),
       metaContent(html, "og:image:url"),
@@ -125,12 +195,12 @@ async function fetchArticleImage(link: string) {
   }
 }
 
-async function enrichMissingImages(items: ExternalNewsItem[]) {
-  const targets = items.filter((item) => !item.imageUrl).slice(0, 16);
-  for (const item of targets) {
-    const imageUrl = await fetchArticleImage(item.link);
+async function enrichMissingImages(items: ExternalNewsItem[], fallbackUrls: Map<string, string>) {
+  const targets = items.filter((item) => !item.imageUrl).slice(0, 24);
+  await Promise.all(targets.map(async (item) => {
+    const imageUrl = await fetchArticleImage(item.link, fallbackUrls.get(item.link) ?? "");
     if (imageUrl) item.imageUrl = imageUrl;
-  }
+  }));
   return items;
 }
 
@@ -144,9 +214,10 @@ function rssUrl(query: string) {
   return `https://news.google.com/rss/search?${params.toString()}`;
 }
 
-function parseItems(xml: string, feed: NewsFeed, maxItems: number): ExternalNewsItem[] {
+function parseItems(xml: string, feed: NewsFeed, maxItems: number) {
+  const fallbackUrls = new Map<string, string>();
   const itemMatches = xml.match(/<item[\s\S]*?<\/item>/gi) ?? [];
-  return itemMatches.slice(0, maxItems).map((itemXml, index) => {
+  const items = itemMatches.slice(0, maxItems).map((itemXml, index) => {
     const rawTitle = tagValue(itemXml, "title");
     const titleParts = rawTitle.split(" - ");
     const title = stripTags(titleParts.length > 1 ? titleParts.slice(0, -1).join(" - ") : rawTitle);
@@ -154,6 +225,8 @@ function parseItems(xml: string, feed: NewsFeed, maxItems: number): ExternalNews
     const publishedAt = tagValue(itemXml, "pubDate");
     const publishedAtMs = new Date(publishedAt).getTime();
     const source = sourceValue(itemXml);
+    const fallbackUrl = descriptionArticleUrl(itemXml) || sourceUrlValue(itemXml);
+    if (link && fallbackUrl) fallbackUrls.set(link, fallbackUrl);
     return {
       id: `${feed.category}-${index}-${publishedAt}`,
       title,
@@ -165,6 +238,8 @@ function parseItems(xml: string, feed: NewsFeed, maxItems: number): ExternalNews
       imageUrl: imageValue(itemXml),
     };
   }).filter((item) => item.title && item.link);
+
+  return { items, fallbackUrls };
 }
 
 function uniqueByLink(items: ExternalNewsItem[]) {
@@ -189,14 +264,14 @@ async function fetchFeedNews(feed: NewsFeed, perCategory: number) {
       });
       if (!response.ok) throw new Error(`${feed.category} news fetch failed: ${response.status}`);
       const xml = await response.text();
-      const items = parseItems(xml, feed, perCategory);
-      if (items.length > 0) return { items, errors };
+      const parsed = parseItems(xml, feed, perCategory);
+      if (parsed.items.length > 0) return { items: parsed.items, fallbackUrls: parsed.fallbackUrls, errors };
     } catch (error) {
       errors.push(error instanceof Error ? `${feed.category} ${query}: ${error.message}` : `${feed.category} ${query}: ${String(error)}`);
     }
   }
 
-  return { items: [], errors };
+  return { items: [], fallbackUrls: new Map<string, string>(), errors };
 }
 
 export async function fetchExternalNews(limit = 8, feeds: NewsFeed[] = newsFeeds) {
@@ -204,11 +279,16 @@ export async function fetchExternalNews(limit = 8, feeds: NewsFeed[] = newsFeeds
 
   const results = await Promise.all(feeds.map((feed) => fetchFeedNews(feed, perCategory)));
 
+  const fallbackUrls = new Map<string, string>();
+  for (const result of results) {
+    for (const [link, fallbackUrl] of result.fallbackUrls) fallbackUrls.set(link, fallbackUrl);
+  }
+
   const items = uniqueByLink(results
     .flatMap((result) => result.items)
     .sort((a, b) => b.publishedAtMs - a.publishedAtMs));
 
-  const enrichedItems = await enrichMissingImages(items);
+  const enrichedItems = await enrichMissingImages(items, fallbackUrls);
   const errors = results.flatMap((result) => result.errors);
 
   return { items: enrichedItems, errors };
