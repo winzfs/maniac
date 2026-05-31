@@ -62,11 +62,18 @@ async function ensureNewsSchema(db: D1Database) {
       source TEXT NOT NULL,
       category TEXT NOT NULL,
       published_at INTEGER NOT NULL,
+      image_url TEXT,
       hidden_at INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`,
   ).run();
+
+  try {
+    await db.prepare("ALTER TABLE news_items ADD COLUMN image_url TEXT").run();
+  } catch {
+    // Column already exists.
+  }
 
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_news_items_category ON news_items(category)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_news_items_published_at ON news_items(published_at)").run();
@@ -92,9 +99,16 @@ async function syncNews(request: Request, env: Env) {
   const pruned = await pruneOldNews(env.DB, now);
 
   const statements = fetched.items.map((item) => env.DB.prepare(
-    `INSERT OR IGNORE INTO news_items
-       (id, title, link, source, category, published_at, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO news_items
+       (id, title, link, source, category, published_at, image_url, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(link) DO UPDATE SET
+       title = excluded.title,
+       source = excluded.source,
+       category = excluded.category,
+       published_at = excluded.published_at,
+       image_url = COALESCE(excluded.image_url, news_items.image_url),
+       updated_at = excluded.updated_at`,
   ).bind(
     stableNewsId(item.link),
     item.title,
@@ -102,6 +116,7 @@ async function syncNews(request: Request, env: Env) {
     item.source,
     item.category,
     item.publishedAtMs,
+    item.imageUrl,
     now,
     now,
   ));
