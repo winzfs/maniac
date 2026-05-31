@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
-import { SectionHeader } from "@/shared/components/ui/SectionHeader";
 import { excerptFromHtml } from "@/features/boards/utils/html";
 import { UserActionMenu } from "@/features/users/components/UserActionMenu";
 
@@ -48,11 +48,27 @@ async function readJson<T>(url: string) {
 }
 
 function formatDate(value: number) {
-  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
+  return new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit" }).format(new Date(value));
 }
 
 function postDetailHref(id: string) {
   return `/explore/post/?id=${encodeURIComponent(id)}`;
+}
+
+function PostListRow({ post }: { post: PublicPost }) {
+  return (
+    <Card className="p-0 transition hover:-translate-y-0.5 hover:shadow-sm">
+      <div className="block p-4 md:grid md:grid-cols-[minmax(0,1fr)_9rem_5rem_4.5rem] md:items-center md:gap-3 md:px-4 md:py-3">
+        <Link href={postDetailHref(post.id)} className="block min-w-0">
+          <h2 className="truncate text-lg font-black tracking-[-0.04em] text-text-primary transition hover:text-garage-orange md:text-base">{post.title}</h2>
+          <p className="mt-1 line-clamp-2 text-sm leading-6 text-text-secondary md:hidden">{excerptFromHtml(post.body, 120)}</p>
+        </Link>
+        <div className="mt-3 md:mt-0"><UserActionMenu userId={post.author_id} nickname={post.author_nickname} compact align="right" /></div>
+        <p className="mt-2 text-xs font-bold text-text-secondary md:mt-0 md:text-center">댓글 {post.comment_count}</p>
+        <p className="mt-1 text-xs font-bold text-text-secondary md:mt-0 md:text-right">{formatDate(post.created_at)}</p>
+      </div>
+    </Card>
+  );
 }
 
 export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: string; boardSlug: string }) {
@@ -95,35 +111,30 @@ export function ExploreBoardClient({ categorySlug, boardSlug }: { categorySlug: 
   if (!state.board) return <Card className="space-y-3 p-6"><h2 className="text-xl font-bold">게시판을 찾을 수 없습니다.</h2><Link className="text-sm font-bold text-orange-600" href={`/explore/${categorySlug}/`}>카테고리로 돌아가기</Link></Card>;
 
   return (
-    <div className="space-y-9 lg:space-y-12">
-      <Card variant="dark" className="grid gap-6 p-7 sm:grid-cols-[1fr_auto] sm:items-center sm:p-8">
+    <div className="space-y-5 lg:space-y-6">
+      <section className="rounded-[1.5rem] border border-border bg-surface px-5 py-4 sm:flex sm:items-center sm:justify-between sm:gap-5 sm:px-6">
         <div>
-          <p className="text-sm text-zinc-300">게시판 상태</p>
-          <h2 className="mt-2 text-3xl font-black tracking-[-0.05em]">{state.posts.length} posts</h2>
-          <p className="mt-4 text-sm leading-6 text-zinc-300">{state.board.description ?? "게시판 설명이 없습니다."}</p>
+          <div className="flex items-center gap-2"><Badge label={state.board.title} tone={state.board.type === "review" ? "lime" : state.board.type === "trade" ? "orange" : "muted"} /><span className="text-xs font-bold text-text-secondary">{state.posts.length} posts</span></div>
+          <h2 className="mt-2 text-3xl font-black tracking-[-0.06em] sm:text-4xl">{state.board.title}</h2>
+          <p className="mt-2 text-sm leading-6 text-text-secondary">{state.board.description ?? "게시판 설명이 없습니다."}</p>
         </div>
-        <Link href={writeHref}><Button className="w-full sm:w-auto">글쓰기</Button></Link>
-      </Card>
+        <Link href={writeHref} className="mt-4 hidden shrink-0 sm:mt-0 sm:block"><Button>글쓰기</Button></Link>
+      </section>
 
-      <section>
-        <SectionHeader title="게시글" description="D1 posts 테이블의 공개 게시글을 표시합니다." />
-        {state.postsError ? <Card className="mt-5 space-y-5 p-6 sm:p-7"><p className="text-sm leading-6 text-text-secondary">게시글 목록을 불러오지 못했습니다. 글쓰기는 계속 사용할 수 있습니다.</p><Link href={writeHref}><Button>글쓰기</Button></Link></Card> : null}
-        {!state.postsError && state.posts.length === 0 ? <Card className="mt-5 space-y-5 p-6 sm:p-7"><div><h3 className="text-lg font-bold">아직 공개된 게시글이 없습니다.</h3><p className="mt-3 text-sm leading-6 text-text-secondary">이 게시판의 첫 글을 작성해 보세요.</p></div><Link href={writeHref}><Button>첫 글 작성하기</Button></Link></Card> : null}
-        <div className="mt-5 space-y-4">
-          {state.posts.map((post) => (
-            <Card key={post.id} className="space-y-4 p-7 transition hover:-translate-y-0.5 hover:shadow-sm sm:p-8">
-              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs text-text-secondary">
-                <UserActionMenu userId={post.author_id} nickname={post.author_nickname} compact />
-                <span>·</span><span>{formatDate(post.created_at)}</span><span>·</span><span>{post.comment_count} comments</span>
-              </div>
-              <Link href={postDetailHref(post.id)} className="block">
-                <h2 className="text-xl font-black leading-snug tracking-[-0.04em] transition hover:text-garage-orange sm:text-2xl">{post.title}</h2>
-                <p className="mt-2 line-clamp-2 text-base leading-7 text-text-secondary">{excerptFromHtml(post.body)}</p>
-              </Link>
-            </Card>
-          ))}
+      <section className="space-y-3">
+        {state.postsError ? <Card className="space-y-5 p-6 sm:p-7"><p className="text-sm leading-6 text-text-secondary">게시글 목록을 불러오지 못했습니다. 글쓰기는 계속 사용할 수 있습니다.</p><Link href={writeHref}><Button>글쓰기</Button></Link></Card> : null}
+        {!state.postsError && state.posts.length === 0 ? <Card className="space-y-5 p-6 sm:p-7"><div><h3 className="text-lg font-bold">아직 공개된 게시글이 없습니다.</h3><p className="mt-3 text-sm leading-6 text-text-secondary">이 게시판의 첫 글을 작성해 보세요.</p></div><Link href={writeHref}><Button>첫 글 작성하기</Button></Link></Card> : null}
+
+        <div className="hidden rounded-2xl bg-zinc-100 px-4 py-2 text-xs font-black text-text-secondary md:grid md:grid-cols-[minmax(0,1fr)_9rem_5rem_4.5rem] md:gap-3">
+          <span>제목</span><span>작성자</span><span className="text-center">댓글</span><span className="text-right">날짜</span>
+        </div>
+
+        <div className="grid gap-2">
+          {state.posts.map((post) => <PostListRow key={post.id} post={post} />)}
         </div>
       </section>
+
+      <Link href={writeHref} className="fixed bottom-5 right-5 z-20 inline-flex rounded-full bg-garage-orange px-5 py-3 text-sm font-black text-white shadow-xl sm:hidden">+ 글쓰기</Link>
     </div>
   );
 }
