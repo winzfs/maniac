@@ -14,12 +14,10 @@ export const onRequestDelete: PagesFunction<Env> = async ({ request, env, params
   const id = paramValue(params, "id");
   if (!id) return errorResponse("게시글 id가 필요합니다.", 400);
 
-  const now = Date.now();
-  await env.DB.prepare(
-    `UPDATE posts
-     SET deleted_at = ?, updated_at = ?
-     WHERE id = ? AND deleted_at IS NULL`,
-  ).bind(now, now, id).run();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM comments WHERE post_id = ?").bind(id),
+    env.DB.prepare("DELETE FROM posts WHERE id = ?").bind(id),
+  ]);
 
   return jsonResponse({ ok: true });
 };
