@@ -47,6 +47,11 @@ function parseCategory(request: Request) {
   return categoryLabels.get(raw) ?? raw;
 }
 
+function shouldUseRssFallback(request: Request) {
+  const url = new URL(request.url);
+  return url.searchParams.get("fallback") === "rss";
+}
+
 function dbItem(row: NewsRow) {
   return {
     id: row.id,
@@ -85,17 +90,18 @@ async function readCachedNews(db: D1Database, limit: number, category: string | 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const limit = parseLimit(request);
   const category = parseCategory(request);
+  const fallback = shouldUseRssFallback(request);
 
   if (env.DB) {
     try {
       const cached = await readCachedNews(env.DB, limit, category);
-      if (cached.length > 0) {
-        return json({ ok: true, source: "db", category, items: cached.map(dbItem), errors: [] });
-      }
+      return json({ ok: true, source: "db", category, items: cached.map(dbItem), errors: [] });
     } catch {
-      // news_items migration may not be applied yet. Fall back to external RSS.
+      if (!fallback) return json({ ok: true, source: "db", category, items: [], errors: ["news_items table is not ready"] });
     }
   }
+
+  if (!fallback) return json({ ok: true, source: "db", category, items: [], errors: [] });
 
   const externalLimit = category ? Math.min(50, Math.max(limit * 2, 36)) : limit;
   const external = await fetchExternalNews(externalLimit);
