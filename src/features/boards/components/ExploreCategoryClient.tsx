@@ -60,6 +60,29 @@ function toneForType(type?: string) {
   return type === "trade" ? "orange" : type === "review" ? "lime" : "muted";
 }
 
+function PostListRow({ post, boardType }: { post: PublicPost; boardType?: string }) {
+  return (
+    <Card className="p-0 transition hover:-translate-y-0.5 hover:shadow-sm">
+      <div className="block p-4 md:grid md:grid-cols-[5.5rem_minmax(0,1fr)_9rem_5rem_4.5rem] md:items-center md:gap-3 md:px-4 md:py-3">
+        <div className="mb-2 md:mb-0">
+          <Badge label={post.board_title} tone={toneForType(boardType)} />
+        </div>
+
+        <Link href={postDetailHref(post.id)} className="block min-w-0">
+          <h2 className="truncate text-lg font-black tracking-[-0.04em] text-text-primary transition hover:text-garage-orange md:text-base">{post.title}</h2>
+          <p className="mt-1 line-clamp-2 text-sm leading-6 text-text-secondary md:hidden">{excerptFromHtml(post.body, 120)}</p>
+        </Link>
+
+        <div className="mt-3 md:mt-0 md:justify-self-start">
+          <UserActionMenu userId={post.author_id} nickname={post.author_nickname} compact align="right" />
+        </div>
+        <p className="mt-2 text-xs font-bold text-text-secondary md:mt-0 md:text-center">댓글 {post.comment_count}</p>
+        <p className="mt-1 text-xs font-bold text-text-secondary md:mt-0 md:text-right">{formatDate(post.created_at)}</p>
+      </div>
+    </Card>
+  );
+}
+
 export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const [activeType, setActiveType] = useState("all");
@@ -108,19 +131,17 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
   if (state.status === "error") return <Card className="p-6 text-sm text-red-700">{state.message}</Card>;
 
   return (
-    <div className="space-y-6 lg:space-y-8">
-      <section className="rounded-[2rem] border border-border bg-surface p-5 sm:p-6">
-        <Badge label={category.label} tone="muted" />
-        <h1 className="mt-4 text-4xl font-black tracking-[-0.06em] sm:text-5xl">{category.label}</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-text-secondary">{category.description}</p>
+    <div className="space-y-5 lg:space-y-6">
+      <section className="rounded-[1.5rem] border border-border bg-surface px-5 py-4 sm:flex sm:items-center sm:justify-between sm:gap-5 sm:px-6">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2"><Badge label={category.label} tone="muted" /><span className="text-xs font-bold text-text-secondary">{state.posts.length} posts</span></div>
+          <h1 className="mt-2 text-3xl font-black tracking-[-0.06em] sm:text-4xl">{category.label}</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">{category.description}</p>
+        </div>
+        <Link href={writeHref} className="mt-4 hidden shrink-0 sm:mt-0 sm:block"><Button>글쓰기</Button></Link>
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <Link href={writeHref} className="shrink-0"><Button>글쓰기</Button></Link>
-          <p className="text-xs font-semibold text-text-secondary">세부 카테고리는 글쓰기 화면에서 선택할 수 있어요.</p>
-        </div>
-
         <div className="flex gap-2 overflow-x-auto pb-1">
           <button type="button" onClick={() => setActiveType("all")} className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold ${activeType === "all" ? "bg-graphite text-white" : "bg-surface text-text-secondary"}`}>전체</button>
           {visibleTopics.map((topic) => (
@@ -128,26 +149,21 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
           ))}
         </div>
 
-        <div className="grid gap-3">
-          {filteredPosts.map((post) => (
-            <Card key={post.id} className="space-y-2 p-4 transition hover:-translate-y-0.5 hover:shadow-sm">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge label={post.board_title} tone={toneForType(state.boards.find((board) => board.slug === post.board_slug)?.type)} />
-                <span className="text-xs font-semibold text-text-secondary">{formatDate(post.created_at)} · 댓글 {post.comment_count}</span>
-              </div>
-              <Link href={postDetailHref(post.id)} className="block">
-                <h2 className="text-xl font-black tracking-[-0.04em] transition hover:text-garage-orange">{post.title}</h2>
-                <p className="mt-2 line-clamp-2 text-sm leading-6 text-text-secondary">{excerptFromHtml(post.body, 140)}</p>
-              </Link>
-              <div className="pt-1">
-                <UserActionMenu userId={post.author_id} nickname={post.author_nickname} compact />
-              </div>
-            </Card>
-          ))}
+        <div className="hidden rounded-2xl bg-zinc-100 px-4 py-2 text-xs font-black text-text-secondary md:grid md:grid-cols-[5.5rem_minmax(0,1fr)_9rem_5rem_4.5rem] md:gap-3">
+          <span>말머리</span><span>제목</span><span>작성자</span><span className="text-center">댓글</span><span className="text-right">날짜</span>
+        </div>
+
+        <div className="grid gap-2">
+          {filteredPosts.map((post) => {
+            const boardType = state.boards.find((board) => board.slug === post.board_slug)?.type;
+            return <PostListRow key={post.id} post={post} boardType={boardType} />;
+          })}
         </div>
 
         {filteredPosts.length === 0 ? <Card className="p-6 text-sm text-text-secondary">아직 표시할 덕질 글이 없습니다.</Card> : null}
       </section>
+
+      <Link href={writeHref} className="fixed bottom-5 right-5 z-20 inline-flex rounded-full bg-garage-orange px-5 py-3 text-sm font-black text-white shadow-xl sm:hidden">+ 글쓰기</Link>
     </div>
   );
 }
