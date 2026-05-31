@@ -12,6 +12,7 @@ export type ExternalNewsItem = {
   category: string;
   publishedAt: string;
   publishedAtMs: number;
+  imageUrl: string | null;
 };
 
 export const newsFeeds: NewsFeed[] = [
@@ -44,12 +45,33 @@ function tagValue(itemXml: string, tag: string) {
   return match ? decodeXml(match[1]) : "";
 }
 
+function attrValue(tagXml: string, attr: string) {
+  const match = tagXml.match(new RegExp(`${attr}=["']([^"']+)["']`, "i"));
+  return match ? decodeXml(match[1]) : "";
+}
+
 function sourceValue(itemXml: string) {
   const source = tagValue(itemXml, "source");
   if (source) return stripTags(source);
   const title = tagValue(itemXml, "title");
   const parts = title.split(" - ");
   return parts.length > 1 ? parts.at(-1)?.trim() || "News" : "News";
+}
+
+function imageValue(itemXml: string) {
+  const mediaContent = itemXml.match(/<media:content[^>]+>/i)?.[0];
+  const mediaThumbnail = itemXml.match(/<media:thumbnail[^>]+>/i)?.[0];
+  const enclosure = itemXml.match(/<enclosure[^>]+>/i)?.[0];
+  const htmlImage = itemXml.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
+
+  const candidate = [
+    mediaContent ? attrValue(mediaContent, "url") : "",
+    mediaThumbnail ? attrValue(mediaThumbnail, "url") : "",
+    enclosure ? attrValue(enclosure, "url") : "",
+    htmlImage ? decodeXml(htmlImage) : "",
+  ].find((value) => /^https?:\/\//i.test(value));
+
+  return candidate ?? null;
 }
 
 function rssUrl(query: string) {
@@ -80,6 +102,7 @@ function parseItems(xml: string, feed: NewsFeed, maxItems: number): ExternalNews
       category: feed.label,
       publishedAt,
       publishedAtMs: Number.isFinite(publishedAtMs) ? publishedAtMs : Date.now(),
+      imageUrl: imageValue(itemXml),
     };
   }).filter((item) => item.title && item.link);
 }
