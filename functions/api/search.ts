@@ -7,7 +7,7 @@ type Env = { DB: D1Database };
 type SearchType = "all" | "equipment" | "post" | "news";
 
 type SearchResult = {
-  type: SearchType;
+  type: "equipment" | "post" | "news";
   id: string;
   title: string;
   description: string | null;
@@ -23,12 +23,9 @@ type EquipmentSearchRow = {
   brand: string | null;
   model: string | null;
   nickname: string;
-  slug: string;
   description: string | null;
   main_image_url: string | null;
   created_at: number;
-  maintenance_text: string | null;
-  part_text: string | null;
 };
 
 type PostSearchRow = {
@@ -52,14 +49,14 @@ type NewsSearchRow = {
 };
 
 const categoryAliases: Record<string, string[]> = {
-  motorcycle: ["motorcycle", "bike", "바이크", "오토바이", "이륜차", "모터사이클", "라이딩"],
-  pc: ["pc", "컴퓨터", "커스텀 pc", "커스텀피씨", "피씨", "게이밍", "그래픽카드", "rtx", "cpu"],
-  keyboard: ["keyboard", "키보드", "기계식 키보드", "기계식", "키캡", "스위치", "윤활", "타건"],
-  bicycle: ["bicycle", "cycle", "자전거", "로드", "그래블", "라이딩", "타이어"],
-  camera: ["camera", "카메라", "미러리스", "렌즈", "촬영", "바디", "후지", "소니", "캐논"],
-  camping: ["camping", "캠핑", "캠핑 장비", "텐트", "랜턴", "아웃도어"],
+  motorcycle: ["motorcycle", "bike", "바이크", "오토바이", "이륜차", "모터사이클"],
+  pc: ["pc", "컴퓨터", "피씨", "커스텀pc", "커스텀 pc", "그래픽카드", "rtx", "cpu"],
+  keyboard: ["keyboard", "키보드", "기계식", "기계식키보드", "기계식 키보드", "키캡", "스위치", "윤활"],
+  bicycle: ["bicycle", "cycle", "자전거", "로드", "그래블"],
+  camera: ["camera", "카메라", "미러리스", "렌즈", "촬영", "소니", "캐논", "후지"],
+  camping: ["camping", "캠핑", "텐트", "랜턴", "아웃도어"],
   audio: ["audio", "오디오", "헤드폰", "스피커", "dac", "앰프", "이어폰"],
-  custom: ["custom", "기타", "기타 장비", "취미", "장비"],
+  custom: ["custom", "기타", "취미", "장비"],
 };
 
 function normalizeQuery(value: string | null) {
@@ -72,90 +69,66 @@ function parseType(value: string | null): SearchType {
 }
 
 function parseLimit(value: string | null) {
-  const parsed = Number(value ?? 8);
-  if (!Number.isFinite(parsed)) return 8;
-  return Math.min(Math.max(Math.trunc(parsed), 1), 20);
+  const parsed = Number(value ?? 12);
+  if (!Number.isFinite(parsed)) return 12;
+  return Math.min(Math.max(Math.trunc(parsed), 1), 30);
 }
 
 function unique(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
-function expandSearchTerms(query: string) {
-  const loweredQuery = query.toLowerCase();
-  const tokens = loweredQuery.split(" ").map((token) => token.trim()).filter((token) => token.length >= 2);
-  const expanded = [loweredQuery, ...tokens];
+function matchedCategorySlugs(query: string) {
+  const compactQuery = query.toLowerCase().replace(/\s+/g, "");
+  return Object.entries(categoryAliases)
+    .filter(([slug, aliases]) => slug.includes(compactQuery) || aliases.some((alias) => alias.toLowerCase().replace(/\s+/g, "").includes(compactQuery) || compactQuery.includes(alias.toLowerCase().replace(/\s+/g, ""))))
+    .map(([slug]) => slug);
+}
 
-  for (const [slug, aliases] of Object.entries(categoryAliases)) {
-    if (aliases.some((alias) => loweredQuery.includes(alias.toLowerCase()))) {
-      expanded.push(slug, ...aliases.map((alias) => alias.toLowerCase()));
-    }
+function searchTerms(query: string) {
+  const loweredQuery = query.toLowerCase();
+  const compactQuery = loweredQuery.replace(/\s+/g, "");
+  const terms = [loweredQuery, compactQuery, ...loweredQuery.split(" ")];
+
+  for (const slug of matchedCategorySlugs(query)) {
+    terms.push(slug, ...categoryAliases[slug]);
   }
 
-  return unique(expanded).slice(0, 12);
+  return unique(terms.map((term) => term.toLowerCase().trim()).filter(Boolean)).slice(0, 16);
 }
 
-function likePatterns(query: string) {
-  return expandSearchTerms(query).map((term) => `%${term}%`);
+function patterns(query: string) {
+  return searchTerms(query).map((term) => `%${term}%`);
 }
 
-function orLikeClause(columns: string[], patternCount: number) {
+function orClause(columns: string[], patternCount: number) {
   return columns.map((column) => `LOWER(COALESCE(${column}, '')) LIKE ?`).flatMap((clause) => Array(patternCount).fill(clause)).join(" OR ");
 }
 
-function bindSearchValues(columns: string[], patterns: string[]) {
-  return columns.flatMap(() => patterns);
+function bindValues(columns: string[], searchPatterns: string[]) {
+  return columns.flatMap(() => searchPatterns);
 }
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-async function searchEquipments(db: D1Database, patterns: string[], limit: number): Promise<SearchResult[]> {
-  const searchableColumns = [
-    "equipments.nickname",
-    "equipments.brand",
-    "equipments.model",
-    "equipments.description",
-    "equipments.category",
-    "equipments.slug",
-    "maintenance_text",
-    "part_text",
-  ];
-  const values = bindSearchValues(searchableColumns, patterns);
+function postCategoryExpression() {
+  return "COALESCE(NULLIF(boards.category, ''), substr(boards.slug, 1, instr(boards.slug || '-', '-') - 1))";
+}
 
+async function searchEquipments(db: D1Database, searchPatterns: string[], limit: number): Promise<SearchResult[]> {
+  const columns = ["category", "brand", "model", "nickname", "description", "slug"];
   const rows = await db.prepare(
-    `SELECT
-       equipments.id,
-       equipments.category,
-       equipments.brand,
-       equipments.model,
-       equipments.nickname,
-       equipments.slug,
-       equipments.description,
-       equipments.main_image_url,
-       equipments.created_at,
-       GROUP_CONCAT(DISTINCT maintenance_logs.title) AS maintenance_text,
-       GROUP_CONCAT(DISTINCT parts.name || ' ' || COALESCE(parts.brand, '')) AS part_text
+    `SELECT id, category, brand, model, nickname, description, main_image_url, created_at
      FROM equipments
-     LEFT JOIN maintenance_logs
-       ON maintenance_logs.equipment_id = equipments.id
-      AND maintenance_logs.deleted_at IS NULL
-      AND maintenance_logs.visibility = 'public'
-      AND maintenance_logs.moderation_status = 'normal'
-     LEFT JOIN parts
-       ON parts.equipment_id = equipments.id
-      AND parts.deleted_at IS NULL
-      AND parts.visibility = 'public'
-      AND parts.moderation_status = 'normal'
-     WHERE equipments.deleted_at IS NULL
-       AND equipments.visibility = 'public'
-       AND equipments.moderation_status = 'normal'
-     GROUP BY equipments.id
-     HAVING ${orLikeClause(searchableColumns, patterns.length)}
-     ORDER BY equipments.created_at DESC
+     WHERE deleted_at IS NULL
+       AND visibility = 'public'
+       AND moderation_status = 'normal'
+       AND (${orClause(columns, searchPatterns.length)})
+     ORDER BY created_at DESC
      LIMIT ?`,
-  ).bind(...values, limit).all<EquipmentSearchRow>();
+  ).bind(...bindValues(columns, searchPatterns), limit).all<EquipmentSearchRow>();
 
   return (rows.results ?? []).map((row) => ({
     type: "equipment",
@@ -169,19 +142,9 @@ async function searchEquipments(db: D1Database, patterns: string[], limit: numbe
   }));
 }
 
-async function searchPosts(db: D1Database, patterns: string[], limit: number): Promise<SearchResult[]> {
-  const derivedCategory = "COALESCE(NULLIF(boards.category, ''), substr(boards.slug, 1, instr(boards.slug || '-', '-') - 1))";
-  const searchableColumns = [
-    "posts.title",
-    "posts.body",
-    "boards.title",
-    "boards.slug",
-    derivedCategory,
-    "users.nickname",
-    "posts.author_id",
-  ];
-  const values = bindSearchValues(searchableColumns, patterns);
-
+async function searchPosts(db: D1Database, searchPatterns: string[], limit: number): Promise<SearchResult[]> {
+  const categoryExpr = postCategoryExpression();
+  const columns = ["posts.title", "posts.body", "boards.title", "boards.slug", categoryExpr, "users.nickname", "posts.author_id"];
   const rows = await db.prepare(
     `SELECT
        posts.id,
@@ -189,7 +152,7 @@ async function searchPosts(db: D1Database, patterns: string[], limit: number): P
        posts.body,
        boards.title AS board_title,
        boards.slug AS board_slug,
-       ${derivedCategory} AS category,
+       ${categoryExpr} AS category,
        COALESCE(users.nickname, posts.author_id) AS author_nickname,
        posts.created_at
      FROM posts
@@ -201,10 +164,10 @@ async function searchPosts(db: D1Database, patterns: string[], limit: number): P
        AND posts.moderation_status = 'normal'
        AND boards.status = 'active'
        AND boards.permission = 'public'
-       AND (${orLikeClause(searchableColumns, patterns.length)})
+       AND (${orClause(columns, searchPatterns.length)})
      ORDER BY posts.created_at DESC
      LIMIT ?`,
-  ).bind(...values, limit).all<PostSearchRow>();
+  ).bind(...bindValues(columns, searchPatterns), limit).all<PostSearchRow>();
 
   return (rows.results ?? []).map((row) => ({
     type: "post",
@@ -217,18 +180,56 @@ async function searchPosts(db: D1Database, patterns: string[], limit: number): P
   }));
 }
 
-async function searchNews(db: D1Database, patterns: string[], limit: number): Promise<SearchResult[]> {
-  const searchableColumns = ["title", "source", "category", "link"];
-  const values = bindSearchValues(searchableColumns, patterns);
+async function searchPostsByCategory(db: D1Database, slugs: string[], limit: number): Promise<SearchResult[]> {
+  if (slugs.length === 0) return [];
 
+  const categoryExpr = postCategoryExpression();
+  const placeholders = slugs.map(() => "?").join(", ");
+  const rows = await db.prepare(
+    `SELECT
+       posts.id,
+       posts.title,
+       posts.body,
+       boards.title AS board_title,
+       boards.slug AS board_slug,
+       ${categoryExpr} AS category,
+       COALESCE(users.nickname, posts.author_id) AS author_nickname,
+       posts.created_at
+     FROM posts
+     INNER JOIN boards ON boards.id = posts.board_id
+     LEFT JOIN users ON users.id = posts.author_id
+     WHERE posts.deleted_at IS NULL
+       AND posts.status = 'published'
+       AND posts.visibility = 'public'
+       AND posts.moderation_status = 'normal'
+       AND boards.status = 'active'
+       AND boards.permission = 'public'
+       AND ${categoryExpr} IN (${placeholders})
+     ORDER BY posts.created_at DESC
+     LIMIT ?`,
+  ).bind(...slugs, limit).all<PostSearchRow>();
+
+  return (rows.results ?? []).map((row) => ({
+    type: "post",
+    id: row.id,
+    title: row.title,
+    description: stripHtml(row.body).slice(0, 140) || `${row.board_title} · ${row.author_nickname}`,
+    href: `/explore/post/?id=${encodeURIComponent(row.id)}`,
+    label: row.board_title,
+    createdAt: row.created_at,
+  }));
+}
+
+async function searchNews(db: D1Database, searchPatterns: string[], limit: number): Promise<SearchResult[]> {
+  const columns = ["title", "source", "category", "link"];
   const rows = await db.prepare(
     `SELECT id, title, source, category, link, published_at_ms
      FROM news_items
      WHERE hidden_at IS NULL
-       AND (${orLikeClause(searchableColumns, patterns.length)})
+       AND (${orClause(columns, searchPatterns.length)})
      ORDER BY COALESCE(published_at_ms, created_at) DESC
      LIMIT ?`,
-  ).bind(...values, limit).all<NewsSearchRow>();
+  ).bind(...bindValues(columns, searchPatterns), limit).all<NewsSearchRow>();
 
   return (rows.results ?? []).map((row) => ({
     type: "news",
@@ -249,24 +250,27 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const type = parseType(url.searchParams.get("type"));
   const limit = parseLimit(url.searchParams.get("limit"));
 
-  if (query.length < 2) {
+  if (query.length < 1) {
     return jsonResponse({ ok: true, query, type, results: [], groups: { equipments: [], posts: [], news: [] } });
   }
 
-  const patterns = likePatterns(query);
-  const [equipments, posts, news] = await Promise.all([
-    type === "all" || type === "equipment" ? searchEquipments(env.DB, patterns, limit) : Promise.resolve([]),
-    type === "all" || type === "post" ? searchPosts(env.DB, patterns, limit) : Promise.resolve([]),
-    type === "all" || type === "news" ? searchNews(env.DB, patterns, limit) : Promise.resolve([]),
+  const searchPatterns = patterns(query);
+  const categorySlugs = matchedCategorySlugs(query);
+  const [equipments, posts, categoryPosts, news] = await Promise.all([
+    type === "all" || type === "equipment" ? searchEquipments(env.DB, searchPatterns, limit) : Promise.resolve([]),
+    type === "all" || type === "post" ? searchPosts(env.DB, searchPatterns, limit) : Promise.resolve([]),
+    type === "all" || type === "post" ? searchPostsByCategory(env.DB, categorySlugs, limit) : Promise.resolve([]),
+    type === "all" || type === "news" ? searchNews(env.DB, searchPatterns, limit) : Promise.resolve([]),
   ]);
 
-  const results = [...equipments, ...posts, ...news].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  const dedupedPosts = [...posts, ...categoryPosts].filter((post, index, list) => list.findIndex((item) => item.id === post.id) === index);
+  const results = [...equipments, ...dedupedPosts, ...news].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
 
   return jsonResponse({
     ok: true,
     query,
     type,
     results,
-    groups: { equipments, posts, news },
+    groups: { equipments, posts: dedupedPosts, news },
   });
 };
