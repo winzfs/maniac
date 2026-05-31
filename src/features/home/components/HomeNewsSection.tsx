@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
 import { useEffect, useState } from "react";
@@ -89,7 +91,12 @@ export function HomeNewsSection() {
 
   return (
     <section className="space-y-5">
-      <SectionHeader title="장비 뉴스" description="바이크, PC, 키보드, 카메라 등 장비 관련 외부 뉴스를 모았습니다." />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <SectionHeader title="장비 뉴스" description="바이크, PC, 키보드, 카메라 등 장비 관련 외부 뉴스를 모았습니다." />
+        <Link href="/explore/news/" className="shrink-0">
+          <Button variant="secondary" className="w-full sm:w-auto">뉴스 게시판 보기</Button>
+        </Link>
+      </div>
       <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
         <a href={lead.link} target="_blank" rel="noreferrer" className="block">
           <Card variant="dark" className="flex h-full min-h-64 flex-col justify-between p-6 transition hover:-translate-y-0.5 hover:shadow-lg">
