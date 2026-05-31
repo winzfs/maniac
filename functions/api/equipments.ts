@@ -105,7 +105,4 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 };
 
-export const onRequest: PagesFunction<Env> = async ({ request }) => {
-  if (request.method === "OPTIONS") return allowMethods(["GET", "POST", "OPTIONS"]);
-  return errorResponse("Method not allowed.", 405);
-};
+export const onRequestOptions = () => allowMethods(["GET", "POST", "OPTIONS"]);
