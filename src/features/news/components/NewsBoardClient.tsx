@@ -7,11 +7,11 @@ import { SectionHeader } from "@/shared/components/ui/SectionHeader";
 
 type NewsItem = {
   id: string;
-  title: string;
-  link: string;
-  source: string;
-  category: string;
-  publishedAt: string;
+  title?: string | null;
+  link?: string | null;
+  source?: string | null;
+  category?: string | null;
+  publishedAt?: string | null;
 };
 
 type NewsResponse = {
@@ -38,14 +38,23 @@ const categories = [
   { slug: "audio", label: "오디오" },
 ];
 
-function formatDate(value: string) {
-  const date = new Date(value);
+function text(value: string | null | undefined, fallback: string) {
+  const normalized = value?.replace(/\s+/g, " ").trim();
+  return normalized && normalized.length > 0 ? normalized : fallback;
+}
+
+function formatDate(value: string | null | undefined) {
+  const date = new Date(value ?? "");
   if (Number.isNaN(date.getTime())) return "최근";
   return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
-function shortSource(value: string) {
-  return value.replace(/^Google News$/i, "News");
+function shortSource(value: string | null | undefined) {
+  return text(value, "News").replace(/^Google News$/i, "News");
+}
+
+function itemKey(item: NewsItem, index: number) {
+  return item.id || item.link || `news-${index}`;
 }
 
 export function NewsBoardClient() {
@@ -114,7 +123,17 @@ export function NewsBoardClient() {
 
         {state.status === "loading" ? (
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, index) => <Card key={index} className="h-44 animate-pulse bg-zinc-100" />)}
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Card key={index} className="min-h-48 space-y-4 p-5">
+                <div className="h-5 w-24 animate-pulse rounded-full bg-zinc-200" />
+                <div className="space-y-2">
+                  <div className="h-5 w-11/12 animate-pulse rounded-full bg-zinc-200" />
+                  <div className="h-5 w-9/12 animate-pulse rounded-full bg-zinc-200" />
+                  <div className="h-5 w-7/12 animate-pulse rounded-full bg-zinc-200" />
+                </div>
+                <div className="h-4 w-32 animate-pulse rounded-full bg-zinc-200" />
+              </Card>
+            ))}
           </div>
         ) : null}
 
@@ -124,23 +143,31 @@ export function NewsBoardClient() {
 
         {state.status === "success" && state.items.length > 0 ? (
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {state.items.map((item) => (
-              <a key={item.id} href={item.link} target="_blank" rel="noreferrer" className="block">
-                <Card className="flex h-full min-h-48 flex-col justify-between space-y-4 p-5 transition hover:-translate-y-0.5 hover:shadow-sm">
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge label={item.category} tone="muted" />
-                      <span className="text-xs font-semibold text-text-secondary">{formatDate(item.publishedAt)}</span>
+            {state.items.map((item, index) => {
+              const href = text(item.link, "#");
+              const title = text(item.title, "제목 없는 뉴스");
+              const category = text(item.category, activeLabel);
+              const source = shortSource(item.source);
+              const disabled = href === "#";
+
+              return (
+                <a key={itemKey(item, index)} href={href} target={disabled ? undefined : "_blank"} rel={disabled ? undefined : "noreferrer"} className="block">
+                  <Card className="flex h-full min-h-48 flex-col justify-between space-y-4 p-5 transition hover:-translate-y-0.5 hover:shadow-sm">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge label={category} tone="muted" />
+                        <span className="text-xs font-semibold text-text-secondary">{formatDate(item.publishedAt)}</span>
+                      </div>
+                      <h3 className="line-clamp-3 text-lg font-black leading-snug tracking-[-0.03em] text-text-primary">{title}</h3>
                     </div>
-                    <h3 className="line-clamp-3 text-lg font-black leading-snug tracking-[-0.03em]">{item.title}</h3>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 border-t border-border pt-3 text-xs font-semibold text-text-secondary">
-                    <span className="truncate">{shortSource(item.source)}</span>
-                    <span className="shrink-0 text-orange-600">원문 보기 →</span>
-                  </div>
-                </Card>
-              </a>
-            ))}
+                    <div className="flex items-center justify-between gap-3 border-t border-border pt-3 text-xs font-semibold text-text-secondary">
+                      <span className="truncate">{source}</span>
+                      <span className="shrink-0 text-orange-600">{disabled ? "링크 없음" : "원문 보기 →"}</span>
+                    </div>
+                  </Card>
+                </a>
+              );
+            })}
           </div>
         ) : null}
       </section>
