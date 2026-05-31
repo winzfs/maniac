@@ -58,14 +58,19 @@ function postDetailHref(id: string) {
 function PostListRow({ post }: { post: PublicPost }) {
   return (
     <Card className="p-0 transition hover:-translate-y-0.5 hover:shadow-sm">
-      <div className="block p-4 md:grid md:grid-cols-[minmax(0,1fr)_9rem_5rem_4.5rem] md:items-center md:gap-3 md:px-4 md:py-3">
-        <Link href={postDetailHref(post.id)} className="block min-w-0">
+      <div className="p-4 md:grid md:grid-cols-[minmax(0,1fr)_9rem_5rem_4.5rem] md:items-center md:gap-3 md:px-4 md:py-3">
+        <div className="flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto whitespace-nowrap pb-1 text-xs text-text-secondary md:contents md:overflow-visible md:pb-0">
+          <div className="shrink-0 md:mt-0"><UserActionMenu userId={post.author_id} nickname={post.author_nickname} compact align="right" /></div>
+          <span className="shrink-0 font-bold md:hidden">{formatDate(post.created_at)}</span>
+          <span className="shrink-0 font-bold md:hidden">· 댓글 {post.comment_count}</span>
+          <p className="hidden text-xs font-bold text-text-secondary md:block md:text-center">댓글 {post.comment_count}</p>
+          <p className="hidden text-xs font-bold text-text-secondary md:block md:text-right">{formatDate(post.created_at)}</p>
+        </div>
+
+        <Link href={postDetailHref(post.id)} className="mt-3 block min-w-0 md:mt-0">
           <h2 className="truncate text-lg font-black tracking-[-0.04em] text-text-primary transition hover:text-garage-orange md:text-base">{post.title}</h2>
           <p className="mt-1 line-clamp-2 text-sm leading-6 text-text-secondary md:hidden">{excerptFromHtml(post.body, 120)}</p>
         </Link>
-        <div className="mt-3 md:mt-0"><UserActionMenu userId={post.author_id} nickname={post.author_nickname} compact align="right" /></div>
-        <p className="mt-2 text-xs font-bold text-text-secondary md:mt-0 md:text-center">댓글 {post.comment_count}</p>
-        <p className="mt-1 text-xs font-bold text-text-secondary md:mt-0 md:text-right">{formatDate(post.created_at)}</p>
       </div>
     </Card>
   );
