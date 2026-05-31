@@ -20,11 +20,7 @@ function isSafeLinkUrl(value: string) {
 
 function isSafeImageUrl(value: string) {
   const normalized = stripControlCharacters(value);
-  return (
-    normalized.startsWith("https://") ||
-    normalized.startsWith("http://") ||
-    /^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+/=]+$/i.test(normalized)
-  );
+  return normalized.startsWith("https://") || normalized.startsWith("http://");
 }
 
 function sanitizeAttributes(tagName: string, rawAttributes: string) {
@@ -34,7 +30,7 @@ function sanitizeAttributes(tagName: string, rawAttributes: string) {
   for (const match of rawAttributes.matchAll(attributePattern)) {
     const name = match[1]?.toLowerCase() ?? "";
     const rawValue = match[2] ?? "";
-    const value = rawValue.replace(/^['"]|['"]$/g, "");
+    const value = rawValue.replace(/^[']|[']$/g, "").replace(/^["]|["]$/g, "");
 
     if (name.startsWith("on") || name === "style") continue;
 
