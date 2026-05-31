@@ -8,6 +8,7 @@ type CurrentUser = {
   id: string;
   email: string;
   nickname: string;
+  isAdmin?: boolean;
 };
 
 type MeResponse = {
@@ -69,6 +70,7 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
           {loaded && user ? (
             <>
               <button type="button" onClick={() => hardNavigate("/me/")} className={menuLinkClassName}>내 정보 · {user.nickname}</button>
+              {user.isAdmin ? <button type="button" onClick={() => hardNavigate("/admin/")} className={`${menuLinkClassName} text-orange-600`}>관리 모드</button> : null}
               <button type="button" onClick={logout} className={menuLinkClassName}>로그아웃</button>
             </>
           ) : null}
