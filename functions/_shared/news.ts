@@ -15,6 +15,29 @@ export type ExternalNewsItem = {
   imageUrl: string | null;
 };
 
+type NewsProviderOptions = {
+  gnewsApiKey?: string;
+};
+
+type GNewsArticle = {
+  title?: string;
+  description?: string;
+  content?: string;
+  url?: string;
+  image?: string | null;
+  publishedAt?: string;
+  source?: {
+    name?: string;
+    url?: string;
+  };
+};
+
+type GNewsResponse = {
+  totalArticles?: number;
+  articles?: GNewsArticle[];
+  errors?: string[];
+};
+
 export const newsFeeds: NewsFeed[] = [
   { category: "motorcycle", label: "바이크", queries: ["오토바이", "바이크", "motorcycle"] },
   { category: "pc", label: "PC", queries: ["그래픽카드", "PC 하드웨어", "GeForce"] },
@@ -72,6 +95,10 @@ function normalizeImageUrl(value: string | null | undefined, baseUrl?: string) {
   } catch {
     return null;
   }
+}
+
+function normalizeUrl(value: string | null | undefined, baseUrl?: string) {
+  return normalizeImageUrl(value, baseUrl);
 }
 
 function isGoogleNewsUrl(value: string) {
@@ -159,7 +186,7 @@ async function resolveArticleUrl(link: string, fallbackUrl = "") {
     if (response.url && !isGoogleNewsUrl(response.url)) return response.url;
     const html = (await response.text()).slice(0, 80_000);
     const canonical = metaContent(html, "og:url");
-    const canonicalUrl = normalizeImageUrl(canonical, response.url || link);
+    const canonicalUrl = normalizeUrl(canonical, response.url || link);
     if (canonicalUrl && !isGoogleNewsUrl(canonicalUrl)) return canonicalUrl;
   } catch {
     // Keep the original link.
@@ -214,6 +241,35 @@ function rssUrl(query: string) {
   return `https://news.google.com/rss/search?${params.toString()}`;
 }
 
+function gnewsUrl(query: string, maxItems: number, apiKey: string) {
+  const params = new URLSearchParams({
+    q: query,
+    lang: "ko",
+    country: "kr",
+    max: String(Math.min(Math.max(Math.trunc(maxItems), 1), 10)),
+    apikey: apiKey,
+  });
+  return `https://gnews.io/api/v4/search?${params.toString()}`;
+}
+
+function parseGNewsItems(data: GNewsResponse, feed: NewsFeed): ExternalNewsItem[] {
+  return (data.articles ?? []).map((article, index) => {
+    const link = normalizeUrl(article.url) ?? "";
+    const publishedAt = article.publishedAt ?? new Date().toUTCString();
+    const publishedAtMs = new Date(publishedAt).getTime();
+    return {
+      id: `${feed.category}-gnews-${index}-${publishedAt}`,
+      title: stripTags(article.title ?? ""),
+      link,
+      source: article.source?.name?.trim() || "GNews",
+      category: feed.label,
+      publishedAt,
+      publishedAtMs: Number.isFinite(publishedAtMs) ? publishedAtMs : Date.now(),
+      imageUrl: normalizeImageUrl(article.image ?? null),
+    };
+  }).filter((item) => item.title && item.link);
+}
+
 function parseItems(xml: string, feed: NewsFeed, maxItems: number) {
   const fallbackUrls = new Map<string, string>();
   const itemMatches = xml.match(/<item[\s\S]*?<\/item>/gi) ?? [];
@@ -253,7 +309,27 @@ function uniqueByLink(items: ExternalNewsItem[]) {
   return unique;
 }
 
-async function fetchFeedNews(feed: NewsFeed, perCategory: number) {
+async function fetchFeedNewsFromGNews(feed: NewsFeed, perCategory: number, apiKey: string) {
+  const errors: string[] = [];
+
+  for (const query of feed.queries) {
+    try {
+      const response = await fetch(gnewsUrl(query, perCategory, apiKey), {
+        headers: { accept: "application/json", "user-agent": "GearDuck/1.0" },
+      });
+      const data = (await response.json().catch(() => null)) as GNewsResponse | null;
+      if (!response.ok) throw new Error(`${feed.category} GNews fetch failed: ${response.status}`);
+      const items = data ? parseGNewsItems(data, feed) : [];
+      if (items.length > 0) return { items, fallbackUrls: new Map<string, string>(), errors };
+    } catch (error) {
+      errors.push(error instanceof Error ? `${feed.category} ${query}: ${error.message}` : `${feed.category} ${query}: ${String(error)}`);
+    }
+  }
+
+  return { items: [], fallbackUrls: new Map<string, string>(), errors };
+}
+
+async function fetchFeedNewsFromGoogleRss(feed: NewsFeed, perCategory: number) {
   const errors: string[] = [];
 
   for (const query of feed.queries) {
@@ -274,10 +350,22 @@ async function fetchFeedNews(feed: NewsFeed, perCategory: number) {
   return { items: [], fallbackUrls: new Map<string, string>(), errors };
 }
 
-export async function fetchExternalNews(limit = 8, feeds: NewsFeed[] = newsFeeds) {
+async function fetchFeedNews(feed: NewsFeed, perCategory: number, options: NewsProviderOptions) {
+  if (options.gnewsApiKey) {
+    const gnews = await fetchFeedNewsFromGNews(feed, perCategory, options.gnewsApiKey);
+    if (gnews.items.length > 0) return gnews;
+
+    const rss = await fetchFeedNewsFromGoogleRss(feed, perCategory);
+    return { items: rss.items, fallbackUrls: rss.fallbackUrls, errors: [...gnews.errors, ...rss.errors] };
+  }
+
+  return fetchFeedNewsFromGoogleRss(feed, perCategory);
+}
+
+export async function fetchExternalNews(limit = 8, feeds: NewsFeed[] = newsFeeds, options: NewsProviderOptions = {}) {
   const perCategory = Math.min(Math.max(Math.trunc(limit), 1), 20);
 
-  const results = await Promise.all(feeds.map((feed) => fetchFeedNews(feed, perCategory)));
+  const results = await Promise.all(feeds.map((feed) => fetchFeedNews(feed, perCategory, options)));
 
   const fallbackUrls = new Map<string, string>();
   for (const result of results) {
@@ -291,5 +379,5 @@ export async function fetchExternalNews(limit = 8, feeds: NewsFeed[] = newsFeeds
   const enrichedItems = await enrichMissingImages(items, fallbackUrls);
   const errors = results.flatMap((result) => result.errors);
 
-  return { items: enrichedItems, errors };
+  return { items: enrichedItems, errors, provider: options.gnewsApiKey ? "gnews+rss" : "rss" };
 }
