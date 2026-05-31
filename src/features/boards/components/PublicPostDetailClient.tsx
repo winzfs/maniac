@@ -126,8 +126,7 @@ function textSnippet(value: string, fallback: string) {
 }
 
 function firstImageFromHtml(value: string) {
-  const match = value.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return match?.[1];
+  return value.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
 }
 
 function updatePostSeo(post: PublicPost, commentCount: number) {
@@ -246,10 +245,7 @@ export function PublicPostDetailClient({ id }: { id: string }) {
   return (
     <>
       <PageHeader
-        breadcrumbs={[
-          { label: "홈", href: "/" },
-          { label: categoryLabel, href: categoryHref },
-        ]}
+        breadcrumbs={[{ label: "홈", href: "/" }, { label: categoryLabel, href: categoryHref }]}
         title="게시글 상세"
         description={`${categoryLabel} 게시글`}
       />
@@ -272,23 +268,21 @@ export function PublicPostDetailClient({ id }: { id: string }) {
               ) : null}
             </div>
             {ownerStatus ? <p className="rounded-2xl bg-surface p-3 text-sm leading-6 text-text-secondary">{ownerStatus}</p> : null}
-
             <div className="post-body text-sm leading-7 text-text-secondary sm:text-base sm:leading-8 [&_a]:font-bold [&_a]:text-garage-orange [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-garage-orange [&_blockquote]:bg-surface [&_blockquote]:py-2 [&_blockquote]:pl-4 [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-2xl [&_h2]:font-black [&_img]:my-5 [&_img]:max-w-full [&_img]:rounded-2xl [&_li]:ml-5 [&_li]:list-disc [&_p]:my-3" dangerouslySetInnerHTML={{ __html: sanitizePostHtml(post.body) }} />
           </Card>
 
           <Card className="space-y-5 p-5 sm:p-6">
-            <div><h2 className="text-xl font-black tracking-[-0.04em]">댓글</h2><p className="mt-1 text-sm leading-6 text-text-secondary">내가 쓴 댓글은 이 화면에서 바로 삭제할 수 있습니다.</p></div>
-            <form onSubmit={handleCommentSubmit} className="space-y-3">
-              <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} className="min-h-28 w-full rounded-2xl border border-border bg-background p-4 text-sm leading-6 outline-none focus:border-graphite" placeholder="댓글을 입력하세요" maxLength={1000} />
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-text-secondary">{commentStatus || `${commentBody.length}/1000`}</p><Button type="submit" disabled={submitting}>{submitting ? "저장 중..." : "댓글 저장"}</Button></div>
-            </form>
+            <div>
+              <h2 className="text-xl font-black tracking-[-0.04em]">댓글</h2>
+              <p className="mt-1 text-sm leading-6 text-text-secondary">달린 댓글을 확인하고 새 댓글을 남겨보세요.</p>
+            </div>
 
             {comments.length === 0 ? <p className="text-sm text-text-secondary">아직 공개된 댓글이 없습니다.</p> : null}
             <div className="space-y-3">
               {comments.map((comment) => {
                 const isCommentOwner = Boolean(me && me.id === comment.author_id);
                 return (
-                  <div key={comment.id} className="rounded-2xl border border-border bg-background p-4">
+                  <div key={comment.id} className="rounded-2xl border border-border bg-white p-4 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary">
                       <div className="flex flex-wrap items-center gap-2"><span>{comment.author_nickname ?? "GearDuck"}</span><span>·</span><span>{formatDate(comment.created_at)}</span></div>
                       {isCommentOwner ? <button type="button" className="font-bold text-red-600 disabled:opacity-50" onClick={() => handleRemoveComment(comment.id)} disabled={busyCommentId === comment.id}>{busyCommentId === comment.id ? "삭제 중..." : "삭제"}</button> : null}
@@ -298,6 +292,20 @@ export function PublicPostDetailClient({ id }: { id: string }) {
                 );
               })}
             </div>
+
+            <form onSubmit={handleCommentSubmit} className="space-y-3 border-t border-border pt-4">
+              <textarea
+                value={commentBody}
+                onChange={(event) => setCommentBody(event.target.value)}
+                className="min-h-20 w-full rounded-2xl border border-zinc-300 bg-white p-4 text-sm leading-6 outline-none transition focus:border-graphite focus:bg-white focus:ring-2 focus:ring-graphite/10"
+                placeholder="댓글을 입력하세요"
+                maxLength={1000}
+              />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-text-secondary">{commentStatus || `${commentBody.length}/1000`}</p>
+                <Button type="submit" disabled={submitting}>{submitting ? "저장 중..." : "댓글 저장"}</Button>
+              </div>
+            </form>
           </Card>
         </div>
 
