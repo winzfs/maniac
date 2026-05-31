@@ -18,9 +18,9 @@ export function PageHeader({
   return (
     <header className="space-y-2.5 sm:space-y-4">
       <div className="flex flex-col gap-2 sm:gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">{action}</div>
           <MenuButton label={menuLabel} />
-          {action}
         </div>
         {breadcrumbs ? <Breadcrumbs items={breadcrumbs} /> : null}
       </div>
