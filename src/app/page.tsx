@@ -21,6 +21,6 @@ export default function HomePage() {
     <FeaturedGarageSection />
     <HomeUtilitySections />
     <HomeCtaSection />
-    <footer className="py-8 text-center text-xs text-text-secondary">© 장비덕후들의 기록 차고</footer>
+    <footer className="py-8 text-center text-xs text-text-secondary">© GearDuck · 장비덕후들의 기록 차고</footer>
   </main>;
 }
