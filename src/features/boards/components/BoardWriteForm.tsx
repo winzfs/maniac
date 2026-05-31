@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
@@ -11,11 +11,18 @@ type CreatePostResponse =
   | { ok: true; nextPath: string }
   | { ok: false; error?: string };
 
+type BoardOption = {
+  slug: string;
+  title: string;
+  description?: string;
+};
+
 type BoardWriteFormProps = {
   categorySlug: string;
   boardSlug: string;
   boardTitle: string;
   boardDescription?: string;
+  boardOptions?: BoardOption[];
 };
 
 type SubmitState =
@@ -24,18 +31,27 @@ type SubmitState =
   | { status: "login-required"; message: string }
   | { status: "error"; message: string };
 
-export function BoardWriteForm({ categorySlug, boardSlug, boardTitle, boardDescription }: BoardWriteFormProps) {
+export function BoardWriteForm({ categorySlug, boardSlug, boardTitle, boardDescription, boardOptions }: BoardWriteFormProps) {
   const router = useRouter();
+  const [selectedBoardSlug, setSelectedBoardSlug] = useState(boardSlug);
   const [submitState, setSubmitState] = useState<SubmitState>({ status: "idle", message: "" });
   const isSubmitting = submitState.status === "submitting";
+  const options = boardOptions?.length ? boardOptions : [{ slug: boardSlug, title: boardTitle, description: boardDescription }];
+  const selectedBoard = useMemo(() => options.find((option) => option.slug === selectedBoardSlug) ?? options[0], [options, selectedBoardSlug]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
 
+    const targetBoardSlug = String(formData.get("boardSlug") ?? selectedBoardSlug).trim();
     const title = String(formData.get("title") ?? "").trim();
     const bodyHtml = String(formData.get("bodyHtml") ?? "").trim();
+
+    if (!targetBoardSlug) {
+      setSubmitState({ status: "error", message: "세부 카테고리를 선택해 주세요." });
+      return;
+    }
 
     if (title.length < 2) {
       setSubmitState({ status: "error", message: "제목은 2자 이상 입력해 주세요." });
@@ -53,7 +69,7 @@ export function BoardWriteForm({ categorySlug, boardSlug, boardTitle, boardDescr
       const response = await fetch("/api/posts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ boardSlug, title, bodyHtml }),
+        body: JSON.stringify({ boardSlug: targetBoardSlug, title, bodyHtml }),
       });
       const data = (await response.json()) as CreatePostResponse;
 
@@ -77,9 +93,24 @@ export function BoardWriteForm({ categorySlug, boardSlug, boardTitle, boardDescr
   return (
     <form onSubmit={handleSubmit} className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
       <input type="hidden" name="categorySlug" value={categorySlug} />
-      <input type="hidden" name="boardSlug" value={boardSlug} />
 
       <div className="min-w-0 space-y-5">
+        <Card className="space-y-2 p-4 sm:p-5">
+          <label htmlFor="boardSlug" className="font-semibold">세부 카테고리</label>
+          <select
+            id="boardSlug"
+            name="boardSlug"
+            value={selectedBoardSlug}
+            onChange={(event) => setSelectedBoardSlug(event.target.value)}
+            className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-base font-semibold outline-none focus:border-graphite sm:text-sm"
+          >
+            {options.map((option) => (
+              <option key={option.slug} value={option.slug}>{option.title}</option>
+            ))}
+          </select>
+          <p className="text-xs leading-5 text-text-secondary">글 성격에 맞는 세부 카테고리를 선택해 주세요.</p>
+        </Card>
+
         <Card className="space-y-2 p-4 sm:p-5">
           <label htmlFor="title" className="font-semibold">제목</label>
           <input id="title" name="title" className="h-12 w-full rounded-2xl border border-border bg-background px-4 text-base outline-none focus:border-graphite sm:text-sm" placeholder="제목을 입력하세요" />
@@ -90,12 +121,12 @@ export function BoardWriteForm({ categorySlug, boardSlug, boardTitle, boardDescr
       <aside className="min-w-0 space-y-3">
         <Card variant="dark" className="p-5">
           <p className="text-sm text-zinc-300">작성 위치</p>
-          <h2 className="mt-1 text-xl font-bold">{boardTitle}</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-300">{boardDescription ?? "게시판 설명이 없습니다."}</p>
+          <h2 className="mt-1 text-xl font-bold">{selectedBoard?.title ?? boardTitle}</h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-300">{selectedBoard?.description ?? boardDescription ?? "게시판 설명이 없습니다."}</p>
         </Card>
         <Card className="space-y-3 p-5">
           <Button type="submit" className="w-full" disabled={isSubmitting}>{isSubmitting ? "저장 중..." : "게시글 저장"}</Button>
-          <Button type="button" variant="secondary" className="w-full" onClick={() => router.push(`/explore/${categorySlug}/${boardSlug}/`)}>취소</Button>
+          <Button type="button" variant="secondary" className="w-full" onClick={() => router.push(`/explore/${categorySlug}/`)}>취소</Button>
           {submitState.message ? <p className="text-xs leading-5 text-text-secondary">{submitState.message}</p> : null}
           {submitState.status === "login-required" ? (
             <div className="flex flex-wrap gap-2 text-xs font-semibold">
