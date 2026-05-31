@@ -56,7 +56,32 @@ function dbItem(row: NewsRow) {
   };
 }
 
+async function ensureReadableNewsSchema(db: D1Database) {
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS news_items (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      link TEXT NOT NULL UNIQUE,
+      source TEXT NOT NULL,
+      category TEXT NOT NULL,
+      published_at INTEGER NOT NULL,
+      image_url TEXT,
+      hidden_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`,
+  ).run();
+
+  try {
+    await db.prepare("ALTER TABLE news_items ADD COLUMN image_url TEXT").run();
+  } catch {
+    // Column already exists.
+  }
+}
+
 async function readCachedNews(db: D1Database, limit: number, category: string | null) {
+  await ensureReadableNewsSchema(db);
+
   if (category) {
     const rows = await db.prepare(
       `SELECT id, title, link, source, category, published_at, image_url
@@ -87,7 +112,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   try {
     const cached = await readCachedNews(env.DB, limit, category);
     return json({ ok: true, source: "db", category, items: cached.map(dbItem), errors: [] });
-  } catch {
-    return json({ ok: true, source: "db", category, items: [], errors: ["news_items table is not ready"] });
+  } catch (error) {
+    return json({ ok: true, source: "db", category, items: [], errors: [error instanceof Error ? error.message : "news_items table is not ready"] });
   }
 };
