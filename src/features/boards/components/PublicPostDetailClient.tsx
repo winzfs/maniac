@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
+import { PageHeader } from "@/shared/components/navigation/PageHeader";
+import { getEquipmentCategory } from "@/shared/data/equipment-categories";
 import { sanitizePostHtml } from "@/features/boards/utils/html";
 
 const SITE_ORIGIN = "https://maniac-c7d.pages.dev";
@@ -145,6 +147,12 @@ function updatePostSeo(post: PublicPost, commentCount: number) {
   if (image) upsertPropertyMeta("og:image", image);
 }
 
+function toneForBoard(type: string) {
+  if (type === "trade") return "orange";
+  if (type === "review") return "lime";
+  return "muted";
+}
+
 export function PublicPostDetailClient({ id }: { id: string }) {
   const router = useRouter();
   const [state, setState] = useState<State>({ status: "loading" });
@@ -231,59 +239,77 @@ export function PublicPostDetailClient({ id }: { id: string }) {
 
   const { post, comments } = state;
   const isPostOwner = Boolean(me && me.id === post.author_id);
+  const category = getEquipmentCategory(post.category);
+  const categoryLabel = category?.label ?? post.category;
+  const categoryHref = `/explore/${post.category}/`;
+  const boardHref = `/explore/${post.category}/${post.board_slug}/`;
 
   return (
-    <article className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-      <div className="min-w-0 space-y-5">
-        <Card className="space-y-6 p-5 sm:p-7">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
-            <Badge label={post.board_title} tone={post.board_type === "trade" ? "orange" : "muted"} />
-            <span>{post.author_nickname ?? "GearDuck"}</span><span>·</span><span>{formatDate(post.created_at)}</span><span>·</span><span>{comments.length} comments</span>
-          </div>
+    <>
+      <PageHeader
+        breadcrumbs={[
+          { label: "홈", href: "/" },
+          { label: "기어 둘러보기", href: "/explore/" },
+          { label: categoryLabel, href: categoryHref },
+          { label: post.board_title, href: boardHref },
+          { label: "게시글" },
+        ]}
+        title="게시글 상세"
+        description={`${categoryLabel} · ${post.board_title}`}
+      />
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <h1 className="min-w-0 text-3xl font-black tracking-[-0.05em] sm:text-5xl">{post.title}</h1>
-            {isPostOwner ? (
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:justify-end">
-                <Link href={`/me/posts/edit/?id=${encodeURIComponent(post.id)}`}><Button variant="secondary" className="w-full sm:w-auto">수정</Button></Link>
-                <Button variant="ghost" className="w-full sm:w-auto" onClick={handleRemovePost} disabled={removingPost}>{removingPost ? "삭제 중..." : "삭제"}</Button>
-              </div>
-            ) : null}
-          </div>
-          {ownerStatus ? <p className="rounded-2xl bg-surface p-3 text-sm leading-6 text-text-secondary">{ownerStatus}</p> : null}
+      <article className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        <div className="min-w-0 space-y-5">
+          <Card className="space-y-6 p-5 sm:p-7">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
+              <Badge label={post.board_title} tone={toneForBoard(post.board_type)} />
+              <span>{post.author_nickname ?? "GearDuck"}</span><span>·</span><span>{formatDate(post.created_at)}</span><span>·</span><span>{comments.length} comments</span>
+            </div>
 
-          <div className="post-body text-sm leading-7 text-text-secondary sm:text-base sm:leading-8 [&_a]:font-bold [&_a]:text-garage-orange [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-garage-orange [&_blockquote]:bg-surface [&_blockquote]:py-2 [&_blockquote]:pl-4 [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-2xl [&_h2]:font-black [&_img]:my-5 [&_img]:max-w-full [&_img]:rounded-2xl [&_li]:ml-5 [&_li]:list-disc [&_p]:my-3" dangerouslySetInnerHTML={{ __html: sanitizePostHtml(post.body) }} />
-        </Card>
-
-        <Card className="space-y-5 p-5 sm:p-6">
-          <div><h2 className="text-xl font-black tracking-[-0.04em]">댓글</h2><p className="mt-1 text-sm leading-6 text-text-secondary">내가 쓴 댓글은 이 화면에서 바로 삭제할 수 있습니다.</p></div>
-          <form onSubmit={handleCommentSubmit} className="space-y-3">
-            <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} className="min-h-28 w-full rounded-2xl border border-border bg-background p-4 text-sm leading-6 outline-none focus:border-graphite" placeholder="댓글을 입력하세요" maxLength={1000} />
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-text-secondary">{commentStatus || `${commentBody.length}/1000`}</p><Button type="submit" disabled={submitting}>{submitting ? "저장 중..." : "댓글 저장"}</Button></div>
-          </form>
-
-          {comments.length === 0 ? <p className="text-sm text-text-secondary">아직 공개된 댓글이 없습니다.</p> : null}
-          <div className="space-y-3">
-            {comments.map((comment) => {
-              const isCommentOwner = Boolean(me && me.id === comment.author_id);
-              return (
-                <div key={comment.id} className="rounded-2xl border border-border bg-background p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary">
-                    <div className="flex flex-wrap items-center gap-2"><span>{comment.author_nickname ?? "GearDuck"}</span><span>·</span><span>{formatDate(comment.created_at)}</span></div>
-                    {isCommentOwner ? <button type="button" className="font-bold text-red-600 disabled:opacity-50" onClick={() => handleRemoveComment(comment.id)} disabled={busyCommentId === comment.id}>{busyCommentId === comment.id ? "삭제 중..." : "삭제"}</button> : null}
-                  </div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-text-secondary">{comment.body}</p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <h1 className="min-w-0 text-3xl font-black tracking-[-0.05em] sm:text-5xl">{post.title}</h1>
+              {isPostOwner ? (
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:justify-end">
+                  <Link href={`/me/posts/edit/?id=${encodeURIComponent(post.id)}`}><Button variant="secondary" className="w-full sm:w-auto">수정</Button></Link>
+                  <Button variant="ghost" className="w-full sm:w-auto" onClick={handleRemovePost} disabled={removingPost}>{removingPost ? "삭제 중..." : "삭제"}</Button>
                 </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
+              ) : null}
+            </div>
+            {ownerStatus ? <p className="rounded-2xl bg-surface p-3 text-sm leading-6 text-text-secondary">{ownerStatus}</p> : null}
 
-      <aside className="min-w-0 space-y-3">
-        <Card variant="dark" className="p-5 sm:p-6"><p className="text-sm text-zinc-300">게시판</p><h2 className="mt-1 text-xl font-bold">{post.board_title}</h2><p className="mt-2 text-sm leading-6 text-zinc-300">{post.board_description ?? "게시판 설명이 없습니다."}</p></Card>
-        <Card className="p-5 sm:p-6"><p className="text-sm font-bold">바로가기</p><Link className="mt-2 inline-flex text-sm font-black text-orange-600" href={`/explore/${post.category}/${post.board_slug}/`}>게시판으로 돌아가기</Link></Card>
-      </aside>
-    </article>
+            <div className="post-body text-sm leading-7 text-text-secondary sm:text-base sm:leading-8 [&_a]:font-bold [&_a]:text-garage-orange [&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-garage-orange [&_blockquote]:bg-surface [&_blockquote]:py-2 [&_blockquote]:pl-4 [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-2xl [&_h2]:font-black [&_img]:my-5 [&_img]:max-w-full [&_img]:rounded-2xl [&_li]:ml-5 [&_li]:list-disc [&_p]:my-3" dangerouslySetInnerHTML={{ __html: sanitizePostHtml(post.body) }} />
+          </Card>
+
+          <Card className="space-y-5 p-5 sm:p-6">
+            <div><h2 className="text-xl font-black tracking-[-0.04em]">댓글</h2><p className="mt-1 text-sm leading-6 text-text-secondary">내가 쓴 댓글은 이 화면에서 바로 삭제할 수 있습니다.</p></div>
+            <form onSubmit={handleCommentSubmit} className="space-y-3">
+              <textarea value={commentBody} onChange={(event) => setCommentBody(event.target.value)} className="min-h-28 w-full rounded-2xl border border-border bg-background p-4 text-sm leading-6 outline-none focus:border-graphite" placeholder="댓글을 입력하세요" maxLength={1000} />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-text-secondary">{commentStatus || `${commentBody.length}/1000`}</p><Button type="submit" disabled={submitting}>{submitting ? "저장 중..." : "댓글 저장"}</Button></div>
+            </form>
+
+            {comments.length === 0 ? <p className="text-sm text-text-secondary">아직 공개된 댓글이 없습니다.</p> : null}
+            <div className="space-y-3">
+              {comments.map((comment) => {
+                const isCommentOwner = Boolean(me && me.id === comment.author_id);
+                return (
+                  <div key={comment.id} className="rounded-2xl border border-border bg-background p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary">
+                      <div className="flex flex-wrap items-center gap-2"><span>{comment.author_nickname ?? "GearDuck"}</span><span>·</span><span>{formatDate(comment.created_at)}</span></div>
+                      {isCommentOwner ? <button type="button" className="font-bold text-red-600 disabled:opacity-50" onClick={() => handleRemoveComment(comment.id)} disabled={busyCommentId === comment.id}>{busyCommentId === comment.id ? "삭제 중..." : "삭제"}</button> : null}
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-text-secondary">{comment.body}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+
+        <aside className="min-w-0 space-y-3">
+          <Card variant="dark" className="p-5 sm:p-6"><p className="text-sm text-zinc-300">게시판</p><h2 className="mt-1 text-xl font-bold">{post.board_title}</h2><p className="mt-2 text-sm leading-6 text-zinc-300">{post.board_description ?? "게시판 설명이 없습니다."}</p></Card>
+          <Card className="p-5 sm:p-6"><p className="text-sm font-bold">바로가기</p><Link className="mt-2 inline-flex text-sm font-black text-orange-600" href={boardHref}>게시판으로 돌아가기</Link></Card>
+        </aside>
+      </article>
+    </>
   );
 }
