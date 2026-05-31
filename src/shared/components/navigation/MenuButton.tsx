@@ -16,8 +16,8 @@ type MeResponse = {
   user?: CurrentUser | null;
 };
 
-const menuLinkClassName = "rounded-2xl px-4 py-3 text-left font-semibold transition hover:bg-background";
-const sectionLabelClassName = "px-4 pt-2 text-[0.68rem] font-black uppercase tracking-[0.18em] text-text-secondary";
+const menuLinkClassName = "rounded-xl px-3 py-2.5 text-left text-[0.95rem] font-semibold transition hover:bg-background";
+const sectionLabelClassName = "px-3 pt-2 text-[0.62rem] font-black uppercase tracking-[0.18em] text-text-secondary";
 
 function hardNavigate(path: string) {
   window.location.assign(path);
@@ -98,24 +98,24 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
             onClick={() => setIsOpen(false)}
             className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
           />
-          <aside className="absolute right-0 top-0 flex h-full w-[min(86vw,24rem)] flex-col overflow-hidden rounded-l-[2rem] border-l border-border bg-surface shadow-2xl">
-            <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-5">
+          <aside className="absolute right-0 top-0 flex h-full w-[min(74vw,20rem)] flex-col overflow-hidden rounded-l-[1.5rem] border-l border-border bg-surface shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-4">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-text-secondary">GearDuck</p>
-                <p className="text-xl font-black text-text-primary">사이드 메뉴</p>
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-text-secondary">GearDuck</p>
+                <p className="text-lg font-black text-text-primary">사이드 메뉴</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
                 aria-label="메뉴 닫기"
-                className="inline-flex size-10 items-center justify-center rounded-full bg-background text-xl font-black transition hover:opacity-80"
+                className="inline-flex size-9 items-center justify-center rounded-full bg-background text-lg font-black transition hover:opacity-80"
               >
                 ×
               </button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto p-3">
-              <div className="grid gap-1 text-sm">
+            <nav className="flex-1 overflow-y-auto p-2.5">
+              <div className="grid gap-0.5 text-sm">
                 <p className={sectionLabelClassName}>GearDuck</p>
                 <button type="button" onClick={() => navigate("/")} className={menuLinkClassName}>홈</button>
                 <button type="button" onClick={() => navigate("/explore/")} className={menuLinkClassName}>기어 둘러보기</button>
@@ -135,16 +135,16 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
                 ) : null}
               </div>
 
-              <div className="my-4 h-px bg-border" />
+              <div className="my-3 h-px bg-border" />
 
-              <div className="grid gap-1 text-sm">
+              <div className="grid gap-0.5 text-sm">
                 <p className={sectionLabelClassName}>기어 카테고리</p>
                 {equipmentCategories.map((category) => (
                   <Link
                     key={category.slug}
                     href={`/explore/${category.slug}/`}
                     onClick={() => setIsOpen(false)}
-                    className="flex items-center justify-between rounded-2xl px-4 py-3 font-semibold transition hover:bg-background"
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5 text-[0.95rem] font-semibold transition hover:bg-background"
                   >
                     <span>{category.label}</span>
                     <span className="text-xs text-text-secondary">{category.boards.length}</span>
