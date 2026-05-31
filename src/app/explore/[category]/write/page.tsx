@@ -22,7 +22,7 @@ export default async function CategoryWritePage({ params }: { params: Promise<{ 
   return (
     <main className="container-shell max-w-full space-y-8 overflow-x-hidden py-5 sm:py-8 lg:space-y-12">
       <PageHeader
-        breadcrumbs={[{ label: "홈", href: "/" }, { label: "기어 둘러보기", href: "/explore/" }, { label: category.label, href: `/explore/${category.slug}/` }, { label: "글쓰기" }]}
+        breadcrumbs={[{ label: "홈", href: "/" }, { label: category.label, href: `/explore/${category.slug}/` }]}
         title="글쓰기"
         description="세부 카테고리를 선택하고 글을 작성하세요."
       />
