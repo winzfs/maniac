@@ -3,6 +3,7 @@
 import { equipmentCategories } from "@/shared/data/equipment-categories";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 type CurrentUser = {
   id: string;
@@ -27,6 +28,11 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -53,6 +59,8 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
   useEffect(() => {
     if (!isOpen) return;
 
+    const previousBodyOverflow = document.body.style.overflow;
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setIsOpen(false);
     }
@@ -61,7 +69,7 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousBodyOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [isOpen]);
@@ -77,6 +85,73 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
     hardNavigate(path);
   }
 
+  const sideNavigation = isOpen && isMounted ? createPortal(
+    <div className="fixed inset-0 z-50">
+      <button
+        type="button"
+        aria-label="사이드 네비게이션 닫기"
+        onClick={() => setIsOpen(false)}
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+      />
+      <aside className="absolute right-0 top-0 flex h-full w-[min(74vw,20rem)] flex-col overflow-hidden rounded-l-[1.5rem] border-l border-border bg-surface shadow-2xl">
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-4">
+          <div>
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-text-secondary">GearDuck</p>
+            <p className="text-lg font-black text-text-primary">사이드 메뉴</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            aria-label="메뉴 닫기"
+            className="inline-flex size-9 items-center justify-center rounded-full bg-background text-lg font-black transition hover:opacity-80"
+          >
+            ×
+          </button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto p-2.5">
+          <div className="grid gap-0.5 text-sm">
+            <p className={sectionLabelClassName}>GearDuck</p>
+            <button type="button" onClick={() => navigate("/")} className={menuLinkClassName}>홈</button>
+            <button type="button" onClick={() => navigate("/explore/")} className={menuLinkClassName}>기어 둘러보기</button>
+            <button type="button" onClick={() => navigate("/garage/")} className={menuLinkClassName}>내 기어</button>
+            {loaded && user ? (
+              <>
+                <button type="button" onClick={() => navigate("/me/")} className={menuLinkClassName}>내 정보 · {user.nickname}</button>
+                {user.isAdmin ? <button type="button" onClick={() => navigate("/admin/")} className={`${menuLinkClassName} text-orange-600`}>관리 모드</button> : null}
+                <button type="button" onClick={logout} className={menuLinkClassName}>로그아웃</button>
+              </>
+            ) : null}
+            {loaded && !user ? (
+              <>
+                <button type="button" onClick={() => navigate("/login/")} className={menuLinkClassName}>로그인</button>
+                <button type="button" onClick={() => navigate("/signup/")} className={menuLinkClassName}>회원가입</button>
+              </>
+            ) : null}
+          </div>
+
+          <div className="my-3 h-px bg-border" />
+
+          <div className="grid gap-0.5 text-sm">
+            <p className={sectionLabelClassName}>기어 카테고리</p>
+            {equipmentCategories.map((category) => (
+              <Link
+                key={category.slug}
+                href={`/explore/${category.slug}/`}
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-between rounded-xl px-3 py-2.5 text-[0.95rem] font-semibold transition hover:bg-background"
+              >
+                <span>{category.label}</span>
+                <span className="text-xs text-text-secondary">{category.boards.length}</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+      </aside>
+    </div>,
+    document.body,
+  ) : null;
+
   return (
     <>
       <button
@@ -89,72 +164,7 @@ export function MenuButton({ label = "메뉴" }: { label?: string }) {
         <span aria-hidden="true">☰</span>
         <span className="sr-only">{label}</span>
       </button>
-
-      {isOpen ? (
-        <div className="fixed inset-0 z-50">
-          <button
-            type="button"
-            aria-label="사이드 네비게이션 닫기"
-            onClick={() => setIsOpen(false)}
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
-          />
-          <aside className="absolute right-0 top-0 flex h-full w-[min(74vw,20rem)] flex-col overflow-hidden rounded-l-[1.5rem] border-l border-border bg-surface shadow-2xl">
-            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-4">
-              <div>
-                <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-text-secondary">GearDuck</p>
-                <p className="text-lg font-black text-text-primary">사이드 메뉴</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                aria-label="메뉴 닫기"
-                className="inline-flex size-9 items-center justify-center rounded-full bg-background text-lg font-black transition hover:opacity-80"
-              >
-                ×
-              </button>
-            </div>
-
-            <nav className="flex-1 overflow-y-auto p-2.5">
-              <div className="grid gap-0.5 text-sm">
-                <p className={sectionLabelClassName}>GearDuck</p>
-                <button type="button" onClick={() => navigate("/")} className={menuLinkClassName}>홈</button>
-                <button type="button" onClick={() => navigate("/explore/")} className={menuLinkClassName}>기어 둘러보기</button>
-                <button type="button" onClick={() => navigate("/garage/")} className={menuLinkClassName}>내 기어</button>
-                {loaded && user ? (
-                  <>
-                    <button type="button" onClick={() => navigate("/me/")} className={menuLinkClassName}>내 정보 · {user.nickname}</button>
-                    {user.isAdmin ? <button type="button" onClick={() => navigate("/admin/")} className={`${menuLinkClassName} text-orange-600`}>관리 모드</button> : null}
-                    <button type="button" onClick={logout} className={menuLinkClassName}>로그아웃</button>
-                  </>
-                ) : null}
-                {loaded && !user ? (
-                  <>
-                    <button type="button" onClick={() => navigate("/login/")} className={menuLinkClassName}>로그인</button>
-                    <button type="button" onClick={() => navigate("/signup/")} className={menuLinkClassName}>회원가입</button>
-                  </>
-                ) : null}
-              </div>
-
-              <div className="my-3 h-px bg-border" />
-
-              <div className="grid gap-0.5 text-sm">
-                <p className={sectionLabelClassName}>기어 카테고리</p>
-                {equipmentCategories.map((category) => (
-                  <Link
-                    key={category.slug}
-                    href={`/explore/${category.slug}/`}
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center justify-between rounded-xl px-3 py-2.5 text-[0.95rem] font-semibold transition hover:bg-background"
-                  >
-                    <span>{category.label}</span>
-                    <span className="text-xs text-text-secondary">{category.boards.length}</span>
-                  </Link>
-                ))}
-              </div>
-            </nav>
-          </aside>
-        </div>
-      ) : null}
+      {sideNavigation}
     </>
   );
 }
