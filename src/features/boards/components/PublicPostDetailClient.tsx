@@ -254,7 +254,7 @@ export function PublicPostDetailClient({ id }: { id: string }) {
         description={`${categoryLabel} 게시글`}
       />
 
-      <article className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+      <article className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start">
         <div className="min-w-0 space-y-5">
           <Card className="space-y-6 p-5 sm:p-7">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-secondary">
@@ -301,9 +301,10 @@ export function PublicPostDetailClient({ id }: { id: string }) {
           </Card>
         </div>
 
-        <aside className="min-w-0 space-y-3">
-          <Card variant="dark" className="p-5 sm:p-6"><p className="text-sm text-zinc-300">게시판</p><h2 className="mt-1 text-xl font-bold">{post.board_title}</h2><p className="mt-2 text-sm leading-6 text-zinc-300">{post.board_description ?? "게시판 설명이 없습니다."}</p></Card>
-          <Card className="p-5 sm:p-6"><p className="text-sm font-bold">바로가기</p><Link className="mt-2 inline-flex text-sm font-black text-orange-600" href={categoryHref}>{categoryLabel}로 돌아가기</Link></Card>
+        <aside className="min-w-0">
+          <Link href={categoryHref} className="inline-flex w-full items-center justify-center rounded-full bg-graphite px-5 py-4 text-sm font-black text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+            {categoryLabel}로 돌아가기
+          </Link>
         </aside>
       </article>
     </>
