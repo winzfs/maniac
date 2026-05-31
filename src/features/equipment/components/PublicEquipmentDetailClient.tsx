@@ -15,8 +15,8 @@ type State =
   | { status: "ready"; data: PublicEquipmentDetailData }
   | { status: "error"; message: string };
 
-async function readPublicEquipment(slug: string) {
-  const response = await fetch(`/api/public/equipments/${encodeURIComponent(slug)}`, { cache: "no-store" });
+async function readPublicEquipment(identifier: string) {
+  const response = await fetch(`/api/public/equipments/${encodeURIComponent(identifier)}`, { cache: "no-store" });
   const data = (await response.json()) as PublicEquipmentResponse;
 
   if (!response.ok || !data.ok) {
@@ -74,7 +74,7 @@ function updateEquipmentSeo(data: PublicEquipmentDetailData) {
     equipment.description,
     `${equipment.nickname}${spec ? ` (${spec})` : ""}의 정비 기록 ${logs.length}개와 부품 기록 ${parts.length}개를 GearDuck에서 확인하세요.`,
   );
-  const canonical = `${SITE_ORIGIN}/garage/view/?slug=${encodeURIComponent(equipment.slug)}`;
+  const canonical = `${SITE_ORIGIN}/garage/view/?id=${encodeURIComponent(equipment.id)}`;
 
   document.title = title;
   upsertMeta("description", description);
@@ -87,7 +87,7 @@ function updateEquipmentSeo(data: PublicEquipmentDetailData) {
   if (equipment.main_image_url) upsertPropertyMeta("og:image", equipment.main_image_url);
 }
 
-export function PublicEquipmentDetailClient({ slug }: { slug: string }) {
+export function PublicEquipmentDetailClient({ identifier }: { identifier: string }) {
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export function PublicEquipmentDetailClient({ slug }: { slug: string }) {
 
     async function load() {
       try {
-        const data = await readPublicEquipment(slug);
+        const data = await readPublicEquipment(identifier);
         if (mounted) setState({ status: "ready", data });
       } catch (error) {
         if (!mounted) return;
@@ -103,8 +103,8 @@ export function PublicEquipmentDetailClient({ slug }: { slug: string }) {
       }
     }
 
-    if (!slug) {
-      setState({ status: "error", message: "장비 slug가 필요합니다." });
+    if (!identifier) {
+      setState({ status: "error", message: "장비 id가 필요합니다." });
       return;
     }
 
@@ -112,7 +112,7 @@ export function PublicEquipmentDetailClient({ slug }: { slug: string }) {
     return () => {
       mounted = false;
     };
-  }, [slug]);
+  }, [identifier]);
 
   useEffect(() => {
     if (state.status === "ready") updateEquipmentSeo(state.data);
