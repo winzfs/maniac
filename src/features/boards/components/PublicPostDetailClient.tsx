@@ -211,7 +211,7 @@ export function PublicPostDetailClient({ id }: { id: string }) {
     setOwnerStatus("게시글을 처리하는 중입니다...");
     try {
       await removePost(state.post.id);
-      router.push(`/explore/${state.post.category}/${state.post.board_slug}/`);
+      router.push(`/explore/${state.post.category}/`);
     } catch (error) {
       setOwnerStatus(error instanceof Error ? error.message : "게시글 처리에 실패했습니다.");
       setRemovingPost(false);
@@ -242,20 +242,16 @@ export function PublicPostDetailClient({ id }: { id: string }) {
   const category = getEquipmentCategory(post.category);
   const categoryLabel = category?.label ?? post.category;
   const categoryHref = `/explore/${post.category}/`;
-  const boardHref = `/explore/${post.category}/${post.board_slug}/`;
 
   return (
     <>
       <PageHeader
         breadcrumbs={[
           { label: "홈", href: "/" },
-          { label: "기어 둘러보기", href: "/explore/" },
           { label: categoryLabel, href: categoryHref },
-          { label: post.board_title, href: boardHref },
-          { label: "게시글" },
         ]}
         title="게시글 상세"
-        description={`${categoryLabel} · ${post.board_title}`}
+        description={`${categoryLabel} 게시글`}
       />
 
       <article className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
@@ -307,7 +303,7 @@ export function PublicPostDetailClient({ id }: { id: string }) {
 
         <aside className="min-w-0 space-y-3">
           <Card variant="dark" className="p-5 sm:p-6"><p className="text-sm text-zinc-300">게시판</p><h2 className="mt-1 text-xl font-bold">{post.board_title}</h2><p className="mt-2 text-sm leading-6 text-zinc-300">{post.board_description ?? "게시판 설명이 없습니다."}</p></Card>
-          <Card className="p-5 sm:p-6"><p className="text-sm font-bold">바로가기</p><Link className="mt-2 inline-flex text-sm font-black text-orange-600" href={boardHref}>게시판으로 돌아가기</Link></Card>
+          <Card className="p-5 sm:p-6"><p className="text-sm font-bold">바로가기</p><Link className="mt-2 inline-flex text-sm font-black text-orange-600" href={categoryHref}>{categoryLabel}로 돌아가기</Link></Card>
         </aside>
       </article>
     </>
