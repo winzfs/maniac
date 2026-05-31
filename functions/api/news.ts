@@ -27,7 +27,7 @@ function json(data: unknown, status = 200) {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "cache-control": "public, max-age=300",
+      "cache-control": "no-store",
     },
   });
 }
@@ -74,6 +74,12 @@ async function ensureReadableNewsSchema(db: D1Database) {
 
   try {
     await db.prepare("ALTER TABLE news_items ADD COLUMN image_url TEXT").run();
+  } catch {
+    // Column already exists.
+  }
+
+  try {
+    await db.prepare("ALTER TABLE news_items ADD COLUMN hidden_at INTEGER").run();
   } catch {
     // Column already exists.
   }
