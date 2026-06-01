@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { MyPostEditClient } from "@/features/auth/MyPostEditClient";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
 import { Card } from "@/shared/components/ui/Card";
 import { Suspense } from "react";
+
+export const metadata: Metadata = {
+  title: "게시글 수정",
+  robots: { index: false, follow: false },
+};
 
 export default function MyPostEditPage() {
   return (
