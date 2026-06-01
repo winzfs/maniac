@@ -43,7 +43,7 @@ function formatDate(value?: number | null) {
 }
 
 function postHref(id: string) {
-  return `/explore/post/?id=${encodeURIComponent(id)}`;
+  return `/posts/${encodeURIComponent(id)}/`;
 }
 
 function profileJsonLd(user: PublicUser, posts: UserPost[]) {
