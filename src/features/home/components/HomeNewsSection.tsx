@@ -104,23 +104,21 @@ export function HomeNewsSection() {
           <Button variant="secondary" className="w-full sm:w-auto">뉴스 게시판 보기</Button>
         </Link>
       </div>
-      <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
         <a href={lead.link} target="_blank" rel="noreferrer" className="block">
-          <Card variant="dark" className="flex h-full min-h-64 flex-col overflow-hidden p-0 transition hover:-translate-y-0.5 hover:shadow-lg">
+          <Card variant="dark" className="grid overflow-hidden p-0 transition hover:-translate-y-0.5 hover:shadow-lg sm:grid-cols-[11rem_minmax(0,1fr)] lg:block">
             {leadImage ? (
-              <img src={leadImage} alt="" className="aspect-video w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+              <img src={leadImage} alt="" className="h-40 w-full object-cover sm:h-full sm:min-h-44 lg:h-44" loading="lazy" referrerPolicy="no-referrer" />
             ) : null}
-            <div className="flex flex-1 flex-col justify-between p-6">
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge label={lead.category} tone="lime" />
-                  <span className="text-xs text-zinc-300">{formatDate(lead.publishedAt)}</span>
-                </div>
-                <h3 className="text-2xl font-black leading-tight tracking-tight sm:text-3xl">{lead.title}</h3>
+            <div className="p-5 sm:p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge label={lead.category} tone="lime" />
+                <span className="text-xs text-zinc-300">{formatDate(lead.publishedAt)}</span>
               </div>
-              <div className="mt-6 flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-sm text-zinc-300">
-                <span>{lead.source}</span>
-                <span className="font-semibold text-lime-200">뉴스 보기 →</span>
+              <h3 className="mt-3 line-clamp-3 text-xl font-black leading-tight tracking-tight sm:text-2xl">{lead.title}</h3>
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3 text-sm text-zinc-300">
+                <span className="truncate">{lead.source}</span>
+                <span className="shrink-0 font-semibold text-lime-200">뉴스 보기 →</span>
               </div>
             </div>
           </Card>
