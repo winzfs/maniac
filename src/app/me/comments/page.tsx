@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { MyCommentsClient } from "@/features/auth/MyCommentsClient";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
+
+export const metadata: Metadata = {
+  title: "내 댓글 관리",
+  robots: { index: false, follow: false },
+};
 
 export default function MyCommentsPage() {
   return (
