@@ -152,10 +152,18 @@ function firstImageFromHtml(value: string) {
   return value.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
 }
 
+function postDetailHref(id: string) {
+  return `/posts/${encodeURIComponent(id)}/`;
+}
+
+function postCanonicalUrl(id: string) {
+  return `${SITE_ORIGIN}${postDetailHref(id)}`;
+}
+
 function updatePostSeo(post: PublicPost, commentCount: number) {
   const title = `${post.title} | GearDuck`;
   const description = textSnippet(post.body, `${post.board_title} 게시판의 장비 이야기와 댓글 ${commentCount}개를 GearDuck에서 확인하세요.`);
-  const canonical = `${SITE_ORIGIN}/explore/post/?id=${encodeURIComponent(post.id)}`;
+  const canonical = postCanonicalUrl(post.id);
   const image = firstImageFromHtml(post.body);
 
   document.title = title;
@@ -175,12 +183,8 @@ function toneForBoard(type: string) {
   return "muted";
 }
 
-function postDetailHref(id: string) {
-  return `/explore/post/?id=${encodeURIComponent(id)}`;
-}
-
 function discussionJsonLd(post: PublicPost, comments: PublicComment[]) {
-  const url = `${SITE_ORIGIN}/explore/post/?id=${encodeURIComponent(post.id)}`;
+  const url = postCanonicalUrl(post.id);
   const image = firstImageFromHtml(post.body);
   return {
     "@context": "https://schema.org",
