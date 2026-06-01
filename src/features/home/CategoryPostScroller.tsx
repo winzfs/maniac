@@ -29,7 +29,7 @@ type State =
   | { status: "error"; message: string };
 
 function postDetailHref(id: string) {
-  return `/explore/post/?id=${encodeURIComponent(id)}`;
+  return `/posts/${encodeURIComponent(id)}/`;
 }
 
 async function readCategoryPosts(categorySlug: string) {
