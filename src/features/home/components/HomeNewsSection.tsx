@@ -47,7 +47,7 @@ export function HomeNewsSection() {
 
     async function loadNews() {
       try {
-        const response = await fetch("/api/news?limit=10", { cache: "no-store" });
+        const response = await fetch("/api/news?limit=6", { cache: "no-store" });
         const data = (await response.json().catch(() => null)) as NewsResponse | null;
 
         if (!response.ok || !data?.ok) throw new Error("장비 뉴스를 불러오지 못했습니다.");
@@ -58,18 +58,15 @@ export function HomeNewsSection() {
     }
 
     void loadNews();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   if (state.status === "loading") {
     return (
       <section className="space-y-5">
         <SectionHeader title="장비 뉴스" description="외부 뉴스 피드에서 장비 관련 소식을 모아봅니다." />
-        <div className="grid gap-3 lg:grid-cols-2">
-          {[0, 1, 2, 3].map((item) => <Card key={item} className="h-28 animate-pulse p-5" />)}
+        <div className="grid gap-3">
+          {[0, 1, 2].map((item) => <Card key={item} className="h-24 animate-pulse p-5" />)}
         </div>
       </section>
     );
@@ -93,9 +90,6 @@ export function HomeNewsSection() {
     );
   }
 
-  const [lead, ...rest] = state.items;
-  const leadImage = imageSrc(lead.imageUrl);
-
   return (
     <section className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -104,50 +98,30 @@ export function HomeNewsSection() {
           <Button variant="secondary" className="w-full sm:w-auto">뉴스 게시판 보기</Button>
         </Link>
       </div>
-      <div className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr]">
-        <a href={lead.link} target="_blank" rel="noreferrer" className="block">
-          <Card variant="dark" className="grid overflow-hidden p-0 transition hover:-translate-y-0.5 hover:shadow-lg sm:grid-cols-[11rem_minmax(0,1fr)] lg:block">
-            {leadImage ? (
-              <img src={leadImage} alt="" className="h-40 w-full object-cover sm:h-full sm:min-h-44 lg:h-44" loading="lazy" referrerPolicy="no-referrer" />
-            ) : null}
-            <div className="p-5 sm:p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge label={lead.category} tone="lime" />
-                <span className="text-xs text-zinc-300">{formatDate(lead.publishedAt)}</span>
-              </div>
-              <h3 className="mt-3 line-clamp-3 text-xl font-black leading-tight tracking-tight sm:text-2xl">{lead.title}</h3>
-              <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3 text-sm text-zinc-300">
-                <span className="truncate">{lead.source}</span>
-                <span className="shrink-0 font-semibold text-lime-200">뉴스 보기 →</span>
-              </div>
-            </div>
-          </Card>
-        </a>
 
-        <div className="grid gap-3">
-          {rest.slice(0, 6).map((item) => {
-            const thumbnail = imageSrc(item.imageUrl);
-            return (
-              <a key={item.id} href={item.link} target="_blank" rel="noreferrer" className="block">
-                <Card className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 p-3 transition hover:-translate-y-0.5 hover:shadow-md sm:grid-cols-[7rem_minmax(0,1fr)]">
-                  {thumbnail ? (
-                    <img src={thumbnail} alt="" className="aspect-square h-full w-full rounded-2xl object-cover" loading="lazy" referrerPolicy="no-referrer" />
-                  ) : (
-                    <div className="flex aspect-square h-full w-full items-center justify-center rounded-2xl bg-background text-xs font-black text-text-secondary">{item.category}</div>
-                  )}
-                  <div className="min-w-0 space-y-2 py-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge label={item.category} tone="muted" />
-                      <span className="text-xs text-text-secondary">{formatDate(item.publishedAt)}</span>
-                    </div>
-                    <h3 className="line-clamp-2 font-bold leading-tight">{item.title}</h3>
-                    <p className="truncate text-xs text-text-secondary">{item.source}</p>
+      <div className="grid gap-3">
+        {state.items.slice(0, 5).map((item) => {
+          const thumbnail = imageSrc(item.imageUrl);
+          return (
+            <a key={item.id} href={item.link} target="_blank" rel="noreferrer" className="block">
+              <Card className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-3 p-3 transition hover:-translate-y-0.5 hover:shadow-md sm:grid-cols-[7rem_minmax(0,1fr)]">
+                {thumbnail ? (
+                  <img src={thumbnail} alt="" className="aspect-square h-full w-full rounded-2xl object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="flex aspect-square h-full w-full items-center justify-center rounded-2xl bg-background text-xs font-black text-text-secondary">{item.category}</div>
+                )}
+                <div className="min-w-0 space-y-2 py-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge label={item.category} tone="muted" />
+                    <span className="text-xs text-text-secondary">{formatDate(item.publishedAt)}</span>
                   </div>
-                </Card>
-              </a>
-            );
-          })}
-        </div>
+                  <h3 className="line-clamp-2 font-bold leading-tight">{item.title}</h3>
+                  <p className="truncate text-xs text-text-secondary">{item.source}</p>
+                </div>
+              </Card>
+            </a>
+          );
+        })}
       </div>
     </section>
   );
