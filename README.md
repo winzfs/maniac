@@ -15,8 +15,12 @@
 ```txt
 브랜드/SEO: GEAR DUCK / 기어덕 / 장비 덕후들의 커뮤니티 ✅
 Google Search Console HTML 인증 파일 ✅
-robots.txt / sitemap.xml ✅
+robots.txt / sitemap index / 정적·동적 sitemap ✅
 SEO 신뢰 페이지: /about /terms /privacy /contact ✅
+사이트 전체 Organization / WebSite JSON-LD ✅
+게시글 DiscussionForumPosting JSON-LD ✅
+공개 유저 ProfilePage JSON-LD ✅
+개인/관리/검색 페이지 noindex 정책 ✅
 공통 푸터 ✅
 기준 URL: https://maniac-c7d.pages.dev ✅
 이메일 회원가입/로그인/로그아웃 ✅
@@ -29,6 +33,7 @@ HttpOnly 쿠키 기반 세션 ✅
 부품 기록 CRUD ✅
 부품 사진 업로드 ✅ Cloudinary
 공개/상세 장비 페이지 ✅ /garage/view/?id=...
+공개 장비 clean URL redirect ✅ /gears/[id]/ → /garage/view/?id=...
 공개 장비 slug fallback ✅ /garage/view/?slug=...
 공개 장비 상세 client-side SEO 메타 갱신 ✅
 커뮤니티 boards/posts/comments D1 테이블 ✅
@@ -39,6 +44,8 @@ HttpOnly 쿠키 기반 세션 ✅
 카테고리 단위 글쓰기 ✅ /explore/[category]/write/
 글쓰기 화면 세부 카테고리 선택 ✅
 게시글 작성/상세/수정/삭제 ✅
+게시글 clean URL redirect ✅ /posts/[id]/ → /explore/post/?id=...
+내부 게시글 링크 clean URL 기준 변경 ✅
 게시글 본문 이미지 업로드 ✅ Cloudinary
 게시글 상세 client-side SEO 메타 갱신 ✅
 게시글 상세 breadcrumb 단순화 ✅ 홈 > 카테고리
@@ -47,13 +54,17 @@ HttpOnly 쿠키 기반 세션 ✅
 댓글 상세 화면 내 댓글 삭제 ✅
 댓글 목록 상단 표시 + compact 입력폼 ✅
 홈 상단 중앙 로고/오른쪽 사이드 네비게이션 ✅
+홈 카테고리 글 상단 배치 ✅
+홈 뉴스 hero 카드 제거 ✅
 공개 장비/게시글/뉴스 통합 검색 ✅ /search/
+검색 결과 링크 clean URL 기준 변경 ✅
 검색 매칭 엄격화 ✅ 게시글 제목/본문 중심
 런타임 기본 게시판 self-healing ✅
 런타임 샘플 커뮤니티 게시글 seed ✅
 외부 장비 뉴스 표시 ✅
 외부 뉴스 DB 캐시/동기화 ✅
 내 정보 페이지 ✅
+공개 유저 프로필 페이지 ✅
 프로필 설정 페이지 ✅
 프로필 이미지 업로드 ✅ Cloudinary
 provider 추상화 image_assets ✅ R2 이전 가능 구조
@@ -92,6 +103,7 @@ docs/cloudinary-image-provider.md
 docs/deploy-trigger.md
 docs/public-equipment-url-policy.md
 docs/ui-navigation-status.md
+docs/seo-url-and-search-console.md
 ```
 
 ---
@@ -107,7 +119,8 @@ docs/ui-navigation-status.md
 /explore/[category]/write/
 /explore/[category]/[board]/
 /explore/[category]/[board]/write/ // 기존 직접 게시판 글쓰기 호환
-/explore/post/?id=게시글ID
+/posts/[id]/                     // 게시글 clean URL, Pages Function redirect
+/explore/post/?id=게시글ID        // 기존 상세 shell/fallback
 
 /login/
 /signup/
@@ -120,8 +133,9 @@ docs/ui-navigation-status.md
 /garage/
 /garage/new/
 /garage/edit/?id=장비ID
-/garage/view/?id=장비ID
-/garage/view/?slug=장비slug // 기존 링크 fallback
+/gears/[id]/                     // 장비 clean URL, Pages Function redirect
+/garage/view/?id=장비ID          // 기존 상세 shell/fallback
+/garage/view/?slug=장비slug      // 기존 링크 fallback
 
 /admin/
 ```
@@ -169,10 +183,17 @@ https://maniac-c7d.pages.dev
 
 ```txt
 src/app/layout.tsx
-src/shared/components/navigation/SiteFooter.tsx
+src/shared/components/seo/JsonLd.tsx
+src/features/boards/components/PublicPostDetailClient.tsx
+src/features/users/components/PublicUserProfileClient.tsx
 public/robots.txt
 public/sitemap.xml
+public/sitemap-static.xml
+functions/sitemap-posts.xml.ts
+functions/sitemap-gears.xml.ts
 public/googled7e36cbd6c693e0a.html
+functions/posts/[id].ts
+functions/gears/[id].ts
 ```
 
 현재 반영 상태:
@@ -180,26 +201,49 @@ public/googled7e36cbd6c693e0a.html
 ```txt
 metadataBase = https://maniac-c7d.pages.dev
 robots.txt Sitemap = https://maniac-c7d.pages.dev/sitemap.xml
-sitemap.xml 주요 정적 페이지 및 신뢰 페이지 포함
+sitemap.xml = sitemap index
+sitemap-static.xml = 정적 페이지/신뢰 페이지/카테고리
+sitemap-posts.xml = 공개 게시글 동적 sitemap, /posts/[id]/ 기준
+sitemap-gears.xml = 공개 장비 동적 sitemap, /gears/[id]/ 기준
 Google Search Console HTML 인증 파일 추가 완료
 공통 푸터에서 /about /terms /privacy /contact 내부 링크 제공
+```
+
+색인 제외 정책:
+
+```txt
+/search/              noindex, follow
+/login/               noindex, follow
+/signup/              noindex, follow
+/me/*                 noindex, nofollow
+/garage/new/          noindex, nofollow
+/garage/edit/         noindex, nofollow
 ```
 
 상세 페이지 SEO 보강 방식:
 
 ```txt
+/gears/[id]/
+→ /garage/view/?id=... 로 Pages Function 302 redirect
+
 /garage/view/?id=...
 → PublicEquipmentDetailClient가 장비 데이터 로딩 후 document.title, description, canonical, og:* 갱신
 
 /garage/view/?slug=...
 → 기존 공유 링크 호환용 fallback
 
+/posts/[id]/
+→ /explore/post/?id=... 로 Pages Function 302 redirect
+
 /explore/post/?id=...
 → PublicPostDetailClient가 게시글 데이터 로딩 후 document.title, description, canonical, og:* 갱신
+→ DiscussionForumPosting JSON-LD 출력
 ```
 
 주의:
 
 ```txt
-Next static export + query string 상세 페이지 구조라서 상세 페이지의 완전한 서버 사이드 SEO는 제한적입니다.
+현재 /posts/[id]/, /gears/[id]/는 clean URL 진입용 redirect입니다.
+강한 상세 페이지 SEO를 위해서는 추후 301 전환 또는 Pages Function HTML 메타 주입/정적-safe 라우팅을 검토합니다.
+Next static export + query string 상세 shell 구조라서 상세 페이지의 완전한 서버 사이드 SEO는 아직 제한적입니다.
 ```
