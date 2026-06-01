@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import { MeProfileClient } from "@/features/auth/MeProfileClient";
 import { MeSummaryClient } from "@/features/auth/MeSummaryClient";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
+
+export const metadata: Metadata = {
+  title: "내 정보",
+  robots: { index: false, follow: false },
+};
 
 export default function MePage() {
   return (
