@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { ProfileSettingsClient } from "@/features/auth/ProfileSettingsClient";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
+
+export const metadata: Metadata = {
+  title: "프로필 설정",
+  robots: { index: false, follow: false },
+};
 
 export default function MeSettingsPage() {
   return (
