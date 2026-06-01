@@ -7,6 +7,7 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
+import { JsonLd } from "@/shared/components/seo/JsonLd";
 import { getEquipmentCategory } from "@/shared/data/equipment-categories";
 import { sanitizePostHtml } from "@/features/boards/utils/html";
 import { UserActionMenu } from "@/features/users/components/UserActionMenu";
@@ -103,6 +104,10 @@ function formatDate(value: number) {
   return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(value));
 }
 
+function isoDate(value: number) {
+  return new Date(value).toISOString();
+}
+
 function upsertMeta(name: string, content: string) {
   let meta = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
   if (!meta) {
@@ -172,6 +177,45 @@ function toneForBoard(type: string) {
 
 function postDetailHref(id: string) {
   return `/explore/post/?id=${encodeURIComponent(id)}`;
+}
+
+function discussionJsonLd(post: PublicPost, comments: PublicComment[]) {
+  const url = `${SITE_ORIGIN}/explore/post/?id=${encodeURIComponent(post.id)}`;
+  const image = firstImageFromHtml(post.body);
+  return {
+    "@context": "https://schema.org",
+    "@type": "DiscussionForumPosting",
+    headline: post.title,
+    text: textSnippet(post.body, post.title),
+    url,
+    mainEntityOfPage: url,
+    datePublished: isoDate(post.created_at),
+    dateModified: isoDate(post.updated_at || post.created_at),
+    author: {
+      "@type": "Person",
+      name: post.author_nickname ?? "GearDuck",
+      url: `${SITE_ORIGIN}/users/?id=${encodeURIComponent(post.author_id)}`,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "GEAR DUCK",
+      url: SITE_ORIGIN,
+      logo: `${SITE_ORIGIN}/img/logo.png`,
+    },
+    articleSection: post.board_title,
+    commentCount: comments.length,
+    image: image ? [image] : undefined,
+    comment: comments.slice(0, 20).map((comment) => ({
+      "@type": "Comment",
+      text: comment.body,
+      dateCreated: isoDate(comment.created_at),
+      author: {
+        "@type": "Person",
+        name: comment.author_nickname ?? "GearDuck",
+        url: `${SITE_ORIGIN}/users/?id=${encodeURIComponent(comment.author_id)}`,
+      },
+    })),
+  };
 }
 
 export function PublicPostDetailClient({ id }: { id: string }) {
@@ -273,6 +317,7 @@ export function PublicPostDetailClient({ id }: { id: string }) {
 
   return (
     <>
+      <JsonLd data={discussionJsonLd(post, comments)} />
       <PageHeader breadcrumbs={[{ label: "홈", href: "/" }, { label: categoryLabel, href: categoryHref }]} title="게시글 상세" description={`${categoryLabel} 게시글`} />
 
       <article className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start">
