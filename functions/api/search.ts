@@ -101,7 +101,7 @@ async function searchEquipments(db: D1Database, searchPattern: string, limit: nu
     id: row.id,
     title: row.nickname,
     description: [row.brand, row.model, row.description].filter(Boolean).join(" · ") || row.category,
-    href: `/garage/view/?id=${encodeURIComponent(row.id)}`,
+    href: `/gears/${encodeURIComponent(row.id)}/`,
     label: "공개 장비",
     imageUrl: row.main_image_url,
     createdAt: row.created_at,
@@ -135,7 +135,7 @@ async function searchPosts(db: D1Database, searchPattern: string, limit: number)
     id: row.id,
     title: row.title,
     description: stripHtml(row.body).slice(0, 140) || row.board_title,
-    href: `/explore/post/?id=${encodeURIComponent(row.id)}`,
+    href: `/posts/${encodeURIComponent(row.id)}/`,
     label: row.board_title,
     createdAt: row.created_at,
   }));
