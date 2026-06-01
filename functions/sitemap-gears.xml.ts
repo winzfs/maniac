@@ -26,7 +26,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   ).all<GearSitemapRow>();
 
   const urls = (rows.results ?? []).map((gear) => {
-    const loc = `${SITE_ORIGIN}/garage/view/?id=${encodeURIComponent(gear.id)}`;
+    const loc = `${SITE_ORIGIN}/gears/${encodeURIComponent(gear.id)}/`;
     return `  <url>\n    <loc>${escapeXml(loc)}</loc>\n    <lastmod>${escapeXml(millisToSitemapDate(gear.updated_at ?? gear.created_at))}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.65</priority>\n  </url>`;
   });
 
