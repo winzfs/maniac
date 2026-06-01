@@ -66,6 +66,14 @@ function textSnippet(value: string | null | undefined, fallback: string) {
   return normalized.length > 150 ? `${normalized.slice(0, 147)}...` : normalized;
 }
 
+function equipmentDetailHref(id: string) {
+  return `/gears/${encodeURIComponent(id)}/`;
+}
+
+function equipmentCanonicalUrl(id: string) {
+  return `${SITE_ORIGIN}${equipmentDetailHref(id)}`;
+}
+
 function updateEquipmentSeo(data: PublicEquipmentDetailData) {
   const { equipment, logs, parts } = data;
   const spec = [equipment.brand, equipment.model, equipment.year].filter(Boolean).join(" · ");
@@ -74,7 +82,7 @@ function updateEquipmentSeo(data: PublicEquipmentDetailData) {
     equipment.description,
     `${equipment.nickname}${spec ? ` (${spec})` : ""}의 정비 기록 ${logs.length}개와 부품 기록 ${parts.length}개를 GearDuck에서 확인하세요.`,
   );
-  const canonical = `${SITE_ORIGIN}/garage/view/?id=${encodeURIComponent(equipment.id)}`;
+  const canonical = equipmentCanonicalUrl(equipment.id);
 
   document.title = title;
   upsertMeta("description", description);
