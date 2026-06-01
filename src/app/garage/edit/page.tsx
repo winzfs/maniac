@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { EquipmentEditPanel } from "@/features/equipment/components/EquipmentEditPanel";
@@ -5,6 +6,11 @@ import { EquipmentMaintenanceSection } from "@/features/equipment/components/Equ
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
+
+export const metadata: Metadata = {
+  title: "기어 수정",
+  robots: { index: false, follow: false },
+};
 
 const breadcrumbs = [
   { label: "홈", href: "/" },
