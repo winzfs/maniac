@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { EquipmentForm } from "@/features/equipment/components/EquipmentForm";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
 import { Button } from "@/shared/components/ui/Button";
+
+export const metadata: Metadata = {
+  title: "내 기어 등록",
+  robots: { index: false, follow: false },
+};
 
 const breadcrumbs = [
   { label: "홈", href: "/" },
