@@ -49,7 +49,7 @@ function formatDate(value: number) {
 }
 
 function postDetailHref(id: string) {
-  return `/explore/post/?id=${encodeURIComponent(id)}`;
+  return `/posts/${encodeURIComponent(id)}/`;
 }
 
 function getLocalBoard(categorySlug: string, boardSlug: string): LocalBoard | null {
