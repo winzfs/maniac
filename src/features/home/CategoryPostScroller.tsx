@@ -66,9 +66,7 @@ export function CategoryPostScroller() {
     }
 
     load();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [selectedSlug]);
 
   if (!selectedCategory) return null;
@@ -76,8 +74,9 @@ export function CategoryPostScroller() {
   return (
     <div className="space-y-4">
       <SectionHeader
-        title="Category Boards"
-        action={<Link href={`/explore/${selectedCategory.slug}/`} className="text-xs font-semibold text-garage-orange">전체 카테고리</Link>}
+        title="카테고리 글"
+        description="관심 장비 카테고리의 최신 글을 바로 둘러보세요."
+        action={<Link href={`/explore/${selectedCategory.slug}/`} className="text-xs font-black text-garage-orange">{selectedCategory.label} 전체글 보기</Link>}
       />
 
       <div className="flex flex-wrap gap-2">
@@ -108,15 +107,15 @@ export function CategoryPostScroller() {
               <Card className="min-w-60 max-w-64 space-y-3 p-4 transition hover:-translate-y-0.5 hover:shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                   <Badge label={post.board_title} tone="muted" />
-                  <span className="text-xs text-text-secondary">{post.comment_count}</span>
+                  <span className="text-xs font-bold text-text-secondary">댓글 {post.comment_count}</span>
                 </div>
                 <div>
                   <h3 className="line-clamp-2 text-base font-bold">{post.title}</h3>
                   <p className="mt-2 line-clamp-2 text-sm leading-6 text-text-secondary">{excerptFromHtml(post.body)}</p>
                 </div>
                 <div className="flex items-center justify-between text-xs text-text-secondary">
-                  <span>{post.author_nickname ?? "maniac"}</span>
-                  <span>{post.comment_count} comments</span>
+                  <span>{post.author_nickname ?? "GearDuck"}</span>
+                  <span>{selectedCategory.label}</span>
                 </div>
               </Card>
             </Link>
