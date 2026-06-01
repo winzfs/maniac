@@ -32,7 +32,7 @@ type FeedState = {
 };
 
 function postHref(post: PublicPost) {
-  return `/explore/post/?id=${encodeURIComponent(post.id)}`;
+  return `/posts/${encodeURIComponent(post.id)}/`;
 }
 
 function stripHtml(value: string) {
