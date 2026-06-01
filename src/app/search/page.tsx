@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "검색",
   description: "GearDuck의 공개 장비, 커뮤니티 게시글, 장비 뉴스를 검색합니다.",
   alternates: { canonical: "/search/" },
+  robots: { index: false, follow: true },
   openGraph: {
     title: "검색 | GearDuck",
     description: "장비덕후들의 공개 장비, 게시글, 장비 뉴스를 한 번에 찾아보세요.",
