@@ -13,5 +13,5 @@ export const onRequestGet: PagesFunction = async ({ params, request }) => {
   url.pathname = "/garage/view/";
   url.search = `?id=${encodeURIComponent(id)}`;
 
-  return Response.redirect(url.toString(), 302);
+  return Response.redirect(url.toString(), 301);
 };
