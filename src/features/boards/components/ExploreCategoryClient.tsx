@@ -9,15 +9,12 @@ import { communityBoardTopics, getEquipmentCategory } from "@/shared/data/equipm
 import { excerptFromHtml } from "@/features/boards/utils/html";
 import { UserActionMenu } from "@/features/users/components/UserActionMenu";
 
-type PublicBoard = {
-  id: string;
+type LocalBoard = {
   slug: string;
   title: string;
   category: string;
   type: string;
-  description: string | null;
-  post_count: number;
-  sort_order: number;
+  description: string;
 };
 
 type PublicPost = {
@@ -33,13 +30,12 @@ type PublicPost = {
   comment_count: number;
 };
 
-type BoardsResponse = { ok: true; boards: PublicBoard[] } | { ok: false; error?: string };
 type PostsResponse = { ok: true; posts: PublicPost[] } | { ok: false; error?: string };
 
 type State =
-  | { status: "loading" }
-  | { status: "ready"; boards: PublicBoard[]; posts: PublicPost[] }
-  | { status: "error"; message: string };
+  | { status: "loading"; posts: PublicPost[] }
+  | { status: "ready"; posts: PublicPost[] }
+  | { status: "error"; posts: PublicPost[]; message: string };
 
 async function readJson<T>(url: string) {
   const response = await fetch(url, { cache: "no-store" });
@@ -56,8 +52,33 @@ function postDetailHref(id: string) {
   return `/explore/post/?id=${encodeURIComponent(id)}`;
 }
 
+function localBoards(categorySlug: string): LocalBoard[] {
+  const category = getEquipmentCategory(categorySlug);
+  return (category?.boards ?? []).map((board) => ({
+    slug: board.slug,
+    title: board.title,
+    category: categorySlug,
+    type: board.type,
+    description: board.description,
+  }));
+}
+
 function toneForType(type?: string) {
   return type === "trade" ? "orange" : type === "review" ? "lime" : "muted";
+}
+
+function LoadingList() {
+  return (
+    <div className="grid gap-2">
+      {[0, 1, 2].map((item) => (
+        <Card key={item} className="space-y-3 p-4">
+          <div className="h-6 w-44 animate-pulse rounded-full bg-zinc-100" />
+          <div className="h-6 w-4/5 animate-pulse rounded-full bg-zinc-100" />
+          <div className="h-4 w-full animate-pulse rounded-full bg-zinc-100" />
+        </Card>
+      ))}
+    </div>
+  );
 }
 
 function PostListRow({ post, boardType }: { post: PublicPost; boardType?: string }) {
@@ -87,29 +108,24 @@ function PostListRow({ post, boardType }: { post: PublicPost; boardType?: string
 }
 
 export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }) {
-  const [state, setState] = useState<State>({ status: "loading" });
+  const boards = useMemo(() => localBoards(categorySlug), [categorySlug]);
+  const [state, setState] = useState<State>({ status: "loading", posts: [] });
   const [activeType, setActiveType] = useState("all");
   const category = getEquipmentCategory(categorySlug);
   const writeHref = `/explore/${categorySlug}/write/`;
 
   useEffect(() => {
     let mounted = true;
+    setState((current) => ({ status: "loading", posts: current.posts }));
 
     async function load() {
       try {
-        const [boardsData, postsData] = await Promise.all([
-          readJson<BoardsResponse>("/api/public/boards"),
-          readJson<PostsResponse>(`/api/public/posts?category=${encodeURIComponent(categorySlug)}&limit=50`),
-        ]);
-
-        if (!boardsData.ok) throw new Error(boardsData.error ?? "게시판 목록을 불러오지 못했습니다.");
+        const postsData = await readJson<PostsResponse>(`/api/public/posts?category=${encodeURIComponent(categorySlug)}&limit=50`);
         if (!postsData.ok) throw new Error(postsData.error ?? "게시글 목록을 불러오지 못했습니다.");
-
-        const boards = boardsData.boards.filter((board) => board.category === categorySlug);
-        if (mounted) setState({ status: "ready", boards, posts: postsData.posts });
+        if (mounted) setState({ status: "ready", posts: postsData.posts });
       } catch (error) {
         if (!mounted) return;
-        setState({ status: "error", message: error instanceof Error ? error.message : "카테고리 정보를 불러오지 못했습니다." });
+        setState((current) => ({ status: "error", posts: current.posts, message: error instanceof Error ? error.message : "카테고리 정보를 불러오지 못했습니다." }));
       }
     }
 
@@ -118,26 +134,22 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
   }, [categorySlug]);
 
   const visibleTopics = useMemo(() => {
-    if (state.status !== "ready") return communityBoardTopics;
-    const boardTypes = new Set(state.boards.map((board) => board.type));
+    const boardTypes = new Set(boards.map((board) => board.type));
     return communityBoardTopics.filter((topic) => boardTypes.has(topic.slug));
-  }, [state]);
+  }, [boards]);
 
   const filteredPosts = useMemo(() => {
-    if (state.status !== "ready") return [];
     if (activeType === "all") return state.posts;
-    return state.posts.filter((post) => state.boards.some((board) => board.slug === post.board_slug && board.type === activeType));
-  }, [activeType, state]);
+    return state.posts.filter((post) => boards.some((board) => board.slug === post.board_slug && board.type === activeType));
+  }, [activeType, boards, state.posts]);
 
   if (!category) return <Card className="p-6 text-sm text-text-secondary">존재하지 않는 기어 카테고리입니다.</Card>;
-  if (state.status === "loading") return <Card className="h-48 animate-pulse bg-zinc-100" />;
-  if (state.status === "error") return <Card className="p-6 text-sm text-red-700">{state.message}</Card>;
 
   return (
     <div className="space-y-5 lg:space-y-6">
       <section className="rounded-[1.5rem] border border-border bg-surface px-5 py-4 sm:flex sm:items-center sm:justify-between sm:gap-5 sm:px-6">
         <div className="min-w-0">
-          <div className="flex items-center gap-2"><Badge label={category.label} tone="muted" /><span className="text-xs font-bold text-text-secondary">{state.posts.length} posts</span></div>
+          <div className="flex items-center gap-2"><Badge label={category.label} tone="muted" /><span className="text-xs font-bold text-text-secondary">{state.status === "loading" && state.posts.length === 0 ? "불러오는 중" : `${state.posts.length} posts`}</span></div>
           <h1 className="mt-2 text-3xl font-black tracking-[-0.06em] sm:text-4xl">{category.label}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">{category.description}</p>
         </div>
@@ -156,14 +168,19 @@ export function ExploreCategoryClient({ categorySlug }: { categorySlug: string }
           <span>말머리</span><span>제목</span><span>작성자</span><span className="text-center">댓글</span><span className="text-right">날짜</span>
         </div>
 
-        <div className="grid gap-2">
-          {filteredPosts.map((post) => {
-            const boardType = state.boards.find((board) => board.slug === post.board_slug)?.type;
-            return <PostListRow key={post.id} post={post} boardType={boardType} />;
-          })}
-        </div>
+        {state.status === "loading" && state.posts.length === 0 ? <LoadingList /> : null}
+        {state.status === "error" ? <Card className="p-6 text-sm text-red-700">{state.message}</Card> : null}
 
-        {filteredPosts.length === 0 ? <Card className="p-6 text-sm text-text-secondary">아직 표시할 덕질 글이 없습니다.</Card> : null}
+        {state.posts.length > 0 ? (
+          <div className={`grid gap-2 ${state.status === "loading" ? "opacity-60" : ""}`}>
+            {filteredPosts.map((post) => {
+              const boardType = boards.find((board) => board.slug === post.board_slug)?.type;
+              return <PostListRow key={post.id} post={post} boardType={boardType} />;
+            })}
+          </div>
+        ) : null}
+
+        {state.status === "ready" && filteredPosts.length === 0 ? <Card className="p-6 text-sm text-text-secondary">아직 표시할 덕질 글이 없습니다.</Card> : null}
       </section>
 
       <Link href={writeHref} className="fixed bottom-5 right-5 z-20 inline-flex rounded-full bg-garage-orange px-5 py-3 text-sm font-black text-white shadow-xl sm:hidden">+ 글쓰기</Link>
