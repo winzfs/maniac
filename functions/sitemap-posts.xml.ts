@@ -30,7 +30,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   ).all<PostSitemapRow>();
 
   const urls = (rows.results ?? []).map((post) => {
-    const loc = `${SITE_ORIGIN}/explore/post/?id=${encodeURIComponent(post.id)}`;
+    const loc = `${SITE_ORIGIN}/posts/${encodeURIComponent(post.id)}/`;
     return `  <url>\n    <loc>${escapeXml(loc)}</loc>\n    <lastmod>${escapeXml(millisToSitemapDate(post.updated_at ?? post.created_at))}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>`;
   });
 
