@@ -7,7 +7,10 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
+import { JsonLd } from "@/shared/components/seo/JsonLd";
 import { getEquipmentCategory } from "@/shared/data/equipment-categories";
+
+const SITE_ORIGIN = "https://maniac-c7d.pages.dev";
 
 type PublicUser = {
   id: string;
@@ -41,6 +44,31 @@ function formatDate(value?: number | null) {
 
 function postHref(id: string) {
   return `/explore/post/?id=${encodeURIComponent(id)}`;
+}
+
+function profileJsonLd(user: PublicUser, posts: UserPost[]) {
+  const url = `${SITE_ORIGIN}/users/?id=${encodeURIComponent(user.id)}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    url,
+    name: `${user.nickname} 프로필`,
+    description: user.bio || "GearDuck 유저 공개 프로필입니다.",
+    mainEntity: {
+      "@type": "Person",
+      name: user.nickname,
+      url,
+      image: user.profile_image_url || undefined,
+      description: user.bio || undefined,
+    },
+    hasPart: posts.slice(0, 10).map((post) => ({
+      "@type": "DiscussionForumPosting",
+      headline: post.title,
+      url: `${SITE_ORIGIN}${postHref(post.id)}`,
+      datePublished: new Date(post.created_at).toISOString(),
+      commentCount: post.comment_count,
+    })),
+  };
 }
 
 export function PublicUserProfileClient() {
@@ -78,11 +106,12 @@ export function PublicUserProfileClient() {
 
   return (
     <div className="space-y-6 lg:space-y-8">
+      <JsonLd data={profileJsonLd(user, posts)} />
       <PageHeader breadcrumbs={[{ label: "홈", href: "/" }, { label: "프로필" }]} title="유저 프로필" description="기어덕 유저의 공개 활동을 확인합니다." />
 
       <Card className="grid gap-5 p-5 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:p-7">
         {user.profile_image_url ? (
-          <img src={user.profile_image_url} alt="" className="size-20 rounded-3xl object-cover" />
+          <img src={user.profile_image_url} alt={`${user.nickname} 프로필 이미지`} className="size-20 rounded-3xl object-cover" />
         ) : (
           <div className="flex size-20 items-center justify-center rounded-3xl bg-orange-50 text-2xl font-black text-orange-700">덕</div>
         )}
@@ -91,7 +120,7 @@ export function PublicUserProfileClient() {
           <p className="mt-2 text-sm leading-6 text-text-secondary">{user.bio || "아직 소개글이 없습니다."}</p>
           <p className="mt-2 text-xs font-semibold text-text-secondary">가입일 {formatDate(user.created_at)}</p>
         </div>
-        <Button type="button" variant="secondary" onClick={() => window.alert("쪽지 기능은 준비 중입니다.")}>쪽지 보내기</Button>
+        <Button type="button" variant="secondary" disabled>쪽지 준비 중</Button>
       </Card>
 
       <section className="space-y-3">
