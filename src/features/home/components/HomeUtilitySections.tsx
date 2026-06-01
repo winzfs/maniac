@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { SectionHeader } from "@/shared/components/ui/SectionHeader";
-import { CategoryPostScroller } from "../CategoryPostScroller";
 
 const timelineItems = [
   { label: "01", title: "관리 기록", text: "오일 교체, 키캡 교체, 부품 점검처럼 내 기어의 변화를 시간순으로 남깁니다." },
@@ -12,23 +11,20 @@ const timelineItems = [
 
 export function HomeUtilitySections() {
   return (
-    <section className="grid min-w-0 gap-4 lg:grid-cols-[0.85fr_minmax(0,1.15fr)]">
+    <section>
       <Card className="space-y-5 p-5 sm:p-6">
         <SectionHeader title="내 기어의 변화를 타임라인으로" description="세팅, 정비, 부품 변경 기록을 하나의 장비 페이지에 쌓아갑니다." />
-        <div className="space-y-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           {timelineItems.map((item) => (
-            <div key={item.label} className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl bg-background p-4">
+            <div key={item.label} className="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-2xl bg-background p-4 sm:block">
               <span className="flex size-10 items-center justify-center rounded-full bg-garage-orange text-xs font-black text-white">{item.label}</span>
-              <div>
+              <div className="sm:mt-3">
                 <h3 className="font-bold">{item.title}</h3>
                 <p className="mt-1 text-sm leading-6 text-text-secondary">{item.text}</p>
               </div>
             </div>
           ))}
         </div>
-      </Card>
-      <Card className="min-w-0 overflow-hidden p-5 sm:p-6">
-        <CategoryPostScroller />
       </Card>
     </section>
   );
