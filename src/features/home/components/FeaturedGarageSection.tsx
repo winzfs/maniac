@@ -31,7 +31,7 @@ type PublicEquipmentResponse = {
 };
 
 function equipmentHref(equipment: PublicEquipment) {
-  return `/garage/view/?slug=${encodeURIComponent(equipment.slug)}`;
+  return `/gears/${encodeURIComponent(equipment.id)}/`;
 }
 
 function formatSpec(equipment: PublicEquipment) {
@@ -117,7 +117,7 @@ export function FeaturedGarageSection() {
           <Link key={equipment.id} href={equipmentHref(equipment)} className="block min-w-56 sm:min-w-72">
             <Card className="h-full space-y-3 p-3 transition hover:-translate-y-0.5 hover:shadow-md sm:space-y-4 sm:p-4">
               {equipment.main_image_url ? (
-                <img src={equipment.main_image_url} alt="" className="h-28 w-full rounded-xl object-cover sm:h-40" />
+                <img src={equipment.main_image_url} alt={`${equipment.nickname} 대표 이미지`} className="h-28 w-full rounded-xl object-cover sm:h-40" />
               ) : (
                 <div className="flex h-28 items-center justify-center rounded-xl bg-zinc-200 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-zinc-500 sm:h-40 sm:text-xs sm:tracking-[0.16em]">대표 사진 없음</div>
               )}
