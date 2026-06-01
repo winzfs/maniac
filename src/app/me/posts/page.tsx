@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { MyPostsClient } from "@/features/auth/MyPostsClient";
 import { PageHeader } from "@/shared/components/navigation/PageHeader";
+
+export const metadata: Metadata = {
+  title: "내 작성글 관리",
+  robots: { index: false, follow: false },
+};
 
 export default function MyPostsPage() {
   return (
